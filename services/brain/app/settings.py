@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     classify_sweep_interval: int = 300
     classify_batch: int = 20
 
+    # Dreaming consolidation. Disabled by default so a fresh checkout and the tests do not
+    # spawn the nightly loop. The manual /dreaming/run trigger always works.
+    dreaming_enabled: bool = False
+    dreaming_interval: int = 86400
+    dreaming_lookback_hours: int = 24
+    dreaming_max_items: int = 50
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

@@ -1061,6 +1061,214 @@
         }
       }
     },
+    "/dreaming/run": {
+      "post": {
+        "tags": [
+          "dreaming"
+        ],
+        "summary": "Trigger Run",
+        "operationId": "trigger_run_dreaming_run_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DreamRunRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dreaming/candidates": {
+      "get": {
+        "tags": [
+          "dreaming"
+        ],
+        "summary": "List Candidates",
+        "operationId": "list_candidates_dreaming_candidates_get",
+        "parameters": [
+          {
+            "name": "facet",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "about_user",
+                    "about_self"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Facet"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "accepted",
+                    "dismissed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemoryCandidateRead"
+                  },
+                  "title": "Response List Candidates Dreaming Candidates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dreaming/candidates/{candidate_id}/accept": {
+      "post": {
+        "tags": [
+          "dreaming"
+        ],
+        "summary": "Accept Candidate",
+        "operationId": "accept_candidate_dreaming_candidates__candidate_id__accept_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntryRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dreaming/candidates/{candidate_id}/dismiss": {
+      "post": {
+        "tags": [
+          "dreaming"
+        ],
+        "summary": "Dismiss Candidate",
+        "operationId": "dismiss_candidate_dreaming_candidates__candidate_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryCandidateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dreaming/runs": {
+      "get": {
+        "tags": [
+          "dreaming"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_dreaming_runs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DreamRunRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Runs Dreaming Runs Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings/models": {
       "get": {
         "tags": [
@@ -1638,6 +1846,63 @@
           "connected"
         ],
         "title": "DatabaseHealth"
+      },
+      "DreamRunRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "trigger": {
+            "type": "string",
+            "title": "Trigger"
+          },
+          "model_key": {
+            "type": "string",
+            "title": "Model Key"
+          },
+          "items_considered": {
+            "type": "integer",
+            "title": "Items Considered"
+          },
+          "candidates_created": {
+            "type": "integer",
+            "title": "Candidates Created"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "trigger",
+          "model_key",
+          "items_considered",
+          "candidates_created",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "DreamRunRead"
       },
       "ExpandRequest": {
         "properties": {
@@ -2270,6 +2535,74 @@
           "kind"
         ],
         "title": "MeResponse"
+      },
+      "MemoryCandidateRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "facet": {
+            "type": "string",
+            "title": "Facet"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "source_refs": {
+            "items": {},
+            "type": "array",
+            "title": "Source Refs"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "facet",
+          "kind",
+          "scope",
+          "content",
+          "confidence",
+          "source_refs",
+          "status",
+          "created_at",
+          "reviewed_at"
+        ],
+        "title": "MemoryCandidateRead"
       },
       "MigrationHealth": {
         "properties": {

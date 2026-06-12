@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agents.scheduler import register_scheduler
-from .routers import auth, flow, intake, knowledge, model_config, projects, system
+from .routers import auth, dreaming, flow, intake, knowledge, model_config, projects, system
 from .routers import settings as settings_router
 from .settings import get_settings
 
@@ -29,6 +29,7 @@ app.include_router(intake.router)
 app.include_router(flow.router)
 app.include_router(projects.router)
 app.include_router(knowledge.router)
+app.include_router(dreaming.router)
 app.include_router(model_config.router)
 app.include_router(system.router)
 app.include_router(settings_router.router)

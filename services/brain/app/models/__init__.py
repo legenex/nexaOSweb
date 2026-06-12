@@ -5,6 +5,7 @@ create_all can see them. New model modules are imported here as they are added.
 """
 
 from .base import Base
+from .dreaming import DreamRun, MemoryCandidate
 from .inbox import ClassificationRecord, InboxItem, PipelineRun
 from .knowledge import KnowledgeEntry
 from .project import Integration, PMRun, Project
@@ -24,4 +25,6 @@ __all__ = [
     "JournalNote",
     "AppSetting",
     "KnowledgeEntry",
+    "MemoryCandidate",
+    "DreamRun",
 ]
