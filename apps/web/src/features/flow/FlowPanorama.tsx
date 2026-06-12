@@ -5,6 +5,8 @@ import { HolographicSphere } from '../../components/HolographicSphere';
 import { GlassCard, MonoLabel, Pill, StatusDot } from '../../components/primitives';
 import type { DotState } from '../../components/primitives';
 import { CaptureCard } from './cards/CaptureCard';
+import { ClassifyCard } from './cards/ClassifyCard';
+import { RouteCard } from './cards/RouteCard';
 import { ConnectorLayer } from './ConnectorLayer';
 import { useFlow } from './FlowProvider';
 import type { FlowItem } from './FlowProvider';
@@ -25,6 +27,10 @@ function renderStageCard(stageKey: string, stageLabel: string, _selected: FlowIt
   switch (stageKey) {
     case 'capture':
       return <CaptureCard />;
+    case 'classify':
+      return <ClassifyCard />;
+    case 'route':
+      return <RouteCard />;
     default:
       return <PlaceholderCard stageLabel={stageLabel} />;
   }
@@ -80,13 +86,16 @@ export function FlowPanorama() {
           {STAGES.map((stage, index) => {
             const dot: DotState =
               selected && stageStateFor(stage.key, selected) ? stageStateFor(stage.key, selected)! : stage.dot;
+            const terminalRoute = Boolean(selected?.route && selected.route !== 'project');
+            const dimmed =
+              terminalRoute && ['process', 'clarify', 'gate', 'execute'].includes(stage.key);
             return (
               <div
                 key={stage.key}
                 ref={(element) => {
                   cardsRef.current[index] = element;
                 }}
-                className="w-[280px] shrink-0"
+                className={['w-[280px] shrink-0 transition', dimmed ? 'opacity-40' : ''].join(' ')}
               >
                 <div className="mb-3 flex items-center gap-2">
                   <MonoLabel tone="accent">stage {stage.number}</MonoLabel>
