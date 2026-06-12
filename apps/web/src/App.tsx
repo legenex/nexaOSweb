@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { AuthProvider, useAuth } from './app/AuthProvider';
 import { DEFAULT_NAV_KEY, NAV_ITEMS } from './app/nav';
 import { NavigationContext } from './app/navigation';
+import { ComingSoon } from './components/ComingSoon';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
@@ -45,6 +46,27 @@ function Surface({ active, label }: { active: string; label: string }) {
       return <ProjectsView />;
     case 'settings':
       return <SettingsView />;
+    case 'journal':
+      return (
+        <ComingSoon
+          title="Journal"
+          blurb="Capture notes and daily reflections that feed the nightly Dreaming consolidation."
+        />
+      );
+    case 'tasks':
+      return (
+        <ComingSoon
+          title="Tasks"
+          blurb="Track what to do, with reminders folded in, ranked by Focus and Accountability."
+        />
+      );
+    case 'focus':
+      return (
+        <ComingSoon
+          title="Focus and Accountability"
+          blurb="Rank the day's work from the Knowledge base and hold you to what matters most."
+        />
+      );
     default:
       return <Placeholder label={label} />;
   }
