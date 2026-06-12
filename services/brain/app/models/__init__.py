@@ -5,5 +5,6 @@ create_all can see them. New model modules are imported here as they are added.
 """
 
 from .base import Base
+from .user import User
 
-__all__ = ["Base"]
+__all__ = ["Base", "User"]
