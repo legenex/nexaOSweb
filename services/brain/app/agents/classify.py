@@ -169,6 +169,11 @@ def classify_item_background(item_id: int) -> None:
         if already is not None:
             return
         classify_item(db, item)
+        # Auto advance through Route unless the item was escalated.
+        if item.status != "escalated":
+            from app.agents.route import route_item
+
+            route_item(db, item)
     except Exception:  # noqa: BLE001  background resilience
         logger.exception("background classification failed for item %s", item_id)
         db.rollback()
