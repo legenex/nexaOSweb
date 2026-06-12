@@ -2,15 +2,26 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.agents.classify import classify_item_background
 from app.db import get_db
-from app.models.inbox import InboxItem
+from app.models.inbox import ClassificationRecord, InboxItem
 from app.models.user import User
 from app.safety import ensure_within_root
-from app.schemas.entities import InboxItemRead
+from app.schemas.entities import ClassificationRecordRead, InboxItemRead
 from app.schemas.intake import ItemsPage
 from app.security.auth import current_user
 from app.settings import get_settings
@@ -21,6 +32,7 @@ router = APIRouter(prefix="/intake", tags=["intake"])
 
 @router.post("/capture", response_model=InboxItemRead, status_code=status.HTTP_201_CREATED)
 def capture(
+    background_tasks: BackgroundTasks,
     name: str = Form(...),
     body: str = Form(""),
     source: str = Form("note"),
@@ -53,6 +65,9 @@ def capture(
 
     db.commit()
     db.refresh(item)
+
+    # Classify on ingest, in the background, so capture stays fast and resilient.
+    background_tasks.add_task(classify_item_background, item.id)
     return item
 
 
@@ -89,3 +104,23 @@ def get_item(
     if item is None or item.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "item not found")
     return item
+
+
+@router.get("/items/{item_id}/classification", response_model=ClassificationRecordRead)
+def get_classification(
+    item_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ClassificationRecord:
+    item = db.get(InboxItem, item_id)
+    if item is None or item.user_id != user.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "item not found")
+    record = (
+        db.query(ClassificationRecord)
+        .filter(ClassificationRecord.item_id == item_id)
+        .order_by(ClassificationRecord.created_at.desc(), ClassificationRecord.id.desc())
+        .first()
+    )
+    if record is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no classification yet")
+    return record

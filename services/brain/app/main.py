@@ -7,6 +7,7 @@ later prompts add them.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .agents.scheduler import register_scheduler
 from .routers import auth, intake
 from .settings import get_settings
 
@@ -24,6 +25,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(intake.router)
+
+register_scheduler(app)
 
 
 @app.get("/healthz", tags=["health"])

@@ -39,6 +39,9 @@ class Settings(BaseSettings):
 
     # Intake knobs (defaults, overridable through AppSetting at runtime)
     classify_confidence_threshold: float = 0.55
+    classify_sweep_enabled: bool = False
+    classify_sweep_interval: int = 300
+    classify_batch: int = 20
 
     @property
     def cors_origin_list(self) -> list[str]:
