@@ -99,7 +99,7 @@ export function FlowPanorama() {
           data-deck
           role="list"
           aria-label="Flow pipeline stages"
-          className="relative z-10 flex gap-7 overflow-x-auto pb-6"
+          className="scroll-themed relative z-10 flex gap-7 overflow-x-auto pb-6"
         >
           {STAGES.map((stage, index) => {
             const isActive = index === activeIndex;
