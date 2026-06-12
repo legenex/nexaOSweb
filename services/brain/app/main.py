@@ -8,7 +8,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agents.scheduler import register_scheduler
-from .routers import auth, dreaming, flow, intake, knowledge, model_config, projects, system
+from .routers import (
+    auth,
+    dashboard,
+    dreaming,
+    flow,
+    intake,
+    knowledge,
+    model_config,
+    projects,
+    system,
+)
 from .routers import settings as settings_router
 from .settings import get_settings
 
@@ -25,6 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(intake.router)
 app.include_router(flow.router)
 app.include_router(projects.router)

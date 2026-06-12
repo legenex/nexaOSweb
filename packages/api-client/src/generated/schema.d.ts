@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Summary */
+        get: operations["get_summary_dashboard_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Brief */
+        get: operations["get_brief_dashboard_brief_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intake/capture": {
         parameters: {
             query?: never;
@@ -662,6 +696,21 @@ export interface components {
              */
             reason: string;
         };
+        /** BrainStatus */
+        BrainStatus: {
+            /** Status */
+            status: string;
+            /** Version */
+            version: string;
+            /** Database Connected */
+            database_connected: boolean;
+            /** Dreaming Enabled */
+            dreaming_enabled: boolean;
+            /** Sweep Enabled */
+            sweep_enabled: boolean;
+            /** Last Dream At */
+            last_dream_at?: string | null;
+        };
         /** ClarifyRequest */
         ClarifyRequest: {
             /**
@@ -719,6 +768,13 @@ export interface components {
              */
             created_at: string;
         };
+        /** ConnectorHealth */
+        ConnectorHealth: {
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+        };
         /** CostHint */
         CostHint: {
             /** Tier */
@@ -732,6 +788,52 @@ export interface components {
         CsrfResponse: {
             /** Csrf Token */
             csrf_token: string;
+        };
+        /** DashboardBrief */
+        DashboardBrief: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "morning" | "evening";
+            /** Date */
+            date: string;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Cached */
+            cached: boolean;
+            /** Text */
+            text: string;
+        };
+        /** DashboardSummary */
+        DashboardSummary: {
+            /** Active Projects */
+            active_projects: components["schemas"]["ProjectBrief"][];
+            /** Active Projects Count */
+            active_projects_count: number;
+            /** Builds Awaiting Approval */
+            builds_awaiting_approval: components["schemas"]["ProjectBrief"][];
+            /** Builds Awaiting Approval Count */
+            builds_awaiting_approval_count: number;
+            /** Research Ready */
+            research_ready: components["schemas"]["ResearchFinding"][];
+            /** Research Ready Count */
+            research_ready_count: number;
+            /** Suggested Tasks */
+            suggested_tasks: components["schemas"]["TaskBrief"][];
+            /** Suggested Tasks Count */
+            suggested_tasks_count: number;
+            top_opportunity?: components["schemas"]["Opportunity"] | null;
+            /** Recent Uploads */
+            recent_uploads: components["schemas"]["ItemBrief"][];
+            /** Connector Health */
+            connector_health: components["schemas"]["ConnectorHealth"][];
+            /** Model Usage */
+            model_usage: components["schemas"]["ModelUsage"][];
+            brain: components["schemas"]["BrainStatus"];
         };
         /** DatabaseHealth */
         DatabaseHealth: {
@@ -875,6 +977,20 @@ export interface components {
             classify_sweep_interval?: number | null;
             /** Classify Batch */
             classify_batch?: number | null;
+        };
+        /** ItemBrief */
+        ItemBrief: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Source */
+            source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ItemsPage */
         ItemsPage: {
@@ -1097,12 +1213,30 @@ export interface components {
             max_tokens?: number | null;
             cost: components["schemas"]["CostHint"];
         };
+        /** ModelUsage */
+        ModelUsage: {
+            /** Model Key */
+            model_key: string;
+            /** Model Id */
+            model_id: string;
+            /** Count */
+            count: number;
+        };
         /** ModelsConfig */
         ModelsConfig: {
             /** Keys */
             keys: components["schemas"]["ModelEntry"][];
             /** Agents */
             agents: components["schemas"]["AgentBinding"][];
+        };
+        /** Opportunity */
+        Opportunity: {
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Score */
+            score?: number | null;
         };
         /** ProcessHealth */
         ProcessHealth: {
@@ -1114,6 +1248,17 @@ export interface components {
             started_at: string;
             /** Uptime Seconds */
             uptime_seconds: number;
+        };
+        /** ProjectBrief */
+        ProjectBrief: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string;
+            /** Build Destination */
+            build_destination?: string | null;
         };
         /** ProjectRead */
         ProjectRead: {
@@ -1163,6 +1308,17 @@ export interface components {
             /** Max Tokens */
             max_tokens?: number | null;
         };
+        /** ResearchFinding */
+        ResearchFinding: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Shape */
+            shape: string;
+            /** Confidence */
+            confidence: number;
+        };
         /** RestartRequest */
         RestartRequest: {
             /**
@@ -1198,6 +1354,17 @@ export interface components {
             process: components["schemas"]["ProcessHealth"];
             database: components["schemas"]["DatabaseHealth"];
             migration: components["schemas"]["MigrationHealth"];
+        };
+        /** TaskBrief */
+        TaskBrief: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Status */
+            status: string;
+            /** Project Id */
+            project_id?: number | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1308,6 +1475,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CsrfResponse"];
+                };
+            };
+        };
+    };
+    get_summary_dashboard_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummary"];
+                };
+            };
+        };
+    };
+    get_brief_dashboard_brief_get: {
+        parameters: {
+            query?: {
+                mode?: ("morning" | "evening") | null;
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardBrief"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

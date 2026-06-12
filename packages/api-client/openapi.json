@@ -102,6 +102,90 @@
         }
       }
     },
+    "/dashboard/summary": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Summary",
+        "operationId": "get_summary_dashboard_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/brief": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Brief",
+        "operationId": "get_brief_dashboard_brief_get",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "morning",
+                    "evening"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mode"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardBrief"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/intake/capture": {
       "post": {
         "tags": [
@@ -1725,6 +1809,51 @@
         "type": "object",
         "title": "Body_reject_projects__project_id__reject_post"
       },
+      "BrainStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "database_connected": {
+            "type": "boolean",
+            "title": "Database Connected"
+          },
+          "dreaming_enabled": {
+            "type": "boolean",
+            "title": "Dreaming Enabled"
+          },
+          "sweep_enabled": {
+            "type": "boolean",
+            "title": "Sweep Enabled"
+          },
+          "last_dream_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Dream At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "database_connected",
+          "dreaming_enabled",
+          "sweep_enabled"
+        ],
+        "title": "BrainStatus"
+      },
       "ClarifyRequest": {
         "properties": {
           "answers": {
@@ -1842,6 +1971,24 @@
         ],
         "title": "ClassificationRecordRead"
       },
+      "ConnectorHealth": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "status"
+        ],
+        "title": "ConnectorHealth"
+      },
       "CostHint": {
         "properties": {
           "tier": {
@@ -1883,6 +2030,142 @@
           "csrf_token"
         ],
         "title": "CsrfResponse"
+      },
+      "DashboardBrief": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "evening"
+            ],
+            "title": "Mode"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "date",
+          "generated_at",
+          "cached",
+          "text"
+        ],
+        "title": "DashboardBrief"
+      },
+      "DashboardSummary": {
+        "properties": {
+          "active_projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectBrief"
+            },
+            "type": "array",
+            "title": "Active Projects"
+          },
+          "active_projects_count": {
+            "type": "integer",
+            "title": "Active Projects Count"
+          },
+          "builds_awaiting_approval": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectBrief"
+            },
+            "type": "array",
+            "title": "Builds Awaiting Approval"
+          },
+          "builds_awaiting_approval_count": {
+            "type": "integer",
+            "title": "Builds Awaiting Approval Count"
+          },
+          "research_ready": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchFinding"
+            },
+            "type": "array",
+            "title": "Research Ready"
+          },
+          "research_ready_count": {
+            "type": "integer",
+            "title": "Research Ready Count"
+          },
+          "suggested_tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskBrief"
+            },
+            "type": "array",
+            "title": "Suggested Tasks"
+          },
+          "suggested_tasks_count": {
+            "type": "integer",
+            "title": "Suggested Tasks Count"
+          },
+          "top_opportunity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Opportunity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recent_uploads": {
+            "items": {
+              "$ref": "#/components/schemas/ItemBrief"
+            },
+            "type": "array",
+            "title": "Recent Uploads"
+          },
+          "connector_health": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectorHealth"
+            },
+            "type": "array",
+            "title": "Connector Health"
+          },
+          "model_usage": {
+            "items": {
+              "$ref": "#/components/schemas/ModelUsage"
+            },
+            "type": "array",
+            "title": "Model Usage"
+          },
+          "brain": {
+            "$ref": "#/components/schemas/BrainStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "active_projects",
+          "active_projects_count",
+          "builds_awaiting_approval",
+          "builds_awaiting_approval_count",
+          "research_ready",
+          "research_ready_count",
+          "suggested_tasks",
+          "suggested_tasks_count",
+          "recent_uploads",
+          "connector_health",
+          "model_usage",
+          "brain"
+        ],
+        "title": "DashboardSummary"
       },
       "DatabaseHealth": {
         "properties": {
@@ -2242,6 +2525,35 @@
         },
         "type": "object",
         "title": "IntakeSettingsPatch"
+      },
+      "ItemBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "source",
+          "created_at"
+        ],
+        "title": "ItemBrief"
       },
       "ItemsPage": {
         "properties": {
@@ -2874,6 +3186,29 @@
         ],
         "title": "ModelEntry"
       },
+      "ModelUsage": {
+        "properties": {
+          "model_key": {
+            "type": "string",
+            "title": "Model Key"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_key",
+          "model_id",
+          "count"
+        ],
+        "title": "ModelUsage"
+      },
       "ModelsConfig": {
         "properties": {
           "keys": {
@@ -2897,6 +3232,35 @@
           "agents"
         ],
         "title": "ModelsConfig"
+      },
+      "Opportunity": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "detail"
+        ],
+        "title": "Opportunity"
       },
       "ProcessHealth": {
         "properties": {
@@ -2925,6 +3289,40 @@
           "uptime_seconds"
         ],
         "title": "ProcessHealth"
+      },
+      "ProjectBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "build_destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Destination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "stage"
+        ],
+        "title": "ProjectBrief"
       },
       "ProjectRead": {
         "properties": {
@@ -3072,6 +3470,34 @@
         ],
         "title": "RemapKeyRequest"
       },
+      "ResearchFinding": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "shape": {
+            "type": "string",
+            "title": "Shape"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "shape",
+          "confidence"
+        ],
+        "title": "ResearchFinding"
+      },
       "RestartRequest": {
         "properties": {
           "confirm": {
@@ -3164,6 +3590,40 @@
           "migration"
         ],
         "title": "SystemHealth"
+      },
+      "TaskBrief": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status"
+        ],
+        "title": "TaskBrief"
       },
       "ValidationError": {
         "properties": {

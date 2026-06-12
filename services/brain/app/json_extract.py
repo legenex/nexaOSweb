@@ -77,3 +77,34 @@ def synthesize_json(
     except Exception:  # noqa: BLE001  fall back so the pipeline still produces output
         logger.warning("provider synthesis failed for key %s, using offline fallback", key)
         return offline_synthesize(prompt, schema)
+
+
+def synthesize_text(
+    key: str,
+    prompt: str,
+    *,
+    system: str | None = None,
+    router: ModelRouter | None = None,
+) -> str | None:
+    """Free text generation for a semantic key.
+
+    Returns the model text, or None when there is no provider key (and no injected
+    completion, as in tests) or the call fails. A None lets the caller fall back to a
+    deterministic offline rendering rather than emitting an empty or error string.
+    """
+    router = router or get_router()
+    messages = [
+        {"role": "system", "content": system or "You are a concise, helpful assistant."},
+        {"role": "user", "content": prompt},
+    ]
+
+    if not has_provider_keys() and model_router._completion_fn is None:
+        return None
+
+    try:
+        response = router.route_completion(key, messages)
+        text = _extract_content(response)
+        return text.strip() if text else None
+    except Exception:  # noqa: BLE001  the caller renders an offline brief instead
+        logger.warning("provider text synthesis failed for key %s", key)
+        return None
