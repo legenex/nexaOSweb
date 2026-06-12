@@ -18,6 +18,8 @@ import { api } from '../../app/client';
 
 export type FlowItem = Schemas['FlowItemDTO'];
 export type InboxItem = Schemas['InboxItemRead'];
+export type ClarifyResponse = Schemas['ClarifyResponse'];
+export type ClarifyRequest = Schemas['ClarifyRequest'];
 
 export interface CaptureInput {
   name: string;
@@ -35,6 +37,11 @@ interface FlowState {
   select: (id: number) => Promise<void>;
   capture: (input: CaptureInput) => Promise<InboxItem>;
   expand: (name: string, body: string) => Promise<string>;
+  process: (id: number) => Promise<void>;
+  getPlan: (id: number) => Promise<string>;
+  getClarify: (id: number) => Promise<ClarifyResponse>;
+  submitClarify: (id: number, payload: ClarifyRequest) => Promise<void>;
+  getPreview: (id: number) => Promise<string>;
 }
 
 const FlowContext = createContext<FlowState | null>(null);
@@ -96,6 +103,47 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     return result.expanded;
   }, []);
 
+  const process = useCallback(
+    async (id: number) => {
+      const { error } = await api.POST('/flow/items/{item_id}/process', {
+        params: { path: { item_id: id } },
+      });
+      if (error) throw new Error('process failed');
+      await select(id);
+    },
+    [select],
+  );
+
+  const getPlan = useCallback(async (id: number) => {
+    const response = await apiFetch(`/flow/items/${id}/plan`);
+    return response.ok ? response.text() : '';
+  }, []);
+
+  const getClarify = useCallback(async (id: number) => {
+    const { data, error } = await api.GET('/flow/items/{item_id}/clarify', {
+      params: { path: { item_id: id } },
+    });
+    if (error || !data) throw new Error('clarify failed');
+    return data as ClarifyResponse;
+  }, []);
+
+  const submitClarify = useCallback(
+    async (id: number, payload: ClarifyRequest) => {
+      const { error } = await api.POST('/flow/items/{item_id}/clarify', {
+        params: { path: { item_id: id } },
+        body: payload,
+      });
+      if (error) throw new Error('clarify submit failed');
+      await select(id);
+    },
+    [select],
+  );
+
+  const getPreview = useCallback(async (id: number) => {
+    const response = await apiFetch(`/flow/items/${id}/preview`);
+    return response.ok ? response.text() : '';
+  }, []);
+
   useEffect(() => {
     void refresh();
     // run once on mount
@@ -103,8 +151,36 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<FlowState>(
-    () => ({ items, selected, selectedId, loadingList, refresh, select, capture, expand }),
-    [items, selected, selectedId, loadingList, refresh, select, capture, expand],
+    () => ({
+      items,
+      selected,
+      selectedId,
+      loadingList,
+      refresh,
+      select,
+      capture,
+      expand,
+      process,
+      getPlan,
+      getClarify,
+      submitClarify,
+      getPreview,
+    }),
+    [
+      items,
+      selected,
+      selectedId,
+      loadingList,
+      refresh,
+      select,
+      capture,
+      expand,
+      process,
+      getPlan,
+      getClarify,
+      submitClarify,
+      getPreview,
+    ],
   );
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>;
