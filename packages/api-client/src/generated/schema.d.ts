@@ -331,6 +331,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Knowledge */
+        get: operations["list_knowledge_knowledge_get"];
+        put?: never;
+        /** Create Knowledge */
+        post: operations["create_knowledge_knowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/knowledge/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Knowledge */
+        patch: operations["update_knowledge_knowledge__entry_id__patch"];
+        trace?: never;
+    };
+    "/knowledge/{entry_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Knowledge */
+        post: operations["archive_knowledge_knowledge__entry_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -582,6 +634,95 @@ export interface components {
             limit: number;
             /** Offset */
             offset: number;
+        };
+        /** KnowledgeEntryCreate */
+        KnowledgeEntryCreate: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "fact" | "preference" | "pattern" | "skill" | "rule";
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "general" | "personal" | "development" | "work";
+            /**
+             * Source
+             * @default manual
+             * @enum {string}
+             */
+            source: "manual" | "dreaming" | "connector";
+            /** Content */
+            content: string;
+            /**
+             * Confidence
+             * @default 0.5
+             */
+            confidence: number;
+            /**
+             * Status
+             * @default active
+             * @enum {string}
+             */
+            status: "active" | "archived";
+            /** Provenance */
+            provenance?: {
+                [key: string]: unknown;
+            };
+        };
+        /** KnowledgeEntryRead */
+        KnowledgeEntryRead: {
+            /** Id */
+            id: number;
+            /** Kind */
+            kind: string;
+            /** Scope */
+            scope: string;
+            /** Source */
+            source: string;
+            /** Content */
+            content: string;
+            /** Confidence */
+            confidence: number;
+            /** Status */
+            status: string;
+            /** Provenance */
+            provenance: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * KnowledgeEntryUpdate
+         * @description Partial update. Only the supplied fields change. Archiving has its own endpoint.
+         */
+        KnowledgeEntryUpdate: {
+            /** Kind */
+            kind?: ("fact" | "preference" | "pattern" | "skill" | "rule") | null;
+            /** Scope */
+            scope?: ("general" | "personal" | "development" | "work") | null;
+            /** Source */
+            source?: ("manual" | "dreaming" | "connector") | null;
+            /** Content */
+            content?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** Status */
+            status?: ("active" | "archived") | null;
+            /** Provenance */
+            provenance?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -1263,6 +1404,139 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_knowledge_knowledge_get: {
+        parameters: {
+            query?: {
+                scope?: ("general" | "personal" | "development" | "work") | null;
+                kind?: ("fact" | "preference" | "pattern" | "skill" | "rule") | null;
+                status?: ("active" | "archived") | null;
+                source?: ("manual" | "dreaming" | "connector") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntryRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_knowledge_knowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeEntryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_knowledge_knowledge__entry_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeEntryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_knowledge_knowledge__entry_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntryRead"];
                 };
             };
             /** @description Validation Error */
