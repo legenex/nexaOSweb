@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 
-from app.aggregate import build_flow_item
 from app.agents.builder import BuilderError, promote_project
 from app.agents.clarify import apply_clarify, get_clarify, read_preview_html
 from app.agents.process import ProcessError, process_item, read_plan_markdown
+from app.aggregate import build_flow_item
 from app.db import get_db
 from app.models.inbox import InboxItem
 from app.models.project import Project

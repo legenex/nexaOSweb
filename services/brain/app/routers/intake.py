@@ -83,7 +83,11 @@ def expand(
         "sentences for a US market product. Return JSON with an expanded field.\n\n"
         f"Name: {payload.name}\nNotes: {payload.body}"
     )
-    schema = {"type": "object", "properties": {"expanded": {"type": "string"}}, "required": ["expanded"]}
+    schema = {
+        "type": "object",
+        "properties": {"expanded": {"type": "string"}},
+        "required": ["expanded"],
+    }
     result = synthesize_json("general", prompt, schema)
     return ExpandResponse(expanded=str(result.get("expanded", "")).strip())
 

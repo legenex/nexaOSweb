@@ -42,7 +42,7 @@ def parse_json(content: str) -> dict[str, Any]:
     except json.JSONDecodeError:
         match = _JSON_BLOCK.search(content)
         if match is None:
-            raise ValueError("no JSON object found in model output")
+            raise ValueError("no JSON object found in model output") from None
         return json.loads(match.group(0))
 
 

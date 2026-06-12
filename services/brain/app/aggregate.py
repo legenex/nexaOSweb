@@ -46,7 +46,9 @@ def build_flow_item(db: Session, item: InboxItem) -> FlowItemDTO:
     project = db.query(Project).filter(Project.item_id == item.id).first()
 
     plan_available = bool(
-        project and project.plan_path and _exists_within(settings.nexa_projects_root, project.plan_path)
+        project
+        and project.plan_path
+        and _exists_within(settings.nexa_projects_root, project.plan_path)
     )
     preview_available = bool(
         project
