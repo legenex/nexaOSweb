@@ -14,7 +14,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: 'journal', label: 'Journal', glyph: '✎', description: 'Notes and reflections' },
   { key: 'tasks', label: 'Tasks', glyph: '✓', description: 'Things to do' },
   { key: 'research', label: 'Research', glyph: '◈', description: 'Grounded research' },
-  { key: 'focus', label: 'Focus and Accountability', glyph: '◎', description: 'Ranked work and accountability' },
+  { key: 'focus', label: 'Focus', glyph: '◎', description: 'Ranked work' },
   { key: 'project-builder', label: 'Project Builder', glyph: '◇', description: 'The seven stage pipeline' },
   { key: 'projects', label: 'Projects', glyph: '▣', description: 'Maintained projects' },
   { key: 'settings', label: 'Settings', glyph: '⚙', description: 'Configuration' },

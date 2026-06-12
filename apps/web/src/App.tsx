@@ -57,13 +57,13 @@ function Surface({ active, label }: { active: string; label: string }) {
       return (
         <ComingSoon
           title="Tasks"
-          blurb="Track what to do, with reminders folded in, ranked by Focus and Accountability."
+          blurb="Track what to do, with reminders folded in, ranked by Focus."
         />
       );
     case 'focus':
       return (
         <ComingSoon
-          title="Focus and Accountability"
+          title="Focus"
           blurb="Rank the day's work from the Knowledge base and hold you to what matters most."
         />
       );

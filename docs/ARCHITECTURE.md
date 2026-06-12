@@ -6,7 +6,7 @@ NexaOS has two pillars joined by a decide layer. The Build pillar turns ideas in
 
 - Build pillar. The seven stage Flow pipeline (Capture, Classify, Route, Process, Clarify, Human Gate, Execute) takes a captured idea and produces a maintained project. The pipeline is unchanged. In the user interface it is presented as Project Builder, while the internal pipeline name, the API paths, and the code stay Flow.
 - Learn pillar. A nightly Dreaming consolidation reads the day's items and extracts memory candidates, both about the user and about the system itself. It writes approved candidates into a Knowledge base. No candidate enters long term memory without explicit user approval. Dreaming proposes, the user approves, and only then does a candidate become durable knowledge.
-- Decide layer. Focus and Accountability ranks work using the Knowledge base, joining the two pillars so that what the system learned shapes what it asks the user to do next. The surfaced view (Surface) ships in a later milestone. The intent is recorded now so the pillars are designed against it.
+- Decide layer. Focus ranks work using the Knowledge base, joining the two pillars so that what the system learned shapes what it asks the user to do next. The surfaced view (Surface) ships in a later milestone. The intent is recorded now so the pillars are designed against it.
 
 ## Decisions and why
 - One web frontend, three targets. A single React app is served by Plesk as the browser companion and wrapped by Tauri into Mac and Windows apps. This avoids maintaining separate native codebases and matches the holographic canvas style already prototyped.
@@ -22,7 +22,7 @@ The interface is organized around the two pillars and the decide layer, not arou
 
 - Flow is renamed to Project Builder in the user interface. The internal pipeline name, the API paths, and the code remain Flow. The rename is presentation only.
 - Inbox and Reminders are removed as top level tabs. Capture moves into a global command bar that is available everywhere, and into the Project Builder capture stage. Reminders fold into Tasks.
-- Canonical sidebar order, top to bottom: Dashboard, Insights, Journal, Tasks, Research, Focus and Accountability, Project Builder, Projects, Settings. Dashboard is the default landing route. A global command bar sits above the sidebar and owns Capture. Focus and Accountability is the decide layer and ships later, shown as a placeholder until Surface lands.
+- Canonical sidebar order, top to bottom: Dashboard, Insights, Journal, Tasks, Research, Focus, Project Builder, Projects, Settings. Dashboard is the default landing route. A global command bar sits above the sidebar and owns Capture. Focus is the decide layer and ships later, shown as a placeholder until Surface lands.
 - Settings sub tabs, in order: General, Users, Integrations, Knowledge, Skills and Connectors, Models and Agents, System.
 - Knowledge is a Settings sub tab, not a top level sidebar item. The Learn pillar surfaces here. Inside Knowledge the internal tabs are General, Personal, Development, API connections, Dreaming. The memory candidate review and approval queue lives in Settings, Knowledge, Dreaming, where the user approves or rejects Dreaming candidates before they become durable, and the same queue is surfaced on the Dashboard as the Dream Digest. There is no Memory settings tab.
 
