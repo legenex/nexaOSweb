@@ -5,6 +5,8 @@ import { DEFAULT_NAV_KEY, NAV_ITEMS } from './app/nav';
 import { NavigationContext } from './app/navigation';
 import { ComingSoon } from './components/ComingSoon';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
+import { HoloObject } from './components/HoloObject';
+import type { HoloVariant } from './components/HoloObject';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
@@ -72,6 +74,15 @@ function Surface({ active, label }: { active: string; label: string }) {
   }
 }
 
+// Each built out surface gets its own holographic object. Keys not listed render none.
+const HOLO_VARIANT: Record<string, HoloVariant> = {
+  dashboard: 'dashboard',
+  insights: 'insights',
+  research: 'research',
+  'project-builder': 'project-builder',
+  projects: 'projects',
+};
+
 function Shell() {
   const { me, logout } = useAuth();
   const [active, setActive] = useState(DEFAULT_NAV_KEY);
@@ -86,7 +97,13 @@ function Shell() {
       <Sidebar active={active} onSelect={setActive} />
       <main className="relative flex-1 overflow-auto p-8">
         <HolographicBackdrop />
-        <div className="mb-4 flex items-center justify-between">
+        {HOLO_VARIANT[active] ? (
+          <HoloObject
+            variant={HOLO_VARIANT[active]!}
+            className="pointer-events-none absolute right-6 top-4 z-0 opacity-60"
+          />
+        ) : null}
+        <div className="relative z-10 mb-4 flex items-center justify-between">
           <PageHeader title={current.label} label={`${current.key} ${current.description}`} />
           <button
             type="button"
@@ -96,7 +113,9 @@ function Shell() {
             {me?.email ? `sign out ${me.email}` : 'sign out'}
           </button>
         </div>
-        <Surface active={active} label={current.label} />
+        <div className="relative z-10">
+          <Surface active={active} label={current.label} />
+        </div>
       </main>
       </div>
     </div>
