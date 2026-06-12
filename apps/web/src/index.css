@@ -36,6 +36,53 @@
     font-size: 0.72rem;
     color: var(--faint);
   }
+
+  /* Moving sheen across the active card. */
+  .card-sheen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      75deg,
+      transparent 30%,
+      rgba(255, 138, 66, 0.1) 50%,
+      transparent 70%
+    );
+    transform: translateX(-120%);
+    animation: sheen 4.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Pulse on the stage the run is currently crossing, reactive to stage history. */
+  .pulse-glow {
+    animation: pulse-glow 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 16px rgba(255, 115, 32, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 115, 32, 0.5);
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {

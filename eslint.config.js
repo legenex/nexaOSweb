@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/dist/**',
       '**/build/**',
       '**/out/**',
+      '**/.venv/**',
+      'services/brain/**',
       'packages/api-client/src/generated/**',
       'apps/desktop/src-tauri/**',
       'design/**',

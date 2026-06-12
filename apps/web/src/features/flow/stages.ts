@@ -23,3 +23,25 @@ export const STAGES: StageDef[] = [
 
 // The index of the stage the run is currently crossing, for the brighter connector segment.
 export const ACTIVE_INDEX = 2;
+
+interface StageProgress {
+  classification?: unknown;
+  route?: string | null;
+  plan_available?: boolean;
+  preview_available?: boolean;
+  gate_state?: string;
+  project_stage?: string | null;
+}
+
+// Reactive index of the stage the run is currently crossing, derived from the flow item.
+export function currentStageIndex(item: StageProgress | null): number {
+  if (!item) return ACTIVE_INDEX;
+  if (!item.classification) return 1; // classify
+  if (!item.route) return 2; // route
+  if (item.route !== 'project') return 2; // terminal workflow ends at route
+  if (!item.plan_available) return 3; // process
+  if (!item.preview_available) return 4; // clarify
+  if (item.project_stage === 'build') return 6; // execute, handed off
+  if (item.gate_state === 'approved') return 6; // execute, ready to promote
+  return 5; // gate
+}

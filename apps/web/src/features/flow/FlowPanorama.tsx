@@ -14,7 +14,7 @@ import { RouteCard } from './cards/RouteCard';
 import { ConnectorLayer } from './ConnectorLayer';
 import { useFlow } from './FlowProvider';
 import type { FlowItem } from './FlowProvider';
-import { ACTIVE_INDEX, STAGES } from './stages';
+import { currentStageIndex, STAGES } from './stages';
 
 function PlaceholderCard({ stageLabel }: { stageLabel: string }) {
   return (
@@ -80,6 +80,7 @@ export function FlowPanorama() {
   const containerRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLDivElement | null)[]>([]);
   const { selected } = useFlow();
+  const activeIndex = currentStageIndex(selected);
 
   return (
     <div className="space-y-5">
@@ -92,22 +93,37 @@ export function FlowPanorama() {
 
       <div ref={containerRef} className="relative min-h-[520px]">
         <HolographicSphere />
-        <ConnectorLayer container={containerRef} cards={cardsRef} activeIndex={ACTIVE_INDEX} />
+        <ConnectorLayer container={containerRef} cards={cardsRef} activeIndex={activeIndex} />
 
-        <div data-deck className="relative z-10 flex gap-7 overflow-x-auto pb-6">
+        <div
+          data-deck
+          role="list"
+          aria-label="Flow pipeline stages"
+          className="relative z-10 flex gap-7 overflow-x-auto pb-6"
+        >
           {STAGES.map((stage, index) => {
-            const dot: DotState =
-              selected && stageStateFor(stage.key, selected) ? stageStateFor(stage.key, selected)! : stage.dot;
+            const isActive = index === activeIndex;
+            const dot: DotState = isActive
+              ? 'current'
+              : selected && stageStateFor(stage.key, selected)
+                ? stageStateFor(stage.key, selected)!
+                : stage.dot;
             const terminalRoute = Boolean(selected?.route && selected.route !== 'project');
             const dimmed =
               terminalRoute && ['process', 'clarify', 'gate', 'execute'].includes(stage.key);
             return (
               <div
                 key={stage.key}
+                role="listitem"
+                aria-label={`Stage ${stage.number}, ${stage.title}`}
                 ref={(element) => {
                   cardsRef.current[index] = element;
                 }}
-                className={['w-[280px] shrink-0 transition', dimmed ? 'opacity-40' : ''].join(' ')}
+                className={[
+                  'w-[280px] shrink-0 rounded-glass transition',
+                  dimmed ? 'opacity-40' : '',
+                  isActive ? 'pulse-glow' : '',
+                ].join(' ')}
               >
                 <div className="mb-3 flex items-center gap-2">
                   <MonoLabel tone="accent">stage {stage.number}</MonoLabel>

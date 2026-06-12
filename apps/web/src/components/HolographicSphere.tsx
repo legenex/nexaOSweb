@@ -87,6 +87,10 @@ export function HolographicSphere() {
     }
 
     function frame() {
+      if (!reduced && document.hidden) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
       const parent = canvas!.parentElement;
       if (!parent) return;
       const w = parent.clientWidth;

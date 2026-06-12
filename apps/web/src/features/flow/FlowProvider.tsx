@@ -198,8 +198,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
     void refreshProjects();
-    // run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentionally run once on mount; the actions are stable for the initial load.
   }, []);
 
   const value = useMemo<FlowState>(

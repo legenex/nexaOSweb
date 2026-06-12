@@ -13,14 +13,14 @@ export function GlassCard({
   return (
     <div
       className={[
-        'rounded-glass border bg-surface/70 p-5 backdrop-blur-sm transition',
+        'relative overflow-hidden rounded-glass border bg-surface/70 p-5 backdrop-blur-sm transition',
         active
-          ? 'border-accent/60 shadow-[0_0_22px_rgba(255,115,32,0.28)]'
+          ? 'card-sheen border-accent/60 shadow-[0_0_22px_rgba(255,115,32,0.28)]'
           : 'border-line',
         className,
       ].join(' ')}
     >
-      {children}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }

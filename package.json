@@ -1,6 +1,7 @@
 {
   "name": "nexaosweb",
   "private": true,
+  "type": "module",
   "version": "0.0.0",
   "description": "nexaOSweb, a personal AI operating system. One web frontend, three targets.",
   "license": "UNLICENSED",

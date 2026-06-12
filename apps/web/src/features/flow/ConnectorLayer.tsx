@@ -87,6 +87,10 @@ export function ConnectorLayer({
 
     if (!reduced) {
       const loop = () => {
+        if (document.hidden) {
+          raf = requestAnimationFrame(loop);
+          return;
+        }
         dash = (dash + 0.4) % 14;
         draw();
         raf = requestAnimationFrame(loop);

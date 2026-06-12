@@ -90,7 +90,13 @@ export function CaptureCard() {
 
       <div className="mb-3 flex flex-wrap gap-1.5">
         {SOURCES.map((entry) => (
-          <button key={entry} type="button" onClick={() => setSource(entry)}>
+          <button
+            key={entry}
+            type="button"
+            onClick={() => setSource(entry)}
+            aria-pressed={entry === source}
+            aria-label={`Source ${entry}`}
+          >
             <Pill variant={entry === source ? 'solid' : 'grey'}>{entry}</Pill>
           </button>
         ))}
