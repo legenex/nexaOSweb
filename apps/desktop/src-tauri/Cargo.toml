@@ -1,0 +1,20 @@
+[package]
+name = "nexaosweb"
+version = "0.1.0"
+description = "nexaOSweb desktop wrapper"
+authors = ["Legenex"]
+edition = "2021"
+
+[lib]
+name = "nexaosweb_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# The desktop bearer is read from the OS secure store, never bundled.
+keyring = "3"

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { AuthProvider, useAuth } from './app/AuthProvider';
 import { NAV_ITEMS } from './app/nav';
 import { NavigationContext } from './app/navigation';
+import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
@@ -33,7 +34,9 @@ function Shell() {
   return (
     <FlowProvider>
     <NavigationContext.Provider value={setActive}>
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-screen w-screen flex-col overflow-hidden">
+      <DesktopTitleBar />
+      <div className="flex flex-1 overflow-hidden">
       <Sidebar active={active} onSelect={setActive} />
       <main className="relative flex-1 overflow-auto p-8">
         <HolographicBackdrop />
@@ -59,6 +62,7 @@ function Shell() {
           </section>
         )}
       </main>
+      </div>
     </div>
     </NavigationContext.Provider>
     </FlowProvider>

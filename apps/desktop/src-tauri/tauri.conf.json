@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "nexaOSweb",
+  "version": "0.1.0",
+  "identifier": "com.legenex.nexaosweb",
+  "build": {
+    "frontendDist": "../../web/dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm --filter web dev",
+    "beforeBuildCommand": "pnpm --filter web build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "nexaOSweb",
+        "width": 1240,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 640,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
