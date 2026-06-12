@@ -1,0 +1,17 @@
+{
+  "name": "nexaosweb",
+  "private": true,
+  "version": "0.0.0",
+  "description": "nexaOSweb, a personal AI operating system. One web frontend, three targets.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "lint": "pnpm -r --if-present lint",
+    "gen:client": "pnpm --filter @nexaosweb/api-client --if-present generate"
+  }
+}
