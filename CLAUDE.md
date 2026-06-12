@@ -2,7 +2,7 @@
 House rules and project memory for nexaOSweb. Claude Code reads this first on every prompt. It is the authoritative source of truth for this repo.
 
 ## What this is
-nexaOSweb is a personal AI operating system. A captured idea travels through a seven stage Flow pipeline (Capture, Classify, Route, Process, Clarify, Human Gate, Execute) and becomes a maintained project. One web frontend serves three targets: a browser companion hosted on Plesk, a Mac app, and a Windows app, both wrapped with Tauri.
+nexaOSweb is a personal AI operating system built on two pillars joined by a decide layer. The Build pillar is the existing seven stage Flow pipeline (Capture, Classify, Route, Process, Clarify, Human Gate, Execute) that turns a captured idea into a maintained project; in the user interface it is called Project Builder while the internal pipeline name stays Flow. The Learn pillar is a nightly Dreaming consolidation that reads the day's items, extracts memory candidates about the user and about the system itself, and writes approved candidates into a Knowledge base; no candidate enters long term memory without explicit user approval. The decide layer, Focus and Accountability, ranks work using the Knowledge base, and its surfaced view ships later. One web frontend serves three targets: a browser companion hosted on Plesk, a Mac app, and a Windows app, both wrapped with Tauri. See docs/ARCHITECTURE.md for the full record.
 
 ## Stack (do not deviate without a recorded decision in docs/ARCHITECTURE.md)
 - Backend Brain: Python FastAPI, SQLAlchemy, Alembic, Postgres in production and SQLite for local dev, litellm as the multi provider model router.
@@ -32,6 +32,12 @@ nexaOSweb is a personal AI operating system. A captured idea travels through a s
 9. The frontend follows docs/FLOW_VISUAL_SPEC.md. Orange is the only brand color. All colors and fonts come from CSS variables, never hardcoded hex in components.
 10. Do not commit .env, secrets, build artifacts, node_modules, or the Python virtualenv. Keep .gitignore current.
 11. Commit after every update. As soon as a change is complete and verified, stage the explicit paths and commit it with a clear conventional message. Do not leave finished work uncommitted or batch unrelated changes into one commit. Push when the user asks.
+
+## Navigation (user interface)
+- Flow is shown as Project Builder in the interface. The internal pipeline name, the API paths, and the code stay Flow. The rename is presentation only.
+- Inbox and Reminders are removed as top level tabs. Capture lives in a global command bar and in the Project Builder capture stage. Reminders fold into Tasks.
+- Canonical sidebar order, top to bottom: Project Builder, Projects, Tasks, Knowledge, Focus and Accountability, Settings. A global command bar above the sidebar owns Capture.
+- Settings sub tabs, in order: Account, Integrations, Models, Memory, Appearance, Data and Privacy.
 
 ## Model router
 The Brain selects a model by semantic key from services/brain/config/models.yaml, never by hardcoding a model id in business logic. Keys at minimum: general, agentic_code, research_synthesis, bulk, journal_reflection, vision. Resolve the concrete model through the router so a key swap is a config change.
