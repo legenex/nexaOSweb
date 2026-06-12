@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { SETTINGS_TABS } from '../../app/nav';
 import { ModelsAgentsPanel } from './ModelsAgentsPanel';
+import { SystemPanel } from './SystemPanel';
 
 // What each settings sub tab will hold. One line each, so the routes read as intent until the
 // real panels land. Orange is the only brand color, all surfaces come from CSS variables.
@@ -19,6 +20,8 @@ function TabBody({ tabKey }: { tabKey: string }) {
   switch (tabKey) {
     case 'models-agents':
       return <ModelsAgentsPanel />;
+    case 'system':
+      return <SystemPanel />;
     default:
       return <p className="mt-3 max-w-prose text-sm text-muted">{TAB_BLURB[tabKey]}</p>;
   }

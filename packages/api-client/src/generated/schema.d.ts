@@ -434,6 +434,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Health */
+        get: operations["get_health_system_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/restart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restart Brain */
+        post: operations["restart_brain_system_restart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -595,6 +629,15 @@ export interface components {
         CsrfResponse: {
             /** Csrf Token */
             csrf_token: string;
+        };
+        /** DatabaseHealth */
+        DatabaseHealth: {
+            /** Dialect */
+            dialect: string;
+            /** Url */
+            url: string;
+            /** Connected */
+            connected: boolean;
         };
         /** ExpandRequest */
         ExpandRequest: {
@@ -841,6 +884,15 @@ export interface components {
             /** Email */
             email?: string | null;
         };
+        /** MigrationHealth */
+        MigrationHealth: {
+            /** Current */
+            current: string | null;
+            /** Head */
+            head: string | null;
+            /** Up To Date */
+            up_to_date: boolean;
+        };
         /** ModelEntry */
         ModelEntry: {
             /** Key */
@@ -859,6 +911,17 @@ export interface components {
             keys: components["schemas"]["ModelEntry"][];
             /** Agents */
             agents: components["schemas"]["AgentBinding"][];
+        };
+        /** ProcessHealth */
+        ProcessHealth: {
+            /** Pid */
+            pid: number;
+            /** Python Version */
+            python_version: string;
+            /** Started At */
+            started_at: string;
+            /** Uptime Seconds */
+            uptime_seconds: number;
         };
         /** ProjectRead */
         ProjectRead: {
@@ -908,6 +971,21 @@ export interface components {
             /** Max Tokens */
             max_tokens?: number | null;
         };
+        /** RestartRequest */
+        RestartRequest: {
+            /**
+             * Confirm
+             * @default false
+             */
+            confirm: boolean;
+        };
+        /** RestartResponse */
+        RestartResponse: {
+            /** Scheduled */
+            scheduled: boolean;
+            /** Delay Seconds */
+            delay_seconds: number;
+        };
         /** SuggestedIntegration */
         SuggestedIntegration: {
             /** Provider */
@@ -916,6 +994,18 @@ export interface components {
             status: string;
             /** Integration Id */
             integration_id?: number | null;
+        };
+        /** SystemHealth */
+        SystemHealth: {
+            /** Status */
+            status: string;
+            /** Version */
+            version: string;
+            /** Sweep Enabled */
+            sweep_enabled: boolean;
+            process: components["schemas"]["ProcessHealth"];
+            database: components["schemas"]["DatabaseHealth"];
+            migration: components["schemas"]["MigrationHealth"];
         };
         /** ValidationError */
         ValidationError: {
@@ -1737,6 +1827,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModelEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_health_system_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemHealth"];
+                };
+            };
+        };
+    };
+    restart_brain_system_restart_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestartRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestartResponse"];
                 };
             };
             /** @description Validation Error */

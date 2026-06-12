@@ -1178,6 +1178,68 @@
         }
       }
     },
+    "/system/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Get Health",
+        "operationId": "get_health_system_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealth"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/system/restart": {
+      "post": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Restart Brain",
+        "operationId": "restart_brain_system_restart_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestartResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "tags": [
@@ -1553,6 +1615,29 @@
           "csrf_token"
         ],
         "title": "CsrfResponse"
+      },
+      "DatabaseHealth": {
+        "properties": {
+          "dialect": {
+            "type": "string",
+            "title": "Dialect"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dialect",
+          "url",
+          "connected"
+        ],
+        "title": "DatabaseHealth"
       },
       "ExpandRequest": {
         "properties": {
@@ -2186,6 +2271,43 @@
         ],
         "title": "MeResponse"
       },
+      "MigrationHealth": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "head": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head"
+          },
+          "up_to_date": {
+            "type": "boolean",
+            "title": "Up To Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current",
+          "head",
+          "up_to_date"
+        ],
+        "title": "MigrationHealth"
+      },
       "ModelEntry": {
         "properties": {
           "key": {
@@ -2253,6 +2375,34 @@
           "agents"
         ],
         "title": "ModelsConfig"
+      },
+      "ProcessHealth": {
+        "properties": {
+          "pid": {
+            "type": "integer",
+            "title": "Pid"
+          },
+          "python_version": {
+            "type": "string",
+            "title": "Python Version"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "uptime_seconds": {
+            "type": "number",
+            "title": "Uptime Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pid",
+          "python_version",
+          "started_at",
+          "uptime_seconds"
+        ],
+        "title": "ProcessHealth"
       },
       "ProjectRead": {
         "properties": {
@@ -2400,6 +2550,35 @@
         ],
         "title": "RemapKeyRequest"
       },
+      "RestartRequest": {
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "title": "Confirm",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "RestartRequest"
+      },
+      "RestartResponse": {
+        "properties": {
+          "scheduled": {
+            "type": "boolean",
+            "title": "Scheduled"
+          },
+          "delay_seconds": {
+            "type": "number",
+            "title": "Delay Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scheduled",
+          "delay_seconds"
+        ],
+        "title": "RestartResponse"
+      },
       "SuggestedIntegration": {
         "properties": {
           "provider": {
@@ -2428,6 +2607,41 @@
           "status"
         ],
         "title": "SuggestedIntegration"
+      },
+      "SystemHealth": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "sweep_enabled": {
+            "type": "boolean",
+            "title": "Sweep Enabled"
+          },
+          "process": {
+            "$ref": "#/components/schemas/ProcessHealth"
+          },
+          "database": {
+            "$ref": "#/components/schemas/DatabaseHealth"
+          },
+          "migration": {
+            "$ref": "#/components/schemas/MigrationHealth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "sweep_enabled",
+          "process",
+          "database",
+          "migration"
+        ],
+        "title": "SystemHealth"
       },
       "ValidationError": {
         "properties": {
