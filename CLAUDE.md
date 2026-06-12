@@ -31,6 +31,7 @@ nexaOSweb is a personal AI operating system. A captured idea travels through a s
 8. Any write to the on disk project folders (project_plan.md, change_summary.md, project_preview.html, requirements.md) goes through the Brain and must pass the path safety gate (ensure_within_root) and the dangerous command guard. Protected branches are never force pushed.
 9. The frontend follows docs/FLOW_VISUAL_SPEC.md. Orange is the only brand color. All colors and fonts come from CSS variables, never hardcoded hex in components.
 10. Do not commit .env, secrets, build artifacts, node_modules, or the Python virtualenv. Keep .gitignore current.
+11. Commit after every update. As soon as a change is complete and verified, stage the explicit paths and commit it with a clear conventional message. Do not leave finished work uncommitted or batch unrelated changes into one commit. Push when the user asks.
 
 ## Model router
 The Brain selects a model by semantic key from services/brain/config/models.yaml, never by hardcoding a model id in business logic. Keys at minimum: general, agentic_code, research_synthesis, bulk, journal_reflection, vision. Resolve the concrete model through the router so a key swap is a config change.
