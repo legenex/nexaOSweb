@@ -1,0 +1,82 @@
+name: deploy
+
+# On a version tag, build the web companion, ship the web build and the Brain source to the
+# Plesk server over ssh, run migrations, rebuild and restart the Brain, then verify /healthz.
+# Every credential comes from a repository secret.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build the web companion
+        run: pnpm --filter web build
+
+      - name: Ship the web build to the site root
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PLESK_HOST }}
+          username: ${{ secrets.PLESK_USER }}
+          key: ${{ secrets.PLESK_SSH_KEY }}
+          source: 'apps/web/dist/*'
+          target: ${{ secrets.PLESK_WEB_ROOT }}
+          strip_components: 3
+          overwrite: true
+
+      - name: Ship the Brain source
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PLESK_HOST }}
+          username: ${{ secrets.PLESK_USER }}
+          key: ${{ secrets.PLESK_SSH_KEY }}
+          source: 'services/brain/*'
+          target: ${{ secrets.PLESK_BRAIN_DIR }}
+          strip_components: 2
+          overwrite: true
+
+      - name: Migrate, rebuild, and restart the Brain
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PLESK_HOST }}
+          username: ${{ secrets.PLESK_USER }}
+          key: ${{ secrets.PLESK_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.PLESK_BRAIN_DIR }}
+            docker build -t nexaosweb-brain .
+            # Run migrations explicitly (additive only) before swapping the container.
+            docker run --rm --env-file .env nexaosweb-brain alembic upgrade head
+            docker rm -f nexaosweb-brain || true
+            docker run -d --name nexaosweb-brain --restart unless-stopped \
+              --env-file .env -p 127.0.0.1:8847:8847 nexaosweb-brain
+
+      - name: Verify health over HTTPS
+        run: |
+          for i in $(seq 1 10); do
+            if curl -sf "${{ secrets.PLESK_HEALTH_URL }}" | grep -q '"status":"ok"'; then
+              echo "healthz ok"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "healthz did not come up" >&2
+          exit 1
