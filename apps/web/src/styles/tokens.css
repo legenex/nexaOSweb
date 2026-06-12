@@ -1,0 +1,36 @@
+/* The single source of truth for color and font tokens.
+   Mirrors docs/FLOW_VISUAL_SPEC.md. Components reference these variables only,
+   through Tailwind classes, and never hardcode hex values. */
+
+:root {
+  /* Surfaces */
+  --canvas: #15100c;
+  --surface: #211912;
+  --surface-hi: #2c2118;
+
+  /* Brand accent, orange is the only brand color */
+  --accent: #ff7320;
+  --accent-hi: #ff8a42;
+  --accent-deep: #ff4d1a;
+
+  /* Status signals, used only as small dots and edges */
+  --status-green: #52cc75;
+  --gate-gold: #f5bd42;
+  --danger: #dc321a;
+
+  /* Sidebar gradient */
+  --sidebar-top: #9a1b0c;
+  --sidebar-bottom: #330708;
+
+  /* Text */
+  --text: #f4eee4;
+  --muted: #b6a99b;
+  --faint: #7c7166;
+
+  /* Hairline border, a low opacity warm orange */
+  --border: rgba(255, 115, 32, 0.18);
+
+  /* Fonts */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
