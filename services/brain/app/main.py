@@ -7,7 +7,7 @@ later prompts add them.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import auth
+from .routers import auth, intake
 from .settings import get_settings
 
 settings = get_settings()
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(intake.router)
 
 
 @app.get("/healthz", tags=["health"])

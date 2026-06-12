@@ -18,10 +18,11 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# Local databases
+# Local databases and on disk roots
 *.sqlite
 *.sqlite3
 *.db
+.data/
 
 # Environment and secrets
 .env
