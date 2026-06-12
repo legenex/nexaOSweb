@@ -1,0 +1,36 @@
+# Semantic model keys mapped to concrete provider models.
+#
+# Business logic references the keys only, never a concrete model id. Swapping a model
+# is a one line change here. litellm resolves the provider prefixed id and reads the
+# matching provider key from the environment.
+
+models:
+  general:
+    model: anthropic/claude-sonnet-4-6
+    temperature: 0.4
+    max_tokens: 2048
+
+  agentic_code:
+    model: anthropic/claude-opus-4-8
+    temperature: 0.2
+    max_tokens: 4096
+
+  research_synthesis:
+    model: anthropic/claude-sonnet-4-6
+    temperature: 0.3
+    max_tokens: 3072
+
+  bulk:
+    model: anthropic/claude-haiku-4-5-20251001
+    temperature: 0.2
+    max_tokens: 1024
+
+  journal_reflection:
+    model: anthropic/claude-sonnet-4-6
+    temperature: 0.6
+    max_tokens: 1536
+
+  vision:
+    model: openai/gpt-4o
+    temperature: 0.3
+    max_tokens: 1536
