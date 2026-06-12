@@ -13,14 +13,13 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.agents.route import _latest_record
+from app.agents.route import _latest_record, get_or_create_project_for_item
 from app.json_extract import synthesize_json
 from app.models.base import utcnow
 from app.models.inbox import InboxItem, PipelineRun
 from app.models.project import Project
 from app.safety import ensure_within_root, safe_write_text
 from app.settings import get_settings
-from app.util import slugify
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +111,7 @@ def process_item(
     if project is None:
         if record is None or record.recommended_route != "project":
             raise ProcessError("item is not project shaped")
-        project = Project(item_id=item.id, name=item.name, slug=slugify(item.name), stage="idea")
-        db.add(project)
-        db.flush()
+        project = get_or_create_project_for_item(db, item)
 
     model_key = record.recommended_model_key if record else "agentic_code"
     tags = record.tags if record and isinstance(record.tags, list) else []

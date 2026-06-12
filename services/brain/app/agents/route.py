@@ -15,6 +15,7 @@ is recorded on a PipelineRun and on the item stage_history.
 import logging
 from dataclasses import dataclass
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.agents.classify import get_confidence_threshold
@@ -45,6 +46,25 @@ def _latest_record(db: Session, item_id: int) -> ClassificationRecord | None:
         .order_by(ClassificationRecord.created_at.desc(), ClassificationRecord.id.desc())
         .first()
     )
+
+
+def get_or_create_project_for_item(db: Session, item: InboxItem) -> Project:
+    """Return the item's project, creating it if absent. Safe under the race between the
+    background router and the Process stage: the unique index on item_id means one creator
+    wins and the other refetches the winner."""
+    existing = db.query(Project).filter(Project.item_id == item.id).first()
+    if existing is not None:
+        return existing
+    try:
+        with db.begin_nested():
+            project = Project(
+                item_id=item.id, name=item.name, slug=slugify(item.name), stage="idea"
+            )
+            db.add(project)
+            db.flush()
+        return project
+    except IntegrityError:
+        return db.query(Project).filter(Project.item_id == item.id).first()
 
 
 def get_or_create_inbox_tasks_project(db: Session) -> Project:
@@ -81,16 +101,7 @@ def route_item(db: Session, item: InboxItem) -> RouteResult:
     project_id: int | None = None
 
     if route == "project":
-        project = db.query(Project).filter(Project.item_id == item.id).first()
-        if project is None:
-            project = Project(
-                item_id=item.id,
-                name=item.name,
-                slug=slugify(item.name),
-                stage="idea",
-            )
-            db.add(project)
-            db.flush()
+        project = get_or_create_project_for_item(db, item)
         created_kind, created_id, project_id = "project", project.id, project.id
 
     elif route == "tasks":
