@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { AuthProvider, useAuth } from './app/AuthProvider';
-import { NAV_ITEMS } from './app/nav';
+import { DEFAULT_NAV_KEY, NAV_ITEMS } from './app/nav';
 import { NavigationContext } from './app/navigation';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
@@ -10,6 +10,7 @@ import { Sidebar } from './components/Sidebar';
 import { FlowPanorama } from './features/flow/FlowPanorama';
 import { FlowProvider } from './features/flow/FlowProvider';
 import { ProjectsView } from './features/projects/ProjectsView';
+import { SettingsView } from './features/settings/SettingsView';
 
 function PageHeader({ title, label }: { title: string; label: string }) {
   return (
@@ -26,9 +27,32 @@ function PageHeader({ title, label }: { title: string; label: string }) {
   );
 }
 
+// A neutral resolving surface for routes whose full view is a later milestone.
+function Placeholder({ label }: { label: string }) {
+  return (
+    <section className="rounded-glass border border-line bg-surface/60 p-6">
+      <p className="text-sm text-muted">{label} is part of the nexaOSweb shell.</p>
+    </section>
+  );
+}
+
+// Every nav key resolves to a surface. Project Builder renders the internal Flow panorama.
+function Surface({ active, label }: { active: string; label: string }) {
+  switch (active) {
+    case 'project-builder':
+      return <FlowPanorama />;
+    case 'projects':
+      return <ProjectsView />;
+    case 'settings':
+      return <SettingsView />;
+    default:
+      return <Placeholder label={label} />;
+  }
+}
+
 function Shell() {
   const { me, logout } = useAuth();
-  const [active, setActive] = useState('flow');
+  const [active, setActive] = useState(DEFAULT_NAV_KEY);
   const current = NAV_ITEMS.find((item) => item.key === active) ?? NAV_ITEMS[0]!;
 
   return (
@@ -50,17 +74,7 @@ function Shell() {
             {me?.email ? `sign out ${me.email}` : 'sign out'}
           </button>
         </div>
-        {active === 'flow' ? (
-          <FlowPanorama />
-        ) : active === 'projects' ? (
-          <ProjectsView />
-        ) : (
-          <section className="rounded-glass border border-line bg-surface/60 p-6">
-            <p className="text-sm text-muted">
-              This tab is part of the nexaOSweb shell. Flow is the primary surface for v1.
-            </p>
-          </section>
-        )}
+        <Surface active={active} label={current.label} />
       </main>
       </div>
     </div>
