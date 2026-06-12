@@ -98,6 +98,38 @@ curl -sf https://nexaos.example.com/api/healthz
 
 A successful `ok` over HTTPS is the acceptance for the Brain deploy.
 
+## 6. Web companion
+
+The web companion is the static `apps/web` build served by the same Nginx at the site root, calling the Brain at `/api`.
+
+Build it:
+
+```bash
+pnpm install
+pnpm --filter web build
+# output in apps/web/dist
+```
+
+The frontend calls `/api` by default in production (see `apps/web/src/app/config.ts`), so no build time API URL is required when the Brain is proxied at `/api` on the same domain. To point at a different host, set `VITE_API_BASE` at build time.
+
+Publish the build to the site document root, for example `/var/www/vhosts/nexaos.example.com/httpdocs`. Because the app is a single page app, route unknown paths back to `index.html`. Add to the Plesk Additional nginx directives, alongside the `/api` block:
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.html;
+}
+```
+
+### Cookies, CSRF, and CORS
+
+- The Brain `.env` sets `NEXA_PUBLIC_HTTPS=true`, so the session cookie is issued with `Secure` and is only sent over HTTPS.
+- State changing requests carry the CSRF token from the readable `nexa_csrf` cookie in the `X-CSRF-Token` header; the client does this automatically. The Brain rejects a session request that omits it.
+- `CORS_ORIGINS=https://nexaos.example.com` matches the site origin. Because the web and the Brain share one origin through the `/api` proxy, requests are same origin and CORS is not exercised for the browser; the setting still scopes any cross origin caller.
+
+### Acceptance
+
+Open `https://nexaos.example.com`, sign in with the user created in step 3, and confirm the Flow panorama loads and a capture round trips. A working browser login end to end is the acceptance for the web companion.
+
 ## Desktop signing secrets (D2)
 
 The `desktop-build` workflow signs the Mac dmg and Windows msi and publishes them, with updater artifacts, to a draft GitHub release. It reads these repository secrets:
