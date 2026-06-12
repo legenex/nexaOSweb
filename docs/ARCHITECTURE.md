@@ -10,6 +10,9 @@ The decisions, the shape of the system, and the contracts. Read with CLAUDE.md.
 ## System shape
 Captured input becomes an InboxItem. The classifier writes a ClassificationRecord and selects a model by semantic key. The router sends project shaped items into Process, which creates a project folder and a draft plan. Clarify refines the plan, matches integrations, and renders a preview. The Human Gate approves, sends back, or archives. Execute promotes the plan to a requirements document and hands off to the builder, then a project manager interface maintains the project. Non project items terminate in their own workflow at Route.
 
+## Deferred milestone, project manager and specialist agents
+The Execute stage currently writes requirements.md as the source of truth, hands off to the builder within the path safety gate, and records a PMRun stub. The full project manager agent and the specialist sub agents (developer, researcher, market research, creative, technical, data, QA, operations, analytics) are a dedicated later milestone after the Execute handoff proves out. They are intentionally not built in F6.
+
 ## Repo layout
 nexaOSweb/
   CLAUDE.md

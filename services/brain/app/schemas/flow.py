@@ -20,3 +20,10 @@ class ClarifyRequest(BaseModel):
     answers: dict[str, str] = {}
     selected_integration_ids: list[int] = []
     scope_changes: dict[str, Any] = {}
+
+
+class PromoteResponse(BaseModel):
+    project_id: int
+    stage: str
+    pm_run_id: int
+    requirements_path: str
