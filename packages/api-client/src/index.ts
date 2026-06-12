@@ -6,9 +6,10 @@
 import createClient from 'openapi-fetch';
 import type { Client } from 'openapi-fetch';
 
-import type { paths } from './generated/schema';
+import type { components, paths } from './generated/schema';
 
-export type { paths };
+export type { components, paths };
+export type Schemas = components['schemas'];
 export type ApiClient = Client<paths>;
 
 export interface ClientOptions {

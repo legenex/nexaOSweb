@@ -89,6 +89,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intake/expand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Expand
+         * @description Enrich a short capture into a fuller description. Used by Generate with AI.
+         */
+        post: operations["expand_intake_expand_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intake/items": {
         parameters: {
             query?: never;
@@ -440,6 +460,24 @@ export interface components {
             /** Csrf Token */
             csrf_token: string;
         };
+        /** ExpandRequest */
+        ExpandRequest: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Body
+             * @default
+             */
+            body: string;
+        };
+        /** ExpandResponse */
+        ExpandResponse: {
+            /** Expanded */
+            expanded: string;
+        };
         /** FlowItemDTO */
         FlowItemDTO: {
             /** Id */
@@ -759,6 +797,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    expand_intake_expand_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpandRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpandResponse"];
                 };
             };
             /** @description Validation Error */

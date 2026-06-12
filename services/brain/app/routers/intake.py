@@ -18,11 +18,12 @@ from sqlalchemy.orm import Session
 
 from app.agents.classify import classify_item_background
 from app.db import get_db
+from app.json_extract import synthesize_json
 from app.models.inbox import ClassificationRecord, InboxItem
 from app.models.user import User
 from app.safety import ensure_within_root
 from app.schemas.entities import ClassificationRecordRead, InboxItemRead
-from app.schemas.intake import ItemsPage
+from app.schemas.intake import ExpandRequest, ExpandResponse, ItemsPage
 from app.security.auth import current_user
 from app.settings import get_settings
 from app.util import safe_filename
@@ -69,6 +70,22 @@ def capture(
     # Classify on ingest, in the background, so capture stays fast and resilient.
     background_tasks.add_task(classify_item_background, item.id)
     return item
+
+
+@router.post("/expand", response_model=ExpandResponse)
+def expand(
+    payload: ExpandRequest,
+    _user: User = Depends(current_user),
+) -> ExpandResponse:
+    """Enrich a short capture into a fuller description. Used by Generate with AI."""
+    prompt = (
+        "Expand this rough capture into a clear, concrete description of two or three "
+        "sentences for a US market product. Return JSON with an expanded field.\n\n"
+        f"Name: {payload.name}\nNotes: {payload.body}"
+    )
+    schema = {"type": "object", "properties": {"expanded": {"type": "string"}}, "required": ["expanded"]}
+    result = synthesize_json("general", prompt, schema)
+    return ExpandResponse(expanded=str(result.get("expanded", "")).strip())
 
 
 @router.get("/items", response_model=ItemsPage)

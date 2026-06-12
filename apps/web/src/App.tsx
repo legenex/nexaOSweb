@@ -6,6 +6,7 @@ import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
 import { FlowPanorama } from './features/flow/FlowPanorama';
+import { FlowProvider } from './features/flow/FlowProvider';
 
 function PageHeader({ title, label }: { title: string; label: string }) {
   return (
@@ -28,6 +29,7 @@ function Shell() {
   const current = NAV_ITEMS.find((item) => item.key === active) ?? NAV_ITEMS[0]!;
 
   return (
+    <FlowProvider>
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar active={active} onSelect={setActive} />
       <main className="relative flex-1 overflow-auto p-8">
@@ -53,6 +55,7 @@ function Shell() {
         )}
       </main>
     </div>
+    </FlowProvider>
   );
 }
 

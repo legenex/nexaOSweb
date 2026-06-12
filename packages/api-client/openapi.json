@@ -143,6 +143,48 @@
         }
       }
     },
+    "/intake/expand": {
+      "post": {
+        "tags": [
+          "intake"
+        ],
+        "summary": "Expand",
+        "description": "Enrich a short capture into a fuller description. Used by Generate with AI.",
+        "operationId": "expand_intake_expand_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpandRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpandResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/intake/items": {
       "get": {
         "tags": [
@@ -1027,6 +1069,35 @@
           "csrf_token"
         ],
         "title": "CsrfResponse"
+      },
+      "ExpandRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": ""
+          },
+          "body": {
+            "type": "string",
+            "title": "Body",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ExpandRequest"
+      },
+      "ExpandResponse": {
+        "properties": {
+          "expanded": {
+            "type": "string",
+            "title": "Expanded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expanded"
+        ],
+        "title": "ExpandResponse"
       },
       "FlowItemDTO": {
         "properties": {
