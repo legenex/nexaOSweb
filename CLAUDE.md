@@ -36,8 +36,9 @@ nexaOSweb is a personal AI operating system built on two pillars joined by a dec
 ## Navigation (user interface)
 - Flow is shown as Project Builder in the interface. The internal pipeline name, the API paths, and the code stay Flow. The rename is presentation only.
 - Inbox and Reminders are removed as top level tabs. Capture lives in a global command bar and in the Project Builder capture stage. Reminders fold into Tasks.
-- Canonical sidebar order, top to bottom: Project Builder, Projects, Tasks, Knowledge, Focus and Accountability, Settings. A global command bar above the sidebar owns Capture.
-- Settings sub tabs, in order: Account, Integrations, Models, Memory, Appearance, Data and Privacy.
+- Canonical sidebar order, top to bottom: Dashboard, Insights, Journal, Tasks, Research, Focus and Accountability, Project Builder, Projects, Settings. Dashboard is the default landing route. A global command bar above the sidebar owns Capture.
+- Settings sub tabs, in order: General, Users, Integrations, Knowledge, Skills and Connectors, Models and Agents, System.
+- Knowledge is a Settings sub tab, not a top level sidebar item and not a tab named Memory. Inside Knowledge the internal tabs are General, Personal, Development, API connections, Dreaming. The memory candidate review and approval queue lives in Settings, Knowledge, Dreaming, and is also surfaced on the Dashboard as the Dream Digest.
 
 ## Model router
 The Brain selects a model by semantic key from services/brain/config/models.yaml, never by hardcoding a model id in business logic. Keys at minimum: general, agentic_code, research_synthesis, bulk, journal_reflection, vision. Resolve the concrete model through the router so a key swap is a config change.
