@@ -1,13 +1,102 @@
 # Deploying nexaOSweb on Plesk
 
-Placeholder. This document is filled in by the Phase 5 prompts.
-
-- S1 documents the Brain as a Dockerized uvicorn service or a Plesk Python application behind the Plesk Nginx, with Postgres, a server side .env, alembic upgrade head on deploy, and a Let's Encrypt certificate.
-- S2 documents building apps/web to static files served at the site root with the API at /api, Secure session cookies, CSRF, and CORS.
-- D2 documents the desktop signing secrets for the Mac dmg and Windows msi.
-- S3 documents the tagged release deploy pipeline.
+How the Brain, the web companion, and the deploy pipeline run in production. Morne owns the server.
 
 Secrets never live in this repo. They live in a server side .env read only by the Brain, and in GitHub repository secrets for CI.
+
+## Topology
+
+One Plesk site, for example `nexaos.example.com`, with a Let's Encrypt certificate. The Plesk Nginx serves the built web at the site root and proxies `/api` to the Brain. The Brain runs as a Dockerized uvicorn service (recommended) or as a Plesk Python application via Passenger. Postgres runs on the same server.
+
+```
+browser / desktop
+      |
+   Nginx (Plesk, HTTPS, Let's Encrypt)
+      |-- /            -> static apps/web build
+      |-- /api/...     -> http://127.0.0.1:8847  (the Brain)
+                                |
+                             Postgres
+```
+
+## 1. Database
+
+Create a Postgres database and user in Plesk (Databases, Add Database). Note the connection string, for example:
+
+```
+postgresql+psycopg://nexa:STRONG_PASSWORD@127.0.0.1:5432/nexaos
+```
+
+## 2. Server side environment
+
+Create `/var/www/vhosts/nexaos.example.com/brain/.env`, readable only by the Brain service user. It is never committed. Fill every variable from `services/brain/.env.example`:
+
+```
+DATABASE_URL=postgresql+psycopg://nexa:STRONG_PASSWORD@127.0.0.1:5432/nexaos
+NEXA_SESSION_SECRET=<64 random hex chars>
+NEXA_PUBLIC_HTTPS=true
+NEXA_DESKTOP_BEARER=<long random token for the desktop app>
+NEXA_PROJECTS_ROOT=/var/www/vhosts/nexaos.example.com/nexa_projects
+NEXA_UPLOADS_ROOT=/var/www/vhosts/nexaos.example.com/nexa_uploads
+CORS_ORIGINS=https://nexaos.example.com
+ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
+GEMINI_API_KEY=...
+TAVILY_API_KEY=...
+```
+
+## 3. Run the Brain (Docker, recommended)
+
+Build and run the image from `services/brain`. The image runs `alembic upgrade head` then `uvicorn` on port 8847 (see the Dockerfile CMD).
+
+```bash
+cd services/brain
+docker build -t nexaosweb-brain .
+docker run -d --name nexaosweb-brain \
+  --restart unless-stopped \
+  --env-file /var/www/vhosts/nexaos.example.com/brain/.env \
+  -p 127.0.0.1:8847:8847 \
+  -v /var/www/vhosts/nexaos.example.com/nexa_projects:/var/www/vhosts/nexaos.example.com/nexa_projects \
+  -v /var/www/vhosts/nexaos.example.com/nexa_uploads:/var/www/vhosts/nexaos.example.com/nexa_uploads \
+  nexaosweb-brain
+```
+
+Bind to `127.0.0.1` so only Nginx can reach it. Migrations run on every container start, which is safe because they are additive only.
+
+Alternative without Docker: a Plesk Python application pointing at `services/brain`, with the startup command `alembic upgrade head` and the application object `app.main:app` run by Passenger. Use the same `.env`.
+
+Provision the first user once:
+
+```bash
+docker exec -it nexaosweb-brain python -m scripts.create_user you@example.com 'a strong password'
+```
+
+## 4. Nginx proxy for /api
+
+In Plesk, site, Apache and nginx Settings, Additional nginx directives:
+
+```nginx
+location /api/ {
+    proxy_pass http://127.0.0.1:8847/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+The trailing slash on `proxy_pass http://127.0.0.1:8847/` strips the `/api` prefix, so the browser path `/api/healthz` reaches the Brain route `/healthz`.
+
+## 5. Certificate and verification
+
+Issue a Let's Encrypt certificate for the domain in Plesk (SSL/TLS Certificates) and force HTTPS. Then verify the Brain is up over HTTPS:
+
+```bash
+curl -sf https://nexaos.example.com/api/healthz
+# {"status":"ok"}
+```
+
+A successful `ok` over HTTPS is the acceptance for the Brain deploy.
 
 ## Desktop signing secrets (D2)
 
