@@ -1,9 +1,10 @@
 """Flow stage endpoints: process and plan (extended by later prompts)."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy.orm import Session
 
+from app.aggregate import build_flow_item
 from app.agents.builder import BuilderError, promote_project
 from app.agents.clarify import apply_clarify, get_clarify, read_preview_html
 from app.agents.process import ProcessError, process_item, read_plan_markdown
@@ -12,7 +13,7 @@ from app.models.inbox import InboxItem
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.entities import ProjectRead
-from app.schemas.flow import ClarifyRequest, ClarifyResponse, PromoteResponse
+from app.schemas.flow import ClarifyRequest, ClarifyResponse, FlowItemDTO, PromoteResponse
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/flow", tags=["flow"])
@@ -23,6 +24,34 @@ def load_owned_item(item_id: int, user: User, db: Session) -> InboxItem:
     if item is None or item.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "item not found")
     return item
+
+
+@router.get("/items", response_model=list[FlowItemDTO])
+def list_flow_items(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[FlowItemDTO]:
+    items = (
+        db.query(InboxItem)
+        .filter(InboxItem.user_id == user.id)
+        .order_by(InboxItem.created_at.desc(), InboxItem.id.desc())
+        .limit(limit)
+        .offset(offset)
+        .all()
+    )
+    return [build_flow_item(db, item) for item in items]
+
+
+@router.get("/items/{item_id}", response_model=FlowItemDTO)
+def get_flow_item(
+    item_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> FlowItemDTO:
+    item = load_owned_item(item_id, user, db)
+    return build_flow_item(db, item)
 
 
 @router.post("/items/{item_id}/process", response_model=ProjectRead)
