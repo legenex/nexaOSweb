@@ -6,10 +6,15 @@ object in prose or a code fence.
 """
 
 import json
+import logging
 import re
 from typing import Any
 
+from app.offline import has_provider_keys, offline_synthesize
+from app.router import model_router
 from app.router.model_router import ModelRouter, get_router
+
+logger = logging.getLogger(__name__)
 
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
 
@@ -60,5 +65,15 @@ def synthesize_json(
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
     ]
-    response = router.route_completion(key, messages)
-    return parse_json(_extract_content(response))
+
+    # With no provider key and no injected completion (tests), use the offline fallback
+    # rather than calling a provider that would fail.
+    if not has_provider_keys() and model_router._completion_fn is None:
+        return offline_synthesize(prompt, schema)
+
+    try:
+        response = router.route_completion(key, messages)
+        return parse_json(_extract_content(response))
+    except Exception:  # noqa: BLE001  fall back so the pipeline still produces output
+        logger.warning("provider synthesis failed for key %s, using offline fallback", key)
+        return offline_synthesize(prompt, schema)
