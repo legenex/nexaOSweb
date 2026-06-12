@@ -571,6 +571,24 @@ export interface paths {
         patch: operations["patch_settings_settings_patch"];
         trace?: never;
     };
+    "/settings/knowledge-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Knowledge Policy */
+        get: operations["get_knowledge_policy_settings_knowledge_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch Knowledge Policy */
+        patch: operations["patch_knowledge_policy_settings_knowledge_policy_patch"];
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -957,6 +975,47 @@ export interface components {
             provenance?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * KnowledgePolicy
+         * @description What the system may ingest, and what is allowed into long term memory.
+         *
+         *     The memory gate stays human by default: require_approval is on and connector memory is
+         *     off, so nothing reaches the Knowledge base without an explicit accept in the Dreaming
+         *     review queue.
+         */
+        KnowledgePolicy: {
+            /** Ingest Chatgpt Api */
+            ingest_chatgpt_api: boolean;
+            /** Ingest Claude Api */
+            ingest_claude_api: boolean;
+            /** Ingest Connectors */
+            ingest_connectors: boolean;
+            /** Memory Require Approval */
+            memory_require_approval: boolean;
+            /** Memory Allow Dreaming */
+            memory_allow_dreaming: boolean;
+            /** Memory Allow Connectors */
+            memory_allow_connectors: boolean;
+            /** Memory Min Confidence */
+            memory_min_confidence: number;
+        };
+        /** KnowledgePolicyPatch */
+        KnowledgePolicyPatch: {
+            /** Ingest Chatgpt Api */
+            ingest_chatgpt_api?: boolean | null;
+            /** Ingest Claude Api */
+            ingest_claude_api?: boolean | null;
+            /** Ingest Connectors */
+            ingest_connectors?: boolean | null;
+            /** Memory Require Approval */
+            memory_require_approval?: boolean | null;
+            /** Memory Allow Dreaming */
+            memory_allow_dreaming?: boolean | null;
+            /** Memory Allow Connectors */
+            memory_allow_connectors?: boolean | null;
+            /** Memory Min Confidence */
+            memory_min_confidence?: number | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -2200,6 +2259,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntakeSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_knowledge_policy_settings_knowledge_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePolicy"];
+                };
+            };
+        };
+    };
+    patch_knowledge_policy_settings_knowledge_policy_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgePolicyPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgePolicy"];
                 };
             };
             /** @description Validation Error */

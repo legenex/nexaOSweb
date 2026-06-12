@@ -1508,6 +1508,66 @@
         }
       }
     },
+    "/settings/knowledge-policy": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Get Knowledge Policy",
+        "operationId": "get_knowledge_policy_settings_knowledge_policy_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgePolicy"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Patch Knowledge Policy",
+        "operationId": "patch_knowledge_policy_settings_knowledge_policy_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgePolicyPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgePolicy"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -2452,6 +2512,135 @@
         "type": "object",
         "title": "KnowledgeEntryUpdate",
         "description": "Partial update. Only the supplied fields change. Archiving has its own endpoint."
+      },
+      "KnowledgePolicy": {
+        "properties": {
+          "ingest_chatgpt_api": {
+            "type": "boolean",
+            "title": "Ingest Chatgpt Api"
+          },
+          "ingest_claude_api": {
+            "type": "boolean",
+            "title": "Ingest Claude Api"
+          },
+          "ingest_connectors": {
+            "type": "boolean",
+            "title": "Ingest Connectors"
+          },
+          "memory_require_approval": {
+            "type": "boolean",
+            "title": "Memory Require Approval"
+          },
+          "memory_allow_dreaming": {
+            "type": "boolean",
+            "title": "Memory Allow Dreaming"
+          },
+          "memory_allow_connectors": {
+            "type": "boolean",
+            "title": "Memory Allow Connectors"
+          },
+          "memory_min_confidence": {
+            "type": "number",
+            "title": "Memory Min Confidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ingest_chatgpt_api",
+          "ingest_claude_api",
+          "ingest_connectors",
+          "memory_require_approval",
+          "memory_allow_dreaming",
+          "memory_allow_connectors",
+          "memory_min_confidence"
+        ],
+        "title": "KnowledgePolicy",
+        "description": "What the system may ingest, and what is allowed into long term memory.\n\nThe memory gate stays human by default: require_approval is on and connector memory is\noff, so nothing reaches the Knowledge base without an explicit accept in the Dreaming\nreview queue."
+      },
+      "KnowledgePolicyPatch": {
+        "properties": {
+          "ingest_chatgpt_api": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingest Chatgpt Api"
+          },
+          "ingest_claude_api": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingest Claude Api"
+          },
+          "ingest_connectors": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingest Connectors"
+          },
+          "memory_require_approval": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Require Approval"
+          },
+          "memory_allow_dreaming": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Allow Dreaming"
+          },
+          "memory_allow_connectors": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Allow Connectors"
+          },
+          "memory_min_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memory Min Confidence"
+          }
+        },
+        "type": "object",
+        "title": "KnowledgePolicyPatch"
       },
       "LoginRequest": {
         "properties": {

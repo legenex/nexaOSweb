@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { SETTINGS_TABS } from '../../app/nav';
+import { KnowledgePanel } from './knowledge/KnowledgePanel';
 import { ModelsAgentsPanel } from './ModelsAgentsPanel';
 import { SystemPanel } from './SystemPanel';
 
@@ -18,6 +19,8 @@ const TAB_BLURB: Record<string, string> = {
 
 function TabBody({ tabKey }: { tabKey: string }) {
   switch (tabKey) {
+    case 'knowledge':
+      return <KnowledgePanel />;
     case 'models-agents':
       return <ModelsAgentsPanel />;
     case 'system':
