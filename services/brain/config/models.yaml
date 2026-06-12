@@ -1,8 +1,10 @@
 # Semantic model keys mapped to concrete provider models.
 #
 # Business logic references the keys only, never a concrete model id. Swapping a model
-# is a one line change here. litellm resolves the provider prefixed id and reads the
-# matching provider key from the environment.
+# is a one line change here (or through Settings, Models and Agents). litellm resolves
+# the provider prefixed id and reads the matching provider key from the environment.
+#
+# The agents block records which semantic key each agent runs through.
 
 models:
   general:
@@ -34,3 +36,37 @@ models:
     model: openai/gpt-4o
     temperature: 0.3
     max_tokens: 1536
+
+  # Reserved for the nightly Dreaming consolidation. A low cost model, since the job runs
+  # over every signal of the day. Extraction currently runs on the bulk key (same model
+  # tier); swap this to give Dreaming its own behaviour without touching code.
+  dreaming:
+    model: anthropic/claude-haiku-4-5-20251001
+    temperature: 0.3
+    max_tokens: 1024
+
+agents:
+  research:
+    label: Research
+    model_key: research_synthesis
+    description: Grounded research and synthesis across sources.
+
+  build:
+    label: Build
+    model_key: agentic_code
+    description: Turns an approved plan into a maintained project.
+
+  dreaming:
+    label: Dreaming
+    model_key: dreaming
+    description: Nightly consolidation of the day into memory candidates.
+
+  triage:
+    label: Triage
+    model_key: general
+    description: Classifies and routes captured items to the right path.
+
+  journal:
+    label: Journal
+    model_key: journal_reflection
+    description: Daily reflections that feed Dreaming.

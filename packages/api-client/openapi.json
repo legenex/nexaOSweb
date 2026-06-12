@@ -1061,6 +1061,123 @@
         }
       }
     },
+    "/settings/models": {
+      "get": {
+        "tags": [
+          "settings",
+          "models"
+        ],
+        "summary": "Get Models",
+        "operationId": "get_models_settings_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/models/keys/{key}": {
+      "patch": {
+        "tags": [
+          "settings",
+          "models"
+        ],
+        "summary": "Remap Key",
+        "operationId": "remap_key_settings_models_keys__key__patch",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemapKeyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/models/keys": {
+      "post": {
+        "tags": [
+          "settings",
+          "models"
+        ],
+        "summary": "Add Key",
+        "operationId": "add_key_settings_models_keys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelEntry"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "tags": [
@@ -1150,6 +1267,88 @@
   },
   "components": {
     "schemas": {
+      "AddModelRequest": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 60,
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Key"
+          },
+          "model": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9./:_-]+$",
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "model"
+        ],
+        "title": "AddModelRequest"
+      },
+      "AgentBinding": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "model_key": {
+            "type": "string",
+            "title": "Model Key"
+          },
+          "resolved_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "description",
+          "model_key"
+        ],
+        "title": "AgentBinding"
+      },
       "Body_capture_intake_capture_post": {
         "properties": {
           "name": {
@@ -1312,6 +1511,35 @@
           "created_at"
         ],
         "title": "ClassificationRecordRead"
+      },
+      "CostHint": {
+        "properties": {
+          "tier": {
+            "type": "string",
+            "title": "Tier"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "blended_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blended Per Mtok"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tier",
+          "label"
+        ],
+        "title": "CostHint"
       },
       "CsrfResponse": {
         "properties": {
@@ -1958,6 +2186,74 @@
         ],
         "title": "MeResponse"
       },
+      "ModelEntry": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/CostHint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "model",
+          "cost"
+        ],
+        "title": "ModelEntry"
+      },
+      "ModelsConfig": {
+        "properties": {
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/ModelEntry"
+            },
+            "type": "array",
+            "title": "Keys"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentBinding"
+            },
+            "type": "array",
+            "title": "Agents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys",
+          "agents"
+        ],
+        "title": "ModelsConfig"
+      },
       "ProjectRead": {
         "properties": {
           "id": {
@@ -2067,6 +2363,42 @@
           "requirements_path"
         ],
         "title": "PromoteResponse"
+      },
+      "RemapKeyRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9./:_-]+$",
+            "title": "Model"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model"
+        ],
+        "title": "RemapKeyRequest"
       },
       "SuggestedIntegration": {
         "properties": {

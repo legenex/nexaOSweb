@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { SETTINGS_TABS } from '../../app/nav';
+import { ModelsAgentsPanel } from './ModelsAgentsPanel';
 
 // What each settings sub tab will hold. One line each, so the routes read as intent until the
 // real panels land. Orange is the only brand color, all surfaces come from CSS variables.
@@ -13,6 +14,15 @@ const TAB_BLURB: Record<string, string> = {
   'models-agents': 'Semantic model keys and the agents that run the pipeline.',
   system: 'Health, storage, backups, and the low level controls.',
 };
+
+function TabBody({ tabKey }: { tabKey: string }) {
+  switch (tabKey) {
+    case 'models-agents':
+      return <ModelsAgentsPanel />;
+    default:
+      return <p className="mt-3 max-w-prose text-sm text-muted">{TAB_BLURB[tabKey]}</p>;
+  }
+}
 
 export function SettingsView() {
   const [tab, setTab] = useState(SETTINGS_TABS[0]!.key);
@@ -42,8 +52,8 @@ export function SettingsView() {
 
       <div className="flex-1 rounded-glass border border-line bg-surface/60 p-6">
         <div className="mono-label">settings / {current.key}</div>
-        <h2 className="mt-2 text-lg font-semibold text-cream">{current.label}</h2>
-        <p className="mt-3 max-w-prose text-sm text-muted">{TAB_BLURB[current.key]}</p>
+        <h2 className="mt-2 mb-4 text-lg font-semibold text-cream">{current.label}</h2>
+        <TabBody tabKey={current.key} />
       </div>
     </section>
   );

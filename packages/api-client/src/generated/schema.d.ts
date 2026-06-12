@@ -383,6 +383,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Models */
+        get: operations["get_models_settings_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/models/keys/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Remap Key */
+        patch: operations["remap_key_settings_models_keys__key__patch"];
+        trace?: never;
+    };
+    "/settings/models/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Key */
+        post: operations["add_key_settings_models_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/settings": {
         parameters: {
             query?: never;
@@ -425,6 +476,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddModelRequest */
+        AddModelRequest: {
+            /** Key */
+            key: string;
+            /** Model */
+            model: string;
+            /** Temperature */
+            temperature?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+        };
+        /** AgentBinding */
+        AgentBinding: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+            /** Model Key */
+            model_key: string;
+            /** Resolved Model */
+            resolved_model?: string | null;
+        };
         /** Body_capture_intake_capture_post */
         Body_capture_intake_capture_post: {
             /** Name */
@@ -506,6 +581,15 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** CostHint */
+        CostHint: {
+            /** Tier */
+            tier: string;
+            /** Label */
+            label: string;
+            /** Blended Per Mtok */
+            blended_per_mtok?: number | null;
         };
         /** CsrfResponse */
         CsrfResponse: {
@@ -757,6 +841,25 @@ export interface components {
             /** Email */
             email?: string | null;
         };
+        /** ModelEntry */
+        ModelEntry: {
+            /** Key */
+            key: string;
+            /** Model */
+            model: string;
+            /** Temperature */
+            temperature?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            cost: components["schemas"]["CostHint"];
+        };
+        /** ModelsConfig */
+        ModelsConfig: {
+            /** Keys */
+            keys: components["schemas"]["ModelEntry"][];
+            /** Agents */
+            agents: components["schemas"]["AgentBinding"][];
+        };
         /** ProjectRead */
         ProjectRead: {
             /** Id */
@@ -795,6 +898,15 @@ export interface components {
             pm_run_id: number;
             /** Requirements Path */
             requirements_path: string;
+        };
+        /** RemapKeyRequest */
+        RemapKeyRequest: {
+            /** Model */
+            model: string;
+            /** Temperature */
+            temperature?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
         };
         /** SuggestedIntegration */
         SuggestedIntegration: {
@@ -1537,6 +1649,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KnowledgeEntryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_models_settings_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelsConfig"];
+                };
+            };
+        };
+    };
+    remap_key_settings_models_keys__key__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemapKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_key_settings_models_keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelEntry"];
                 };
             };
             /** @description Validation Error */
