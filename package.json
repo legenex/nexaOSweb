@@ -11,7 +11,18 @@
   "scripts": {
     "dev:web": "pnpm --filter web dev",
     "build:web": "pnpm --filter web build",
-    "lint": "pnpm -r --if-present lint",
+    "lint": "eslint .",
+    "lint:ws": "pnpm -r --if-present lint",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
     "gen:client": "pnpm --filter @nexaosweb/api-client --if-present generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.11.0"
   }
 }

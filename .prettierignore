@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+out
+packages/api-client/src/generated
+design/flow_prototype_v4.html
+services/brain
+pnpm-lock.yaml
