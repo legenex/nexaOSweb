@@ -4,7 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
-import { apiJson } from './api';
+import { api } from './client';
 
 export interface Me {
   authenticated: boolean;
@@ -28,29 +28,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const data = await apiJson<Me>('/auth/me');
-      setMe(data);
-      setStatus(data.authenticated ? 'authenticated' : 'anonymous');
-    } catch {
+    const { data, error } = await api.GET('/auth/me');
+    if (error || !data) {
       setMe(null);
       setStatus('anonymous');
+      return;
     }
+    setMe(data as Me);
+    setStatus(data.authenticated ? 'authenticated' : 'anonymous');
   }, []);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      await apiJson('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
+      const { error } = await api.POST('/auth/login', { body: { email, password } });
+      if (error) throw new Error('login failed');
       await refresh();
     },
     [refresh],
   );
 
   const logout = useCallback(async () => {
-    await apiJson('/auth/logout', { method: 'POST' });
+    await api.POST('/auth/logout');
     setMe(null);
     setStatus('anonymous');
   }, []);
