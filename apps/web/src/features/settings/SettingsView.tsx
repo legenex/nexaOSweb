@@ -53,7 +53,7 @@ export function SettingsView() {
         })}
       </nav>
 
-      <div className="flex-1 rounded-glass border border-line bg-surface/60 p-6">
+      <div className="border-electric flex-1 rounded-glass border border-line bg-surface/60 p-6">
         <div className="mono-label">settings / {current.key}</div>
         <h2 className="mt-2 mb-4 text-lg font-semibold text-cream">{current.label}</h2>
         <TabBody tabKey={current.key} />

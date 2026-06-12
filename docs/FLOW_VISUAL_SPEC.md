@@ -42,6 +42,9 @@ A slowly rotating wireframe sphere of orange and red points and edges with depth
 - Pills are mono uppercase with an outline, accent for brand, green for product tags, grey for neutral, and a solid accent pill for the classify shape.
 - Toggle is accent when on. Stepper shows a value with up and down chevrons in mono. Slider is an accent track with a knob and a mono percent.
 
+## Motion and depth primitives
+- Electric border (.border-electric). A reusable hover treatment for any card surface that already carries a border. At rest it is the normal static one pixel warm border. On hover a current of light travels around the perimeter, a masked conic stroke that follows the border using the accent and gate variables, with a soft outer glow. It is a single class, so any future card opts in by adding border-electric next to its existing border. Colour is derived from the brand variables through color-mix, never a hardcoded value. Under prefers reduced motion there is no travel, the hover shows a static intensified glow and a brighter accent edge instead. In use on the Projects cards, the ComingSoon card, and the Settings panels.
+
 ## Do and do not
 - Do reuse a shared set of primitives (Sidebar, MonoLabel, StatusDot, StageTrack, GlassCard, Pill, Button) across the app.
 - Do keep text on surface and glass for chrome.

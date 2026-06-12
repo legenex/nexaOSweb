@@ -79,6 +79,64 @@
   }
 }
 
+/* Electric border. Opt in by adding the class to any card surface that already carries a
+   border. At rest it is invisible and the normal static border shows through. On hover a
+   current of light travels the perimeter: a masked conic stroke in accent and gate, rotated
+   by an animatable angle, plus a soft outer glow. All colour comes from the brand variables
+   through color-mix, never a hardcoded value. Reduced motion is handled at the file end. */
+@property --be-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.border-electric {
+  position: relative;
+}
+
+.border-electric::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--be-angle),
+    transparent 0deg 210deg,
+    color-mix(in srgb, var(--gate-gold) 80%, transparent) 270deg,
+    var(--accent-hi) 320deg,
+    var(--accent) 346deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.border-electric:hover::before {
+  opacity: 1;
+  animation: border-travel 2.4s linear infinite;
+}
+
+.border-electric:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--accent) 38%, transparent),
+    0 0 6px color-mix(in srgb, var(--gate-gold) 25%, transparent);
+}
+
+@keyframes border-travel {
+  to {
+    --be-angle: 360deg;
+  }
+}
+
 /* Themed scrollbars app wide, brand variables only, never a native grey bar.
    Thin, rounded thumb on a transparent track, a subtle orange lift on hover. */
 * {
@@ -148,5 +206,16 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  /* Electric border under reduced motion: no travelling light, a static intensified glow
+     and a brighter accent edge instead. */
+  .border-electric:hover::before {
+    opacity: 0;
+  }
+
+  .border-electric:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 55%, transparent);
   }
 }

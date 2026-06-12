@@ -26,7 +26,7 @@ export function ProjectsView() {
 
   if (projects.length === 0) {
     return (
-      <section className="rounded-glass border border-line bg-surface/60 p-6">
+      <section className="border-electric rounded-glass border border-line bg-surface/60 p-6">
         <MonoLabel tone="faint">no projects yet</MonoLabel>
         <p className="mt-2 text-sm text-muted">
           Run a project shaped item through Flow and approve it to see it here.
@@ -38,7 +38,7 @@ export function ProjectsView() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {projects.map((project: Project) => (
-        <GlassCard key={project.id}>
+        <GlassCard key={project.id} className="border-electric">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-base font-semibold text-cream">{project.name}</h3>
             <Pill variant={project.stage === 'build' ? 'green' : 'accent'}>{project.stage}</Pill>
