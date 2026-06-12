@@ -2,11 +2,13 @@ import { useState } from 'react';
 
 import { AuthProvider, useAuth } from './app/AuthProvider';
 import { NAV_ITEMS } from './app/nav';
+import { NavigationContext } from './app/navigation';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
 import { FlowPanorama } from './features/flow/FlowPanorama';
 import { FlowProvider } from './features/flow/FlowProvider';
+import { ProjectsView } from './features/projects/ProjectsView';
 
 function PageHeader({ title, label }: { title: string; label: string }) {
   return (
@@ -30,6 +32,7 @@ function Shell() {
 
   return (
     <FlowProvider>
+    <NavigationContext.Provider value={setActive}>
     <div className="flex h-screen w-screen overflow-hidden">
       <Sidebar active={active} onSelect={setActive} />
       <main className="relative flex-1 overflow-auto p-8">
@@ -46,6 +49,8 @@ function Shell() {
         </div>
         {active === 'flow' ? (
           <FlowPanorama />
+        ) : active === 'projects' ? (
+          <ProjectsView />
         ) : (
           <section className="rounded-glass border border-line bg-surface/60 p-6">
             <p className="text-sm text-muted">
@@ -55,6 +60,7 @@ function Shell() {
         )}
       </main>
     </div>
+    </NavigationContext.Provider>
     </FlowProvider>
   );
 }

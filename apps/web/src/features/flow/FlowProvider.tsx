@@ -20,6 +20,7 @@ export type FlowItem = Schemas['FlowItemDTO'];
 export type InboxItem = Schemas['InboxItemRead'];
 export type ClarifyResponse = Schemas['ClarifyResponse'];
 export type ClarifyRequest = Schemas['ClarifyRequest'];
+export type Project = Schemas['ProjectRead'];
 
 export interface CaptureInput {
   name: string;
@@ -42,6 +43,11 @@ interface FlowState {
   getClarify: (id: number) => Promise<ClarifyResponse>;
   submitClarify: (id: number, payload: ClarifyRequest) => Promise<void>;
   getPreview: (id: number) => Promise<string>;
+  projects: Project[];
+  refreshProjects: () => Promise<void>;
+  approve: (projectId: number) => Promise<void>;
+  reject: (projectId: number, reason: string) => Promise<void>;
+  promote: (itemId: number) => Promise<void>;
 }
 
 const FlowContext = createContext<FlowState | null>(null);
@@ -51,6 +57,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const [selected, setSelected] = useState<FlowItem | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loadingList, setLoadingList] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const select = useCallback(async (id: number) => {
     setSelectedId(id);
@@ -144,8 +151,53 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     return response.ok ? response.text() : '';
   }, []);
 
+  const refreshProjects = useCallback(async () => {
+    const { data } = await api.GET('/projects');
+    setProjects((data as Project[]) ?? []);
+  }, []);
+
+  const reselect = useCallback(async () => {
+    if (selectedId !== null) await select(selectedId);
+    await refreshProjects();
+  }, [selectedId, select, refreshProjects]);
+
+  const approve = useCallback(
+    async (projectId: number) => {
+      const { error } = await api.POST('/projects/{project_id}/approve', {
+        params: { path: { project_id: projectId } },
+      });
+      if (error) throw new Error('approve failed');
+      await reselect();
+    },
+    [reselect],
+  );
+
+  const reject = useCallback(
+    async (projectId: number, reason: string) => {
+      const { error } = await api.POST('/projects/{project_id}/reject', {
+        params: { path: { project_id: projectId } },
+        body: { reason },
+      });
+      if (error) throw new Error('reject failed');
+      await reselect();
+    },
+    [reselect],
+  );
+
+  const promote = useCallback(
+    async (itemId: number) => {
+      const { error } = await api.POST('/flow/items/{item_id}/promote', {
+        params: { path: { item_id: itemId } },
+      });
+      if (error) throw new Error('promote failed');
+      await reselect();
+    },
+    [reselect],
+  );
+
   useEffect(() => {
     void refresh();
+    void refreshProjects();
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -165,6 +217,11 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       getClarify,
       submitClarify,
       getPreview,
+      projects,
+      refreshProjects,
+      approve,
+      reject,
+      promote,
     }),
     [
       items,
@@ -180,6 +237,11 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       getClarify,
       submitClarify,
       getPreview,
+      projects,
+      refreshProjects,
+      approve,
+      reject,
+      promote,
     ],
   );
 

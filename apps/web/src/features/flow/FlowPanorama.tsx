@@ -7,6 +7,8 @@ import type { DotState } from '../../components/primitives';
 import { CaptureCard } from './cards/CaptureCard';
 import { ClarifyCard } from './cards/ClarifyCard';
 import { ClassifyCard } from './cards/ClassifyCard';
+import { ExecuteCard } from './cards/ExecuteCard';
+import { GateCard } from './cards/GateCard';
 import { ProcessCard } from './cards/ProcessCard';
 import { RouteCard } from './cards/RouteCard';
 import { ConnectorLayer } from './ConnectorLayer';
@@ -37,6 +39,10 @@ function renderStageCard(stageKey: string, stageLabel: string, _selected: FlowIt
       return <ProcessCard />;
     case 'clarify':
       return <ClarifyCard />;
+    case 'gate':
+      return <GateCard />;
+    case 'execute':
+      return <ExecuteCard />;
     default:
       return <PlaceholderCard stageLabel={stageLabel} />;
   }
