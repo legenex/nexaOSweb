@@ -5,6 +5,7 @@ import { NAV_ITEMS } from './app/nav';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
+import { FlowPanorama } from './features/flow/FlowPanorama';
 
 function PageHeader({ title, label }: { title: string; label: string }) {
   return (
@@ -41,12 +42,15 @@ function Shell() {
             {me?.email ? `sign out ${me.email}` : 'sign out'}
           </button>
         </div>
-        <section className="rounded-glass border border-line bg-surface/60 p-6">
-          <p className="text-sm text-muted">
-            This tab is part of the nexaOSweb shell. The Flow panorama and its stage nodes
-            are built in the W2 through W7 prompts.
-          </p>
-        </section>
+        {active === 'flow' ? (
+          <FlowPanorama />
+        ) : (
+          <section className="rounded-glass border border-line bg-surface/60 p-6">
+            <p className="text-sm text-muted">
+              This tab is part of the nexaOSweb shell. Flow is the primary surface for v1.
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );
