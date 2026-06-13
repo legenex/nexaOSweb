@@ -1,9 +1,11 @@
-"""Project, integration, and project manager run models."""
+"""Project, integration, project manager run, and build log models."""
 
-from sqlalchemy import JSON, ForeignKey, Integer, String
+from datetime import datetime
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base, TimestampMixin
+from .base import Base, TimestampMixin, utcnow
 
 
 class Project(Base, TimestampMixin):
@@ -16,13 +18,24 @@ class Project(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(300), nullable=False)
     slug: Mapped[str] = mapped_column(String(160), index=True, nullable=False)
     stage: Mapped[str] = mapped_column(String(40), default="idea", nullable=False)
+    # The build pipeline mode (app, automation, website, funnel, data_pipeline, campaign,
+    # content_system, product_concept). Drives capture questions, required files, and the
+    # default build destination. See app/project_modes.py.
+    mode: Mapped[str] = mapped_column(String(40), default="app", nullable=False)
     plan_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     plan_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     build_destination: Mapped[str | None] = mapped_column(String(200), nullable=True)
     selected_integrations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    # Editable workspace overview metadata: status, url, repo, local_path, priority,
+    # revenue_potential, current_blocker, next_action. Kept as JSON so the Projects
+    # workspace can edit fields without a migration per field.
+    workspace: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     # When this is a research project attached to a build project, the target build project.
     research_target_id: Mapped[int | None] = mapped_column(
         ForeignKey("projects.id"), index=True, nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )
 
 
@@ -43,3 +56,33 @@ class PMRun(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="active", nullable=False)
+
+
+class BuildLogEntry(Base, TimestampMixin):
+    """A record on a project's build log.
+
+    Created by the build pipeline (action build), the gated AI editor (action edit), and
+    rollbacks (action rollback). An edit entry begins life as a proposal (status proposed),
+    holding the before and after content but writing nothing to disk. Explicit approval flips
+    it to applied and writes the file. before_content is the full prior file content for
+    rollback, or null when the file did not exist before the edit.
+    """
+
+    __tablename__ = "build_log_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id"), index=True, nullable=False
+    )
+    # build, edit, or rollback.
+    action: Mapped[str] = mapped_column(String(40), default="edit", nullable=False)
+    # proposed, applied, or rolled_back.
+    status: Mapped[str] = mapped_column(
+        String(40), default="proposed", index=True, nullable=False
+    )
+    summary: Mapped[str] = mapped_column(String(400), default="", nullable=False)
+    file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    diff_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Full content snapshots backing apply and rollback. before is null for new files.
+    before_content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    after_content: Mapped[str | None] = mapped_column(Text, nullable=True)

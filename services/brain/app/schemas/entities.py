@@ -51,12 +51,15 @@ class ProjectRead(ORMModel):
     name: str
     slug: str
     stage: str
+    mode: str
     plan_path: str | None
     plan_json: dict[str, Any]
     build_destination: str | None
     selected_integrations: list[Any]
+    workspace: dict[str, Any]
     research_target_id: int | None
     created_at: datetime
+    updated_at: datetime
 
 
 class IntegrationRead(ORMModel):

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models.base import utcnow
 from app.models.inbox import InboxItem, PipelineRun
-from app.models.project import PMRun, Project
+from app.models.project import BuildLogEntry, PMRun, Project
 from app.safety import PROTECTED_BRANCHES, ensure_within_root, is_dangerous, safe_write_text
 from app.settings import get_settings
 
@@ -65,6 +65,21 @@ def promote_project(db: Session, item: InboxItem, project: Project) -> tuple[Pro
 
     pm = PMRun(project_id=project.id, status="active")
     db.add(pm)
+    db.add(
+        BuildLogEntry(
+            project_id=project.id,
+            action="build",
+            status="applied",
+            summary="Promoted from approved plan, wrote requirements.md",
+            file_path="requirements.md",
+            diff_summary=(
+                "Generated requirements.md for build destination "
+                f"{project.build_destination}"
+            ),
+            before_content=None,
+            after_content=requirements,
+        )
+    )
     project.stage = "build"
     item.status = "executing"
     item.stage_history = [*item.stage_history, {"stage": "execute", "state": "handed_off"}]

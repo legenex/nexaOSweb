@@ -19,6 +19,7 @@ from app.json_extract import synthesize_json
 from app.models.base import utcnow
 from app.models.inbox import InboxItem, PipelineRun
 from app.models.project import Integration, Project
+from app.project_modes import capture_questions_for
 from app.safety import ensure_within_root, safe_write_text
 from app.settings import get_settings
 
@@ -62,7 +63,17 @@ def get_clarify(
     model_key = record.recommended_model_key if record else "general"
 
     result = synthesize(model_key, _questions_prompt(project), _QUESTIONS_SCHEMA)
-    questions = [q for q in (result.get("questions") or []) if isinstance(q, str)]
+    model_questions = [q for q in (result.get("questions") or []) if isinstance(q, str)]
+
+    # The project mode leads with its capture questions, then the model's gap closing
+    # questions, deduped while preserving order. This is how the mode adjusts capture.
+    questions: list[str] = []
+    seen: set[str] = set()
+    for question in [*capture_questions_for(project.mode), *model_questions]:
+        marker = question.strip().lower()
+        if marker and marker not in seen:
+            seen.add(marker)
+            questions.append(question)
 
     likely = project.plan_json.get("likely_integrations", []) if project.plan_json else []
     connected = {

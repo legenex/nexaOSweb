@@ -8,7 +8,7 @@ from .base import Base
 from .dreaming import DreamRun, MemoryCandidate
 from .inbox import ClassificationRecord, InboxItem, PipelineRun
 from .knowledge import KnowledgeEntry
-from .project import Integration, PMRun, Project
+from .project import BuildLogEntry, Integration, PMRun, Project
 from .research import ProjectUpdate, ResearchFinding, ResearchRun
 from .user import User
 from .workspace import AppSetting, JournalNote, Task
@@ -22,6 +22,7 @@ __all__ = [
     "Project",
     "Integration",
     "PMRun",
+    "BuildLogEntry",
     "Task",
     "JournalNote",
     "AppSetting",

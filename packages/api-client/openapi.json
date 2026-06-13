@@ -796,6 +796,316 @@
         }
       }
     },
+    "/projects/modes": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "List Modes",
+        "operationId": "list_modes_projects_modes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectModeRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Modes Projects Modes Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/mode": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Set Mode",
+        "operationId": "set_mode_projects__project_id__mode_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetModeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/overview": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Overview",
+        "operationId": "overview_projects__project_id__overview_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOverview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Update Overview",
+        "operationId": "update_overview_projects__project_id__overview_patch",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOverview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/files": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Files",
+        "operationId": "files_projects__project_id__files_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilesResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/files/content": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "File Content",
+        "operationId": "file_content_projects__project_id__files_content_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "path relative to the project folder",
+              "title": "Path"
+            },
+            "description": "path relative to the project folder"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileContent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/build-log": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Build Log",
+        "operationId": "build_log_projects__project_id__build_log_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BuildLogRead"
+                  },
+                  "title": "Response Build Log Projects  Project Id  Build Log Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{project_id}/updates": {
       "get": {
         "tags": [
@@ -825,6 +1135,162 @@
                     "$ref": "#/components/schemas/ProjectUpdateRead"
                   },
                   "title": "Response List Updates Projects  Project Id  Updates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/editor/propose": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Editor Propose",
+        "operationId": "editor_propose_projects__project_id__editor_propose_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorProposeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorProposal"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/editor/apply": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Editor Apply",
+        "operationId": "editor_apply_projects__project_id__editor_apply_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditorApplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditorApplyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{project_id}/editor/rollback": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Editor Rollback",
+        "operationId": "editor_rollback_projects__project_id__editor_rollback_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RollbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RollbackResponse"
                 }
               }
             }
@@ -2265,6 +2731,62 @@
         ],
         "title": "BrainStatus"
       },
+      "BuildLogRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Path"
+          },
+          "diff_summary": {
+            "type": "string",
+            "title": "Diff Summary"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "action",
+          "status",
+          "summary",
+          "file_path",
+          "diff_summary",
+          "created_at"
+        ],
+        "title": "BuildLogRead"
+      },
       "ClarifyRequest": {
         "properties": {
           "answers": {
@@ -2381,6 +2903,35 @@
           "created_at"
         ],
         "title": "ClassificationRecordRead"
+      },
+      "ConnectedIntegration": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "integration_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "status"
+        ],
+        "title": "ConnectedIntegration"
       },
       "ConnectorHealth": {
         "properties": {
@@ -2658,6 +3209,120 @@
         ],
         "title": "DreamRunRead"
       },
+      "EditorApplyRequest": {
+        "properties": {
+          "proposal_id": {
+            "type": "integer",
+            "title": "Proposal Id"
+          },
+          "approved": {
+            "type": "boolean",
+            "title": "Approved",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id"
+        ],
+        "title": "EditorApplyRequest"
+      },
+      "EditorApplyResponse": {
+        "properties": {
+          "build_log_id": {
+            "type": "integer",
+            "title": "Build Log Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "written_path": {
+            "type": "string",
+            "title": "Written Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "build_log_id",
+          "file_path",
+          "status",
+          "written_path"
+        ],
+        "title": "EditorApplyResponse"
+      },
+      "EditorProposal": {
+        "properties": {
+          "proposal_id": {
+            "type": "integer",
+            "title": "Proposal Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "diff_summary": {
+            "type": "string",
+            "title": "Diff Summary"
+          },
+          "before_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Content"
+          },
+          "after_content": {
+            "type": "string",
+            "title": "After Content"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposal_id",
+          "file_path",
+          "summary",
+          "diff_summary",
+          "before_content",
+          "after_content",
+          "status"
+        ],
+        "title": "EditorProposal"
+      },
+      "EditorProposeRequest": {
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "instruction": {
+            "type": "string",
+            "title": "Instruction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_path",
+          "instruction"
+        ],
+        "title": "EditorProposeRequest"
+      },
       "ExpandRequest": {
         "properties": {
           "name": {
@@ -2686,6 +3351,77 @@
           "expanded"
         ],
         "title": "ExpandResponse"
+      },
+      "FileContent": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "content"
+        ],
+        "title": "FileContent"
+      },
+      "FileNode": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "type"
+        ],
+        "title": "FileNode"
+      },
+      "FilesResponse": {
+        "properties": {
+          "tree": {
+            "items": {
+              "$ref": "#/components/schemas/FileNode"
+            },
+            "type": "array",
+            "title": "Tree"
+          },
+          "required_files": {
+            "items": {
+              "$ref": "#/components/schemas/RequiredFileStatus"
+            },
+            "type": "array",
+            "title": "Required Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tree",
+          "required_files"
+        ],
+        "title": "FilesResponse"
       },
       "FlowItemDTO": {
         "properties": {
@@ -3735,6 +4471,180 @@
         ],
         "title": "ProjectBrief"
       },
+      "ProjectModeRead": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "capture_questions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Capture Questions"
+          },
+          "required_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Required Files"
+          },
+          "build_destination": {
+            "type": "string",
+            "title": "Build Destination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "capture_questions",
+          "required_files",
+          "build_destination"
+        ],
+        "title": "ProjectModeRead"
+      },
+      "ProjectOverview": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo"
+          },
+          "local_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Path"
+          },
+          "build_destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Destination"
+          },
+          "connected_integrations": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectedIntegration"
+            },
+            "type": "array",
+            "title": "Connected Integrations",
+            "default": []
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Last Updated"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "revenue_potential": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Potential"
+          },
+          "current_blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Blocker"
+          },
+          "next_recommended_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Recommended Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "status",
+          "stage",
+          "last_updated"
+        ],
+        "title": "ProjectOverview"
+      },
       "ProjectRead": {
         "properties": {
           "id": {
@@ -3763,6 +4673,10 @@
           "stage": {
             "type": "string",
             "title": "Stage"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
           },
           "plan_path": {
             "anyOf": [
@@ -3796,6 +4710,11 @@
             "type": "array",
             "title": "Selected Integrations"
           },
+          "workspace": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Workspace"
+          },
           "research_target_id": {
             "anyOf": [
               {
@@ -3811,6 +4730,11 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
           }
         },
         "type": "object",
@@ -3820,12 +4744,15 @@
           "name",
           "slug",
           "stage",
+          "mode",
           "plan_path",
           "plan_json",
           "build_destination",
           "selected_integrations",
+          "workspace",
           "research_target_id",
-          "created_at"
+          "created_at",
+          "updated_at"
         ],
         "title": "ProjectRead"
       },
@@ -3937,6 +4864,24 @@
           "model"
         ],
         "title": "RemapKeyRequest"
+      },
+      "RequiredFileStatus": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "present"
+        ],
+        "title": "RequiredFileStatus"
       },
       "ResearchFinding": {
         "properties": {
@@ -4117,6 +5062,55 @@
           "delay_seconds"
         ],
         "title": "RestartResponse"
+      },
+      "RollbackRequest": {
+        "properties": {
+          "build_log_id": {
+            "type": "integer",
+            "title": "Build Log Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "build_log_id"
+        ],
+        "title": "RollbackRequest"
+      },
+      "RollbackResponse": {
+        "properties": {
+          "build_log_id": {
+            "type": "integer",
+            "title": "Build Log Id"
+          },
+          "file_path": {
+            "type": "string",
+            "title": "File Path"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "build_log_id",
+          "file_path",
+          "status"
+        ],
+        "title": "RollbackResponse"
+      },
+      "SetModeRequest": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "SetModeRequest"
       },
       "SuggestedIntegration": {
         "properties": {
@@ -4308,6 +5302,101 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WorkspaceUpdate": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repo"
+          },
+          "local_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Path"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "revenue_potential": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revenue Potential"
+          },
+          "current_blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Blocker"
+          },
+          "next_recommended_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Recommended Action"
+          }
+        },
+        "type": "object",
+        "title": "WorkspaceUpdate",
+        "description": "Editable overview fields. Only provided fields are written."
       }
     }
   }

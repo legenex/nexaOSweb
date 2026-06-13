@@ -49,7 +49,12 @@ def test_get_clarify_matches_integrations(db_session, tmp_path, monkeypatch):
         lambda key, prompt, schema=None: {"questions": ["What is the launch date?"]},
     )
     result = get_clarify(db_session, item)
-    assert result["clarifying_questions"] == ["What is the launch date?"]
+    # The default app mode leads with its capture questions, then the model's gap question.
+    from app.project_modes import capture_questions_for
+
+    questions = result["clarifying_questions"]
+    assert questions[: len(capture_questions_for("app"))] == capture_questions_for("app")
+    assert "What is the launch date?" in questions
     by_provider = {s["provider"]: s for s in result["suggested_integrations"]}
     assert by_provider["stripe"]["status"] == "connected"
     assert by_provider["mailchimp"]["status"] == "available"
@@ -83,7 +88,7 @@ def test_clarify_endpoints(client, db_session, tmp_path, monkeypatch):
 
     got = client.get(f"/flow/items/{item.id}/clarify", headers=headers)
     assert got.status_code == 200
-    assert got.json()["clarifying_questions"] == ["q?"]
+    assert "q?" in got.json()["clarifying_questions"]
 
     posted = client.post(
         f"/flow/items/{item.id}/clarify",

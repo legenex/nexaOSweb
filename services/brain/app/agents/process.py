@@ -18,6 +18,7 @@ from app.json_extract import synthesize_json
 from app.models.base import utcnow
 from app.models.inbox import InboxItem, PipelineRun
 from app.models.project import Project
+from app.project_modes import destination_for
 from app.safety import ensure_within_root, safe_write_text
 from app.settings import get_settings
 
@@ -127,7 +128,11 @@ def process_item(
 
     project.plan_path = str(written)
     project.plan_json = plan
-    project.build_destination = plan.get("proposed_build_destination") or project.build_destination
+    project.build_destination = (
+        plan.get("proposed_build_destination")
+        or project.build_destination
+        or destination_for(project.mode)
+    )
     project.stage = "process"
 
     item.stage_history = [*item.stage_history, {"stage": "process", "state": "done"}]
