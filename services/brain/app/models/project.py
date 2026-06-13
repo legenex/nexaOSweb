@@ -34,6 +34,10 @@ class Project(Base, TimestampMixin):
     research_target_id: Mapped[int | None] = mapped_column(
         ForeignKey("projects.id"), index=True, nullable=True
     )
+    # Research project configuration when this project is a research project. A JSON blob with
+    # kind ("research"), topic, purpose, goals, depth, lookback, schedule, and category, so the
+    # research config can grow without a migration per field. Empty for build projects.
+    research_config: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )

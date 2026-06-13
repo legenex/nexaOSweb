@@ -39,6 +39,10 @@ class ResearchRun(Base, TimestampMixin):
     # running, completed, or failed.
     status: Mapped[str] = mapped_column(String(40), default="completed", nullable=False)
     summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # The run's AI analysis prose, plus structured key takeaways and suggestions.
+    analysis: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    key_takeaways: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    suggestions: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     findings_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

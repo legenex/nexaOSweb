@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from sqlalchemy.orm import Session
 
-from app.agents.research import run_research
+from app.agents.research import generate_config, run_research
 from app.db import get_db
 from app.models.knowledge import KnowledgeEntry
 from app.models.project import Project
@@ -20,13 +20,62 @@ from app.schemas.entities import ProjectRead, TaskRead
 from app.schemas.knowledge import KnowledgeEntryRead
 from app.schemas.research import (
     AttachRequest,
+    GenerateConfigRequest,
+    GenerateConfigResponse,
     ProjectUpdateRead,
     ResearchFindingRead,
+    ResearchProjectCreate,
+    ResearchProjectRead,
+    ResearchProjectUpdate,
     ResearchRunRead,
 )
 from app.security.auth import current_user
+from app.util import slugify
 
 router = APIRouter(prefix="/research", tags=["research"])
+
+# Default config so a project created before a field existed still reads cleanly.
+_CONFIG_DEFAULTS = {
+    "kind": "research",
+    "topic": "",
+    "purpose": "",
+    "goals": [],
+    "depth": "standard",
+    "lookback": 30,
+    "schedule": "off",
+    "category": "general",
+}
+
+
+def _is_research(project: Project) -> bool:
+    return bool(project.research_config) and project.research_config.get("kind") == "research"
+
+
+def _research_read(project: Project) -> ResearchProjectRead:
+    config = {**_CONFIG_DEFAULTS, **(project.research_config or {})}
+    return ResearchProjectRead(
+        id=project.id,
+        name=project.name,
+        slug=project.slug,
+        stage=project.stage,
+        topic=str(config["topic"]),
+        purpose=str(config["purpose"]),
+        goals=list(config["goals"]),
+        depth=str(config["depth"]),
+        lookback=int(config["lookback"]),
+        schedule=str(config["schedule"]),
+        category=str(config["category"]),
+        research_target_id=project.research_target_id,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+    )
+
+
+def _load_research_project(project_id: int, db: Session) -> Project:
+    project = db.get(Project, project_id)
+    if project is None or not _is_research(project):
+        raise HTTPException(http_status.HTTP_404_NOT_FOUND, "research project not found")
+    return project
 
 
 def _load_project(project_id: int, db: Session) -> Project:
@@ -41,6 +90,116 @@ def _load_finding(finding_id: int, db: Session) -> ResearchFinding:
     if finding is None:
         raise HTTPException(http_status.HTTP_404_NOT_FOUND, "finding not found")
     return finding
+
+
+# --- research project CRUD ---------------------------------------------------------------
+
+
+@router.get("/projects", response_model=list[ResearchProjectRead])
+def list_research_projects(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[ResearchProjectRead]:
+    projects = (
+        db.query(Project).order_by(Project.created_at.desc(), Project.id.desc()).all()
+    )
+    return [_research_read(p) for p in projects if _is_research(p)]
+
+
+@router.post(
+    "/projects", response_model=ResearchProjectRead, status_code=http_status.HTTP_201_CREATED
+)
+def create_research_project(
+    payload: ResearchProjectCreate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ResearchProjectRead:
+    project = Project(
+        name=payload.name,
+        slug=slugify(payload.name) or "research",
+        stage="idea",
+        research_config={
+            "kind": "research",
+            "topic": payload.topic,
+            "purpose": payload.purpose,
+            "goals": payload.goals,
+            "depth": payload.depth,
+            "lookback": payload.lookback,
+            "schedule": payload.schedule,
+            "category": payload.category,
+        },
+    )
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return _research_read(project)
+
+
+@router.patch("/projects/{research_id}", response_model=ResearchProjectRead)
+def update_research_project(
+    research_id: int,
+    payload: ResearchProjectUpdate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ResearchProjectRead:
+    project = _load_research_project(research_id, db)
+    updates = payload.model_dump(exclude_none=True)
+    if "name" in updates:
+        project.name = updates.pop("name")
+    if updates:
+        project.research_config = {**(project.research_config or {}), **updates}
+    db.commit()
+    db.refresh(project)
+    return _research_read(project)
+
+
+@router.delete("/projects/{research_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+def delete_research_project(
+    research_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    project = _load_research_project(research_id, db)
+    # Remove the project's research rows first so no foreign key is left dangling.
+    db.query(ResearchFinding).filter(ResearchFinding.project_id == project.id).delete()
+    db.query(ResearchRun).filter(ResearchRun.project_id == project.id).delete()
+    db.query(ProjectUpdate).filter(ProjectUpdate.project_id == project.id).delete()
+    db.delete(project)
+    db.commit()
+
+
+@router.post(
+    "/projects/{research_id}/duplicate",
+    response_model=ResearchProjectRead,
+    status_code=http_status.HTTP_201_CREATED,
+)
+def duplicate_research_project(
+    research_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ResearchProjectRead:
+    source = _load_research_project(research_id, db)
+    name = f"{source.name} (copy)"
+    copy = Project(
+        name=name,
+        slug=slugify(name) or "research-copy",
+        stage="idea",
+        research_config={**(source.research_config or {}), "kind": "research"},
+    )
+    db.add(copy)
+    db.commit()
+    db.refresh(copy)
+    return _research_read(copy)
+
+
+@router.post("/generate-config", response_model=GenerateConfigResponse)
+def generate_research_config(
+    payload: GenerateConfigRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> GenerateConfigResponse:
+    draft = generate_config(payload.topic, payload.name)
+    return GenerateConfigResponse(**draft)
 
 
 @router.post("/{research_id}/attach", response_model=ProjectRead)
