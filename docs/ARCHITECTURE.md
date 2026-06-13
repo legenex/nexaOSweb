@@ -46,19 +46,45 @@ nexaOSweb/
 - InboxItem: id, user_id, name, body, source, status, created_at, stage_history (json).
 - ClassificationRecord: id, item_id, shape, confidence, recommended_route, recommended_model_key, resolved_model_id, model_rationale, reasoning_summary, tags (json), created_at.
 - PipelineRun: id, item_id, stage, state, started_at, finished_at.
-- Project: id, item_id, name, slug, stage, plan_path, plan_json (json), build_destination, selected_integrations (json), created_at.
+- Project: id, item_id, name, slug, stage, plan_path, plan_json (json), build_destination, selected_integrations (json), research_target_id (self-referential, the build project a research project feeds, nullable, no DB level FK on the SQLite dev target), created_at.
 - Integration: id, user_id, provider, status, credentials_ref. No raw secrets in the row, only a reference.
 - PMRun: id, project_id, status, created_at. Stub for the future project manager interface.
-- Task, JournalNote, AppSetting: present from the data layer so the other tabs can grow later.
+- ProjectUpdate: id, project_id, kind (research_finding, manual, system), title, body, source_ref (json), created_at. The project Update Log.
+- ResearchRun: id, project_id, status, summary, findings_count, finished_at, created_at.
+- ResearchFinding: id, project_id, run_id, title, detail, url, status (new, tasked, logged, saved), created_at.
+- Task, JournalNote, AppSetting: present from the data layer so the other tabs can grow later. AppSetting also holds the intake knobs, the knowledge policy, and the per day per mode dashboard brief cache, keyed per user.
 
 ## API surface (v1)
 - Auth: POST /auth/login, POST /auth/logout, GET /auth/me, GET /auth/csrf.
 - Intake: POST /intake/capture, GET /intake/items, GET /intake/items/{id}, GET /intake/items/{id}/classification.
 - Flow: POST /flow/items/{id}/process, GET /flow/items/{id}/plan, GET /flow/items/{id}/clarify, POST /flow/items/{id}/clarify, GET /flow/items/{id}/preview, POST /flow/items/{id}/promote, GET /flow/items, GET /flow/items/{id}.
-- Projects: GET /projects, POST /projects/{id}/approve, POST /projects/{id}/reject.
-- Settings: GET /settings, PATCH /settings.
+- Projects: GET /projects, POST /projects/{id}/approve, POST /projects/{id}/reject, GET /projects/{id}/updates (the project Update Log).
+- Research: POST /research/{id}/attach, POST /research/{id}/detach, POST /research/{id}/runs, GET /research/{id}/runs, GET /research/{id}/findings, POST /research/findings/{id}/to-task, POST /research/findings/{id}/to-update, POST /research/findings/{id}/to-knowledge.
+- Dashboard: GET /dashboard/summary, GET /dashboard/brief.
+- Settings: GET /settings, PATCH /settings (intake knobs), GET /settings/knowledge-policy, PATCH /settings/knowledge-policy (ingestion and long term memory policy).
+- Also shipped, see the OpenAPI for the full request and response shapes: Knowledge CRUD under /knowledge, the Dreaming review queue under /dreaming, Models and Agents under /settings/models, and System health and restart under /system.
 - Health: GET /healthz.
 The OpenAPI is the contract. After any change, regenerate packages/api-client.
+
+## Dashboard summary and brief
+The Dashboard is the cockpit. Two read endpoints back it.
+- GET /dashboard/summary returns the Command Radar aggregate: counts and short lists for active projects, builds awaiting approval at the human gate, research findings ready to convert, suggested tasks, a top opportunity, recent uploads, connector health, model usage, and Brain status. It is read only.
+- GET /dashboard/brief returns a time aware narrative. The mode is morning or evening; without an explicit ?mode= the Brain picks it from the time of day (evening from 17:00 on). Morning sets the day, evening reviews the day and sets tomorrow. The final text is written with the research_synthesis semantic key over a bulk key pre summarisation, and falls back to a deterministic offline rendering when no provider key is set. The brief is cached per day and per mode in an AppSetting row, so opening the Dashboard does not regenerate it. Pass ?refresh=true to force regeneration. The response carries mode, date, generated_at, cached, and text.
+
+Two values behind these endpoints are deterministic proxies, not finished logic. Each has a named swap point. Do not mistake them for the real ranking.
+- Research ready to convert currently proxies as classified InboxItems that have not yet become a project (dashboard._research_findings). Swap point: now that the research link exists, this becomes a real query over ResearchFinding rows with status new that belong to a research project.
+- Top opportunity currently proxies as a deterministic heuristic over the gate, the findings, and the active projects (dashboard._top_opportunity). Swap point: it graduates to a ranked output when Focus, the decide layer, is built.
+
+## Knowledge policy
+GET and PATCH /settings/knowledge-policy hold what the system may ingest (ChatGPT via API, Claude via API, connectors) and what is allowed into long term memory (require approval, allow Dreaming memory, allow connector memory, and a minimum confidence). It is stored per user in an AppSetting row. The default keeps the human gate closed: ingestion off, memory_require_approval true, connector memory off, minimum confidence 0.6. Nothing reaches the Knowledge base without an explicit accept in the Dreaming review queue.
+
+## Research link
+A research project is an ordinary Project row, attached to a build project through the self-referential Project.research_target_id (nullable, additive). The DB level foreign key is omitted on purpose because SQLite cannot ALTER a constraint into an existing table; the ORM declares the relationship and the router validates the target exists.
+- POST /research/{id}/attach and POST /research/{id}/detach set or clear the link. A research project cannot attach to itself.
+- POST /research/{id}/runs triggers a run. GET /research/{id}/runs and GET /research/{id}/findings read the runs and their findings. A finding is new, tasked, logged, or saved.
+- Finding level actions: POST /research/findings/{id}/to-task creates a Task on the attached build project (or on the research project itself when unattached); POST /research/findings/{id}/to-update posts a ProjectUpdate into the attached build project's Update Log, returning 409 when the research project is unattached; POST /research/findings/{id}/to-knowledge saves a KnowledgeEntry.
+- GET /projects/{id}/updates reads a project's Update Log, the ProjectUpdate rows. When a run completes against an attached research project, its findings post into the target build project's Update Log.
+- A finding saved to knowledge records source connector (not manual and not dreaming), with provenance {from: research_finding, finding_id, research_project_id, url}, so the origin stays traceable.
 
 ## Auth model
 - Desktop: a static bearer token in the Authorization header, stored in the OS secure store, never in the bundle. Set as NEXA_DESKTOP_BEARER on the server.

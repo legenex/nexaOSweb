@@ -27,7 +27,7 @@ nexaOSweb is a personal AI operating system built on two pillars joined by a dec
 4. Conventional commit messages, for example feat(brain): capture endpoint.
 5. US market only in business logic.
 6. The apps never hold provider secrets. All LLM and provider keys live only in the server side .env read by the Brain. The desktop app authenticates with a bearer token kept in the OS secure store. The web companion authenticates with httpOnly SameSite session cookies plus CSRF double submit, with an NEXA_PUBLIC_HTTPS flag for local versus production.
-7. Database migrations are additive only. Add columns and tables, do not rewrite or destroy existing ones.
+7. Database migrations are additive only. Add columns and tables, do not rewrite or destroy existing ones. Any migration that adds or alters a foreign key or other constraint must use op.batch_alter_table with a named constraint, because the dev target is SQLite (which cannot ALTER a constraint into an existing table) even though production is Postgres. If a foreign key cannot be added this way, omit the DB level constraint and enforce the relationship in the ORM model and the router instead.
 8. Any write to the on disk project folders (project_plan.md, change_summary.md, project_preview.html, requirements.md) goes through the Brain and must pass the path safety gate (ensure_within_root) and the dangerous command guard. Protected branches are never force pushed.
 9. The frontend follows docs/FLOW_VISUAL_SPEC.md. Orange is the only brand color. All colors and fonts come from CSS variables, never hardcoded hex in components.
 10. Do not commit .env, secrets, build artifacts, node_modules, or the Python virtualenv. Keep .gitignore current.
