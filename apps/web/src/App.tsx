@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { AuthProvider, useAuth } from './app/AuthProvider';
 import { DEFAULT_NAV_KEY, NAV_ITEMS } from './app/nav';
 import { NavigationContext } from './app/navigation';
+import { CommandBar } from './components/CommandBar';
 import { ComingSoon } from './components/ComingSoon';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { HoloObject } from './components/HoloObject';
@@ -10,6 +11,7 @@ import type { HoloVariant } from './components/HoloObject';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
+import { DashboardView } from './features/dashboard/DashboardView';
 import { FlowPanorama } from './features/flow/FlowPanorama';
 import { FlowProvider } from './features/flow/FlowProvider';
 import { ProjectsView } from './features/projects/ProjectsView';
@@ -42,6 +44,8 @@ function Placeholder({ label }: { label: string }) {
 // Every nav key resolves to a surface. Project Builder renders the internal Flow panorama.
 function Surface({ active, label }: { active: string; label: string }) {
   switch (active) {
+    case 'dashboard':
+      return <DashboardView />;
     case 'project-builder':
       return <FlowPanorama />;
     case 'projects':
@@ -93,6 +97,7 @@ function Shell() {
     <NavigationContext.Provider value={setActive}>
     <div className="flex h-screen w-screen flex-col overflow-hidden">
       <DesktopTitleBar />
+      <CommandBar />
       <div className="flex flex-1 overflow-hidden">
       <Sidebar active={active} onSelect={setActive} />
       <main className="relative flex-1 overflow-auto p-8">
