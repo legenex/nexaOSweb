@@ -10,6 +10,7 @@ import type { HoloVariant } from './components/HoloObject';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
+import { UplinkLight } from './components/UplinkLight';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { FlowPanorama } from './features/flow/FlowPanorama';
 import { InsightsView } from './features/insights/InsightsView';
@@ -18,15 +19,15 @@ import { ProjectsView } from './features/projects/ProjectsView';
 import { ResearchView } from './features/research/ResearchView';
 import { SettingsView } from './features/settings/SettingsView';
 
-function PageHeader({ title, label }: { title: string; label: string }) {
+// Surfaces that depend on a live Brain uplink show the status light; local or cached pages do not.
+const UPLINK_SURFACES = new Set(['research', 'projects', 'project-builder']);
+
+function PageHeader({ title, label, uplink }: { title: string; label: string; uplink: boolean }) {
   return (
     <header className="mb-6">
       <h1 className="text-[22px] font-semibold text-cream">{title}</h1>
       <div className="mt-1 flex items-center gap-2">
-        <span
-          aria-hidden
-          className="inline-block h-2 w-2 rounded-full bg-status-green shadow-[0_0_8px_var(--status-green)]"
-        />
+        {uplink ? <UplinkLight /> : null}
         <span className="mono-label">{label}</span>
       </div>
     </header>
@@ -121,7 +122,11 @@ function Shell() {
                 </div>
               ) : null}
               <div className="relative z-10 mb-4">
-                <PageHeader title={current.label} label={`${current.key} ${current.description}`} />
+                <PageHeader
+                  title={current.label}
+                  label={`${current.key} ${current.description}`}
+                  uplink={UPLINK_SURFACES.has(baseKey)}
+                />
               </div>
               <div className="relative z-10">
                 <Surface active={active} label={current.label} />
