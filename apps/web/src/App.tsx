@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { AuthProvider, useAuth } from './app/AuthProvider';
 import { DEFAULT_NAV_KEY, NAV_ITEMS } from './app/nav';
 import { NavigationContext } from './app/navigation';
-import { CommandBar } from './components/CommandBar';
 import { ComingSoon } from './components/ComingSoon';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { HoloObject } from './components/HoloObject';
@@ -100,7 +99,6 @@ function Shell() {
     <NavigationContext.Provider value={setActive}>
     <div className="flex h-screen w-screen flex-col overflow-hidden">
       <DesktopTitleBar />
-      <CommandBar />
       <div className="flex flex-1 overflow-hidden">
       <Sidebar active={active} onSelect={setActive} />
       <main className="relative flex-1 overflow-auto p-8">
