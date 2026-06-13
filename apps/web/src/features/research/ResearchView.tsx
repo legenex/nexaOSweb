@@ -39,7 +39,11 @@ function RunCard({ run }: { run: ResearchRun }) {
       >
         <span className="mono-meta text-muted">{new Date(run.created_at).toLocaleString()}</span>
         <span className="flex items-center gap-2">
-          <Pill variant={run.status === 'completed' ? 'green' : run.status === 'failed' ? 'grey' : 'accent'}>
+          <Pill
+            variant={
+              run.status === 'completed' ? 'green' : run.status === 'failed' ? 'grey' : 'accent'
+            }
+          >
             {run.status}
           </Pill>
           <span className="mono-meta text-faint">{run.findings_count} findings</span>
@@ -98,7 +102,7 @@ export function ResearchView() {
   const [editing, setEditing] = useState<ResearchProject | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ResearchProject | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [renaming, setRenaming] = useState<{ category: string; value: string } | null>(null);
+  const [renaming, setRenaming] = useState<{ id: number; value: string } | null>(null);
 
   const selected = useMemo(
     () => projects.find((p) => p.id === selectedId) ?? null,
@@ -166,19 +170,15 @@ export function ResearchView() {
     }
   }, [deleteTarget, selectedId, loadProjects]);
 
-  const renameCategory = useCallback(async () => {
+  const renameProject = useCallback(async () => {
     if (!renaming) return;
     const next = renaming.value.trim();
-    const members = projects.filter((p) => p.category === renaming.category);
-    if (next && next !== renaming.category) {
-      await Promise.all(
-        members.map((p) =>
-          api.PATCH('/research/projects/{research_id}', {
-            params: { path: { research_id: p.id } },
-            body: { category: next },
-          }),
-        ),
-      );
+    const target = projects.find((p) => p.id === renaming.id);
+    if (next && target && next !== target.name) {
+      await api.PATCH('/research/projects/{research_id}', {
+        params: { path: { research_id: renaming.id } },
+        body: { name: next },
+      });
       await loadProjects();
     }
     setRenaming(null);
@@ -188,7 +188,9 @@ export function ResearchView() {
     if (selectedId === null) return;
     setRunning(true);
     try {
-      await api.POST('/research/{research_id}/runs', { params: { path: { research_id: selectedId } } });
+      await api.POST('/research/{research_id}/runs', {
+        params: { path: { research_id: selectedId } },
+      });
       await loadDetail(selectedId);
     } finally {
       setRunning(false);
@@ -206,7 +208,9 @@ export function ResearchView() {
 
   const detach = useCallback(async () => {
     if (selectedId === null) return;
-    await api.POST('/research/{research_id}/detach', { params: { path: { research_id: selectedId } } });
+    await api.POST('/research/{research_id}/detach', {
+      params: { path: { research_id: selectedId } },
+    });
     await loadProjects();
   }, [selectedId, loadProjects]);
 
@@ -261,7 +265,10 @@ export function ResearchView() {
         '',
       ]),
     ];
-    downloadMarkdown(`research-${selected.slug}.md`, lines.filter((l) => l !== undefined).join('\n'));
+    downloadMarkdown(
+      `research-${selected.slug}.md`,
+      lines.filter((l) => l !== undefined).join('\n'),
+    );
   }, [selected, runs]);
 
   // Group by the editable category label.
@@ -299,35 +306,9 @@ export function ResearchView() {
         ) : (
           grouped.map(([category, items]) => (
             <div key={category}>
-              {renaming?.category === category ? (
-                <div className="mb-1 flex gap-1">
-                  <input
-                    autoFocus
-                    value={renaming.value}
-                    onChange={(e) => setRenaming({ category, value: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void renameCategory();
-                      if (e.key === 'Escape') setRenaming(null);
-                    }}
-                    className="w-full rounded-md border border-line bg-canvas px-2 py-1 text-xs text-cream outline-none focus:border-accent"
-                  />
-                  <button className="mono-label text-accent" type="button" onClick={() => void renameCategory()}>
-                    save
-                  </button>
-                </div>
-              ) : (
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="mono-label text-accent">{category}</span>
-                  <button
-                    type="button"
-                    aria-label={`Rename category ${category}`}
-                    onClick={() => setRenaming({ category, value: category })}
-                    className="mono-label text-faint hover:text-accent"
-                  >
-                    rename
-                  </button>
-                </div>
-              )}
+              <div className="mb-1">
+                <span className="mono-label text-accent">{category}</span>
+              </div>
               <div className="space-y-1">
                 {items.map((project) => (
                   <div
@@ -337,19 +318,38 @@ export function ResearchView() {
                       project.id === selectedId ? 'bg-accent/15' : 'hover:bg-white/5',
                     ].join(' ')}
                   >
-                    <button
-                      type="button"
-                      onClick={() => void select(project.id)}
-                      className={[
-                        'flex-1 truncate py-2 pl-1 text-left text-sm',
-                        project.id === selectedId ? 'text-accent' : 'text-cream/85',
-                      ].join(' ')}
-                    >
-                      {project.name}
-                    </button>
+                    {renaming?.id === project.id ? (
+                      <input
+                        autoFocus
+                        value={renaming.value}
+                        onChange={(e) => setRenaming({ id: project.id, value: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void renameProject();
+                          if (e.key === 'Escape') setRenaming(null);
+                        }}
+                        onBlur={() => void renameProject()}
+                        aria-label={`Rename ${project.name}`}
+                        className="my-1 w-full rounded-md border border-line bg-canvas px-2 py-1 text-sm text-cream outline-none focus:border-accent"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void select(project.id)}
+                        className={[
+                          'flex-1 truncate py-2 pl-1 text-left text-sm',
+                          project.id === selectedId ? 'text-accent' : 'text-cream/85',
+                        ].join(' ')}
+                      >
+                        {project.name}
+                      </button>
+                    )}
                     <OverflowMenu
                       label={`Actions for ${project.name}`}
                       items={[
+                        {
+                          label: 'Rename',
+                          onClick: () => setRenaming({ id: project.id, value: project.name }),
+                        },
                         {
                           label: 'Edit',
                           onClick: () => {
@@ -381,7 +381,9 @@ export function ResearchView() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="text-lg font-semibold text-cream">{selected.name}</h2>
-                  {selected.topic ? <p className="mt-1 text-sm text-muted">{selected.topic}</p> : null}
+                  {selected.topic ? (
+                    <p className="mt-1 text-sm text-muted">{selected.topic}</p>
+                  ) : null}
                   {selected.purpose ? (
                     <p className="mt-1 text-xs text-faint">{selected.purpose}</p>
                   ) : null}
@@ -407,7 +409,8 @@ export function ResearchView() {
                 {isAttached ? (
                   <div className="mt-2 flex items-center gap-3">
                     <span className="text-sm text-muted">
-                      feeding <span className="text-accent">{targetProject?.name ?? 'a project'}</span>
+                      feeding{' '}
+                      <span className="text-accent">{targetProject?.name ?? 'a project'}</span>
                     </span>
                     <Button variant="muted" onClick={() => void detach()}>
                       Detach
@@ -417,7 +420,9 @@ export function ResearchView() {
                   <div className="mt-2 flex items-center gap-2">
                     <select
                       value={attachTarget}
-                      onChange={(e) => setAttachTarget(e.target.value === '' ? '' : Number(e.target.value))}
+                      onChange={(e) =>
+                        setAttachTarget(e.target.value === '' ? '' : Number(e.target.value))
+                      }
                       className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-cream"
                     >
                       <option value="">Select a build project</option>
@@ -454,7 +459,12 @@ export function ResearchView() {
                 <p className="text-sm text-muted">No findings yet.</p>
               ) : (
                 findings.map((finding) => (
-                  <FindingCard key={finding.id} finding={finding} isAttached={isAttached} onAct={onAct} />
+                  <FindingCard
+                    key={finding.id}
+                    finding={finding}
+                    isAttached={isAttached}
+                    onAct={onAct}
+                  />
                 ))
               )}
             </div>

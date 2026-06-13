@@ -8,9 +8,31 @@ type ResearchProject = Schemas['ResearchProjectRead'];
 
 type Depth = 'quick' | 'standard' | 'deep';
 type Schedule = 'off' | 'daily' | 'weekly';
+type LookbackUnit = 'day' | 'week' | 'month';
 
 const DEPTHS: Depth[] = ['quick', 'standard', 'deep'];
 const SCHEDULES: Schedule[] = ['off', 'daily', 'weekly'];
+const LOOKBACK_UNITS: LookbackUnit[] = ['day', 'week', 'month'];
+
+// Depth ordering, so a generate can raise depth but never silently downgrade it.
+const DEPTH_RANK: Record<Depth, number> = { quick: 0, standard: 1, deep: 2 };
+
+// The Brain stores lookback in days. The dialog edits a value plus a unit and converts on the
+// boundary. Hour granularity is intentionally not offered: the Brain stores whole days and
+// sub-day would need a contract change (flagged as a follow-up).
+const UNIT_DAYS: Record<LookbackUnit, number> = { day: 1, week: 7, month: 30 };
+
+function toDays(value: number, unit: LookbackUnit): number {
+  const v = Math.max(1, Math.floor(value) || 1);
+  return v * UNIT_DAYS[unit];
+}
+
+function fromDays(days: number): { value: number; unit: LookbackUnit } {
+  const d = Math.max(1, days);
+  if (d % 30 === 0) return { value: d / 30, unit: 'month' };
+  if (d % 7 === 0) return { value: d / 7, unit: 'week' };
+  return { value: d, unit: 'day' };
+}
 
 const field =
   'w-full rounded-md border border-line bg-canvas px-3 py-2 text-sm text-cream outline-none focus:border-accent';
@@ -32,7 +54,9 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
   const [goals, setGoals] = useState<string[]>(initial?.goals ?? []);
   const [goalDraft, setGoalDraft] = useState('');
   const [depth, setDepth] = useState<Depth>((initial?.depth as Depth) ?? 'standard');
-  const [lookback, setLookback] = useState(initial?.lookback ?? 30);
+  const initialLookback = fromDays(initial?.lookback ?? 30);
+  const [lookbackValue, setLookbackValue] = useState(initialLookback.value);
+  const [lookbackUnit, setLookbackUnit] = useState<LookbackUnit>(initialLookback.unit);
   const [schedule, setSchedule] = useState<Schedule>((initial?.schedule as Schedule) ?? 'off');
   const [category, setCategory] = useState(initial?.category ?? 'general');
   const [busy, setBusy] = useState<'generate' | 'save' | null>(null);
@@ -56,9 +80,17 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
       if (err || !data) throw new Error('generate failed');
       setPurpose(data.purpose);
       setGoals(data.goals);
-      setDepth(data.depth as Depth);
-      setLookback(data.lookback);
       setSchedule(data.schedule as Schedule);
+      // Never silently downgrade: raise depth and lookback toward the suggestion, but keep the
+      // user's current choice when it is already stronger.
+      const suggestedDepth = data.depth as Depth;
+      setDepth((current) =>
+        DEPTH_RANK[suggestedDepth] > DEPTH_RANK[current] ? suggestedDepth : current,
+      );
+      const days = Math.max(toDays(lookbackValue, lookbackUnit), data.lookback);
+      const next = fromDays(days);
+      setLookbackValue(next.value);
+      setLookbackUnit(next.unit);
     } catch {
       setError('Could not draft a config. Check the Brain connection.');
     } finally {
@@ -79,7 +111,7 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
       purpose,
       goals,
       depth,
-      lookback,
+      lookback: toDays(lookbackValue, lookbackUnit),
       schedule,
       category: category.trim() || 'general',
     };
@@ -104,11 +136,19 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
   };
 
   return (
-    <Modal open={open} title={editing ? 'edit research project' : 'new research project'} onClose={onClose}>
+    <Modal
+      open={open}
+      title={editing ? 'edit research project' : 'new research project'}
+      onClose={onClose}
+    >
       <div className="space-y-3">
         <div>
           <MonoLabel tone="faint">name</MonoLabel>
-          <input className={`mt-1 ${field}`} value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className={`mt-1 ${field}`}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
         <div>
           <MonoLabel tone="faint">research topic</MonoLabel>
@@ -120,7 +160,11 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
           />
         </div>
 
-        <Button variant="outline" onClick={() => void generate()} disabled={!topic.trim() || busy !== null}>
+        <Button
+          variant="outline"
+          onClick={() => void generate()}
+          disabled={!topic.trim() || busy !== null}
+        >
           {busy === 'generate' ? 'drafting' : 'Generate with AI'}
         </Button>
 
@@ -178,7 +222,11 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
         <div className="grid grid-cols-3 gap-3">
           <div>
             <MonoLabel tone="faint">depth</MonoLabel>
-            <select className={`mt-1 ${field}`} value={depth} onChange={(e) => setDepth(e.target.value as Depth)}>
+            <select
+              className={`mt-1 ${field}`}
+              value={depth}
+              onChange={(e) => setDepth(e.target.value as Depth)}
+            >
               {DEPTHS.map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -187,15 +235,30 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
             </select>
           </div>
           <div>
-            <MonoLabel tone="faint">lookback (days)</MonoLabel>
-            <input
-              type="number"
-              min={1}
-              max={3650}
-              className={`mt-1 ${field}`}
-              value={lookback}
-              onChange={(e) => setLookback(Math.max(1, Number(e.target.value) || 1))}
-            />
+            <MonoLabel tone="faint">lookback</MonoLabel>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="number"
+                min={1}
+                max={3650}
+                aria-label="lookback value"
+                className={`${field} w-20`}
+                value={lookbackValue}
+                onChange={(e) => setLookbackValue(Math.max(1, Number(e.target.value) || 1))}
+              />
+              <select
+                aria-label="lookback unit"
+                className={field}
+                value={lookbackUnit}
+                onChange={(e) => setLookbackUnit(e.target.value as LookbackUnit)}
+              >
+                {LOOKBACK_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <MonoLabel tone="faint">schedule</MonoLabel>
@@ -228,7 +291,11 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
           <Button variant="muted" onClick={onClose} disabled={busy !== null}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={() => void save()} disabled={!name.trim() || busy !== null}>
+          <Button
+            variant="primary"
+            onClick={() => void save()}
+            disabled={!name.trim() || busy !== null}
+          >
             {busy === 'save' ? 'saving' : editing ? 'Save' : 'Create'}
           </Button>
         </div>
