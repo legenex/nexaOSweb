@@ -39,6 +39,13 @@ export async function getFileContent(projectId: number, path: string): Promise<F
   return data as FileContent;
 }
 
+export async function deleteFile(projectId: number, path: string): Promise<void> {
+  const { error } = await api.DELETE('/projects/{project_id}/files', {
+    params: { path: { project_id: projectId }, query: { path } },
+  });
+  if (error) throw new Error('could not delete file');
+}
+
 export async function getBuildLog(projectId: number): Promise<BuildLogEntry[]> {
   const { data, error } = await api.GET('/projects/{project_id}/build-log', {
     params: { path: { project_id: projectId } },

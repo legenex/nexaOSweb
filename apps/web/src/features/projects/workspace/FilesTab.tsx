@@ -2,26 +2,35 @@ import { useEffect, useState } from 'react';
 
 import { MonoLabel, StatusDot } from '../../../components/primitives';
 import { renderMarkdown } from '../../flow/markdown';
-import { getFileContent, getFiles } from './api';
+import { ConfirmDialog } from './ConfirmDialog';
+import { deleteFile, getFileContent, getFiles } from './api';
 import type { FilesResponse } from './api';
 
 // The files tree from the Brain plus a content view for the selected file. Markdown files
-// render through the shared renderer; everything else shows as monospace text.
+// render through the shared renderer; everything else shows as monospace text. Each file can
+// be deleted through the gated Brain endpoint, behind a confirm.
 export function FilesTab({ projectId }: { projectId: number }) {
   const [files, setFiles] = useState<FilesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [contentError, setContentError] = useState<string | null>(null);
+  const [deletePath, setDeletePath] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadFiles = () => {
     setFiles(null);
     setError(null);
-    setSelectedPath(null);
-    setContent(null);
     getFiles(projectId)
       .then(setFiles)
       .catch((err: Error) => setError(err.message));
+  };
+
+  useEffect(() => {
+    setSelectedPath(null);
+    setContent(null);
+    loadFiles();
   }, [projectId]);
 
   const openFile = (path: string) => {
@@ -31,6 +40,25 @@ export function FilesTab({ projectId }: { projectId: number }) {
     getFileContent(projectId, path)
       .then((file) => setContent(file.content))
       .catch((err: Error) => setContentError(err.message));
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePath) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteFile(projectId, deletePath);
+      if (selectedPath === deletePath) {
+        setSelectedPath(null);
+        setContent(null);
+      }
+      setDeletePath(null);
+      loadFiles();
+    } catch (err) {
+      setDeleteError((err as Error).message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (error) return <p className="text-sm text-danger">{error}</p>;
@@ -63,22 +91,34 @@ export function FilesTab({ projectId }: { projectId: number }) {
           <MonoLabel tone="accent" className="mb-2 block">
             files
           </MonoLabel>
+          {deleteError ? <p className="mb-2 text-xs text-danger">{deleteError}</p> : null}
           {fileNodes.length === 0 ? (
             <p className="text-xs text-muted">No files on disk yet.</p>
           ) : (
             <ul className="space-y-0.5">
               {fileNodes.map((node) => (
-                <li key={node.path}>
+                <li key={node.path} className="group flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => openFile(node.path)}
-                    className={`w-full truncate rounded px-2 py-1 text-left font-mono text-xs ${
+                    className={`min-w-0 flex-1 truncate rounded px-2 py-1 text-left font-mono text-xs ${
                       selectedPath === node.path
                         ? 'bg-accent/15 text-accent'
                         : 'text-muted hover:text-accent'
                     }`}
                   >
                     {node.path}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${node.path}`}
+                    onClick={() => {
+                      setDeleteError(null);
+                      setDeletePath(node.path);
+                    }}
+                    className="rounded px-1.5 py-1 text-xs leading-none text-muted opacity-0 transition hover:text-danger focus:opacity-100 group-hover:opacity-100"
+                  >
+                    ✕
                   </button>
                 </li>
               ))}
@@ -109,6 +149,16 @@ export function FilesTab({ projectId }: { projectId: number }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deletePath !== null}
+        title="Delete file"
+        body={deletePath ? `Delete "${deletePath}" from the project folder?` : ''}
+        confirmLabel="Delete"
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeletePath(null)}
+        busy={deleting}
+      />
     </div>
   );
 }

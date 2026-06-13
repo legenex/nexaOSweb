@@ -49,6 +49,9 @@ interface FlowState {
   approve: (projectId: number) => Promise<void>;
   reject: (projectId: number, reason: string) => Promise<void>;
   promote: (itemId: number) => Promise<void>;
+  renameProject: (projectId: number, name: string) => Promise<void>;
+  duplicateProject: (projectId: number) => Promise<void>;
+  deleteProject: (projectId: number) => Promise<void>;
 }
 
 const FlowContext = createContext<FlowState | null>(null);
@@ -197,6 +200,40 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     [reselect],
   );
 
+  const renameProject = useCallback(
+    async (projectId: number, name: string) => {
+      const { error } = await api.PATCH('/projects/{project_id}', {
+        params: { path: { project_id: projectId } },
+        body: { name },
+      });
+      if (error) throw new Error('rename failed');
+      await refreshProjects();
+    },
+    [refreshProjects],
+  );
+
+  const duplicateProject = useCallback(
+    async (projectId: number) => {
+      const { error } = await api.POST('/projects/{project_id}/duplicate', {
+        params: { path: { project_id: projectId } },
+      });
+      if (error) throw new Error('duplicate failed');
+      await refreshProjects();
+    },
+    [refreshProjects],
+  );
+
+  const deleteProject = useCallback(
+    async (projectId: number) => {
+      const { error } = await api.DELETE('/projects/{project_id}', {
+        params: { path: { project_id: projectId } },
+      });
+      if (error) throw new Error('delete failed');
+      await refreshProjects();
+    },
+    [refreshProjects],
+  );
+
   useEffect(() => {
     void refresh();
     void refreshProjects();
@@ -223,6 +260,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       approve,
       reject,
       promote,
+      renameProject,
+      duplicateProject,
+      deleteProject,
     }),
     [
       items,
@@ -243,6 +283,9 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       approve,
       reject,
       promote,
+      renameProject,
+      duplicateProject,
+      deleteProject,
     ],
   );
 
