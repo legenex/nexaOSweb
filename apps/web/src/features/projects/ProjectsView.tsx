@@ -1,7 +1,10 @@
+import { useState } from 'react';
+
 import { GlassCard, MonoLabel, Pill, StageTrack } from '../../components/primitives';
 import type { TrackNode } from '../../components/primitives';
 import { useFlow } from '../flow/FlowProvider';
 import type { Project } from '../flow/FlowProvider';
+import { ProjectWorkspace } from './workspace/ProjectWorkspace';
 
 // The project lifecycle stages shown on the tail track.
 const LIFECYCLE = ['idea', 'process', 'clarify', 'approved', 'build', 'live'];
@@ -23,6 +26,12 @@ function trackFor(stage: string): TrackNode[] {
 
 export function ProjectsView() {
   const { projects } = useFlow();
+  const [openId, setOpenId] = useState<number | null>(null);
+
+  const open = openId !== null ? (projects.find((entry) => entry.id === openId) ?? null) : null;
+  if (open) {
+    return <ProjectWorkspace project={open} onBack={() => setOpenId(null)} />;
+  }
 
   if (projects.length === 0) {
     return (
@@ -38,22 +47,37 @@ export function ProjectsView() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {projects.map((project: Project) => (
-        <GlassCard key={project.id} className="border-electric">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-cream">{project.name}</h3>
-            <Pill variant={project.stage === 'build' ? 'green' : 'accent'}>{project.stage}</Pill>
-          </div>
-          <MonoLabel tone="faint" className="mb-3 block">
-            {project.slug}
-          </MonoLabel>
-          <StageTrack nodes={trackFor(project.stage)} />
-          {project.build_destination ? (
-            <p className="mt-3 text-sm">
-              <span className="text-muted">build </span>
-              <span className="text-accent">{project.build_destination}</span>
+        <button
+          key={project.id}
+          type="button"
+          onClick={() => setOpenId(project.id)}
+          className="text-left"
+        >
+          <GlassCard className="border-electric">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-cream">{project.name}</h3>
+              <div className="flex items-center gap-1">
+                <Pill variant="solid">{project.mode}</Pill>
+                <Pill variant={project.stage === 'build' ? 'green' : 'accent'}>
+                  {project.stage}
+                </Pill>
+              </div>
+            </div>
+            <MonoLabel tone="faint" className="mb-3 block">
+              {project.slug}
+            </MonoLabel>
+            <StageTrack nodes={trackFor(project.stage)} />
+            {project.build_destination ? (
+              <p className="mt-3 text-sm">
+                <span className="text-muted">build </span>
+                <span className="text-accent">{project.build_destination}</span>
+              </p>
+            ) : null}
+            <p className="mt-3">
+              <MonoLabel tone="accent">open workspace →</MonoLabel>
             </p>
-          ) : null}
-        </GlassCard>
+          </GlassCard>
+        </button>
       ))}
     </div>
   );
