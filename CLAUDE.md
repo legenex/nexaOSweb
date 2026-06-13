@@ -32,6 +32,7 @@ nexaOSweb is a personal AI operating system built on two pillars joined by a dec
 9. The frontend follows docs/FLOW_VISUAL_SPEC.md. Orange is the only brand color. All colors and fonts come from CSS variables, never hardcoded hex in components.
 10. Do not commit .env, secrets, build artifacts, node_modules, or the Python virtualenv. Keep .gitignore current.
 11. Commit after every update. As soon as a change is complete and verified, stage the explicit paths and commit it with a clear conventional message. Do not leave finished work uncommitted or batch unrelated changes into one commit. Push when the user asks.
+12. Destructive endpoints soft delete by default, hard delete is never the default. A delete flags the row (for example a deleted marker in a JSON config blob, or a status or deleted_at column) and keeps it, along with its related rows, so the record stays recoverable. Soft deleted rows are excluded from default lists and their operations return 404 as if gone. A true hard delete is only ever an explicit, separately named action, never the behaviour of the standard delete.
 
 ## Navigation (user interface)
 - Flow is shown as Project Builder in the interface. The internal pipeline name, the API paths, and the code stay Flow. The rename is presentation only.
