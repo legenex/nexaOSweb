@@ -201,6 +201,38 @@
   }
 }
 
+/* Ask Nexa command palette open transition: a quick scale and fade for the panel and a
+   fade for the dim backdrop. Reduced motion neutralizes both through the global rule at the
+   file end, leaving an instant, static open. The component also gates these classes on the
+   reduced motion hook, so the animation never even mounts under that preference. */
+.palette-pop {
+  animation: palette-pop 0.16s ease-out;
+}
+
+@keyframes palette-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.palette-dim {
+  animation: palette-dim 0.16s ease-out;
+}
+
+@keyframes palette-dim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Themed scrollbars app wide, brand variables only, never a native grey bar.
    Thin, rounded thumb on a transparent track, a subtle orange lift on hover. */
 * {
