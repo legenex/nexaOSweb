@@ -85,12 +85,12 @@ function Surface({ active, label }: { active: string; label: string }) {
   }
 }
 
-// Each built out surface gets its own holographic object. Keys not listed render none.
+// Each built out surface gets its own distinct holographic object. Keys not listed render none,
+// so Project Builder (its own panorama) and the coming soon pages show no extra object.
 const HOLO_VARIANT: Record<string, HoloVariant> = {
   dashboard: 'dashboard',
   insights: 'insights',
   research: 'research',
-  'project-builder': 'project-builder',
   projects: 'projects',
 };
 
@@ -117,11 +117,7 @@ function Shell() {
                   aria-hidden
                   className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
                 >
-                  <HoloObject
-                    variant={HOLO_VARIANT[baseKey]!}
-                    size={520}
-                    className="absolute -bottom-20 -right-16 opacity-30"
-                  />
+                  <HoloObject variant={HOLO_VARIANT[baseKey]!} />
                 </div>
               ) : null}
               <div className="relative z-10 mb-4">
