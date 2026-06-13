@@ -6,7 +6,12 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
+    // host true binds 0.0.0.0 so the Codespaces (and other tunnel) forwarders can reach the
+    // dev server. allowedHosts trusts the Codespaces forwarded domain, which carries the
+    // codespace name, so a codespace rename does not break the preview link.
+    host: true,
     port: 5173,
+    allowedHosts: ['.app.github.dev'],
     proxy: {
       '/api': {
         target: 'http://localhost:8847',
