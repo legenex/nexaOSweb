@@ -51,6 +51,13 @@ def _is_research(project: Project) -> bool:
     return bool(project.research_config) and project.research_config.get("kind") == "research"
 
 
+def _is_active_research(project: Project) -> bool:
+    # A research project that has not been soft deleted. Deletion sets a deleted flag in the
+    # research_config blob (additive, no migration), so the row and its runs and findings are
+    # preserved and the project is recoverable.
+    return _is_research(project) and not project.research_config.get("deleted")
+
+
 def _research_read(project: Project) -> ResearchProjectRead:
     config = {**_CONFIG_DEFAULTS, **(project.research_config or {})}
     return ResearchProjectRead(
@@ -73,7 +80,7 @@ def _research_read(project: Project) -> ResearchProjectRead:
 
 def _load_research_project(project_id: int, db: Session) -> Project:
     project = db.get(Project, project_id)
-    if project is None or not _is_research(project):
+    if project is None or not _is_active_research(project):
         raise HTTPException(http_status.HTTP_404_NOT_FOUND, "research project not found")
     return project
 
@@ -103,7 +110,7 @@ def list_research_projects(
     projects = (
         db.query(Project).order_by(Project.created_at.desc(), Project.id.desc()).all()
     )
-    return [_research_read(p) for p in projects if _is_research(p)]
+    return [_research_read(p) for p in projects if _is_active_research(p)]
 
 
 @router.post(
@@ -160,11 +167,10 @@ def delete_research_project(
     db: Session = Depends(get_db),
 ) -> None:
     project = _load_research_project(research_id, db)
-    # Remove the project's research rows first so no foreign key is left dangling.
-    db.query(ResearchFinding).filter(ResearchFinding.project_id == project.id).delete()
-    db.query(ResearchRun).filter(ResearchRun.project_id == project.id).delete()
-    db.query(ProjectUpdate).filter(ProjectUpdate.project_id == project.id).delete()
-    db.delete(project)
+    # Soft delete: flag the project deleted in its research_config and keep the row plus its
+    # runs and findings, so a removed research project stays recoverable rather than being
+    # physically destroyed.
+    project.research_config = {**(project.research_config or {}), "deleted": True}
     db.commit()
 
 

@@ -43,7 +43,7 @@ def test_update_and_recategorize(client, seed_user, monkeypatch):
     assert body["depth"] == "quick"
 
 
-def test_duplicate_and_delete(client, seed_user, monkeypatch):
+def test_duplicate_and_delete(client, seed_user, db_session, monkeypatch):
     _enable_bearer(monkeypatch)
     pid = _create(client).json()["id"]
     dup = client.post(f"/research/projects/{pid}/duplicate", headers=BEARER)
@@ -53,7 +53,15 @@ def test_duplicate_and_delete(client, seed_user, monkeypatch):
 
     deleted = client.delete(f"/research/projects/{pid}", headers=BEARER)
     assert deleted.status_code == 204
+    # Delete is soft: the project drops out of the list and its operations 404,
+    assert all(p["id"] != pid for p in client.get("/research/projects", headers=BEARER).json())
     assert client.get(f"/research/projects/{pid}/findings", headers=BEARER).status_code == 404
+    # but the row is preserved and flagged, so the project stays recoverable.
+    from app.models.project import Project
+
+    row = db_session.get(Project, pid)
+    assert row is not None
+    assert row.research_config.get("deleted") is True
 
 
 def test_generate_config(client, seed_user, monkeypatch):
