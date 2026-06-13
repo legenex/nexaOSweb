@@ -37,6 +37,11 @@ models:
     temperature: 0.3
     max_tokens: 1536
 
+  # Speech to text for voice capture (journal transcribe). Resolved through the router so the
+  # transcription model is a config swap, never a hardcoded id. Needs the matching provider key.
+  transcription:
+    model: openai/whisper-1
+
   # Reserved for the nightly Dreaming consolidation. A low cost model, since the job runs
   # over every signal of the day. Extraction currently runs on the bulk key (same model
   # tier); swap this to give Dreaming its own behaviour without touching code.
