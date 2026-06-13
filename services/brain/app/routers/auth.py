@@ -6,7 +6,15 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.user import User
 from app.schemas.auth import CsrfResponse, LoginRequest, LoginResponse, MeResponse
-from app.security.auth import Principal, clear_session, get_principal, issue_csrf, issue_session
+from app.schemas.users import ProfileUpdate
+from app.security.auth import (
+    Principal,
+    clear_session,
+    current_user,
+    get_principal,
+    issue_csrf,
+    issue_session,
+)
 from app.security.passwords import verify_password
 from app.security.ratelimit import login_limiter
 
@@ -57,6 +65,29 @@ def me(
         kind="session",
         user_id=user.id if user else None,
         email=user.email if user else None,
+        name=user.name if user else None,
+        role=user.role if user else None,
+    )
+
+
+@router.patch("/me", response_model=MeResponse)
+def update_me(
+    payload: ProfileUpdate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> MeResponse:
+    # Self profile edit from Settings, General. Only the display name is editable here.
+    if payload.name is not None:
+        user.name = payload.name
+    db.commit()
+    db.refresh(user)
+    return MeResponse(
+        authenticated=True,
+        kind="session",
+        user_id=user.id,
+        email=user.email,
+        name=user.name,
+        role=user.role,
     )
 
 

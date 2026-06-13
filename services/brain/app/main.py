@@ -14,12 +14,15 @@ from .routers import (
     dreaming,
     flow,
     insights,
+    integrations,
     intake,
     knowledge,
     model_config,
     projects,
     research,
+    skills,
     system,
+    users,
 )
 from .routers import settings as settings_router
 from .settings import get_settings
@@ -48,6 +51,9 @@ app.include_router(dreaming.router)
 app.include_router(model_config.router)
 app.include_router(system.router)
 app.include_router(settings_router.router)
+app.include_router(users.router)
+app.include_router(integrations.router)
+app.include_router(skills.router)
 
 register_scheduler(app)
 

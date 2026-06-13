@@ -1,6 +1,32 @@
-"""Intake knob and knowledge policy schemas."""
+"""Intake knob, general workspace, and knowledge policy schemas."""
+
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+Appearance = Literal["system", "dark", "light"]
+
+
+class GeneralSettings(BaseModel):
+    """Workspace level general settings, the defaults that frame the other surfaces.
+
+    general_instructions is the system level instruction prepended to model work. The rest are
+    presentation and locale preferences.
+    """
+
+    general_instructions: str
+    timezone: str
+    appearance: str
+    language: str
+    notifications: bool
+
+
+class GeneralSettingsPatch(BaseModel):
+    general_instructions: str | None = None
+    timezone: str | None = None
+    appearance: Appearance | None = None
+    language: str | None = None
+    notifications: bool | None = None
 
 
 class IntakeSettings(BaseModel):

@@ -19,6 +19,8 @@ class MeResponse(BaseModel):
     kind: str
     user_id: int | None = None
     email: str | None = None
+    name: str | None = None
+    role: str | None = None
 
 
 class CsrfResponse(BaseModel):

@@ -52,7 +52,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** Update Me */
+        patch: operations["update_me_auth_me_patch"];
         trace?: never;
     };
     "/auth/csrf": {
@@ -1015,6 +1016,24 @@ export interface paths {
         patch: operations["patch_settings_settings_patch"];
         trace?: never;
     };
+    "/settings/general": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get General */
+        get: operations["get_general_settings_general_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Patch General */
+        patch: operations["patch_general_settings_general_patch"];
+        trace?: never;
+    };
     "/settings/knowledge-policy": {
         parameters: {
             query?: never;
@@ -1031,6 +1050,126 @@ export interface paths {
         head?: never;
         /** Patch Knowledge Policy */
         patch: operations["patch_knowledge_policy_settings_knowledge_policy_patch"];
+        trace?: never;
+    };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Users */
+        get: operations["list_users_users_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite User */
+        post: operations["invite_user_users_invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove User */
+        delete: operations["remove_user_users__user_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update User */
+        patch: operations["update_user_users__user_id__patch"];
+        trace?: never;
+    };
+    "/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Integrations */
+        get: operations["list_integrations_integrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect */
+        post: operations["connect_integrations_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/integrations/{integration_id}/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disconnect */
+        post: operations["disconnect_integrations__integration_id__disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Skills */
+        get: operations["list_skills_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/healthz": {
@@ -1209,6 +1348,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ConnectRequest */
+        ConnectRequest: {
+            /** Provider */
+            provider: string;
         };
         /** ConnectedIntegration */
         ConnectedIntegration: {
@@ -1466,6 +1610,38 @@ export interface components {
              */
             gate_state: string;
         };
+        /**
+         * GeneralSettings
+         * @description Workspace level general settings, the defaults that frame the other surfaces.
+         *
+         *     general_instructions is the system level instruction prepended to model work. The rest are
+         *     presentation and locale preferences.
+         */
+        GeneralSettings: {
+            /** General Instructions */
+            general_instructions: string;
+            /** Timezone */
+            timezone: string;
+            /** Appearance */
+            appearance: string;
+            /** Language */
+            language: string;
+            /** Notifications */
+            notifications: boolean;
+        };
+        /** GeneralSettingsPatch */
+        GeneralSettingsPatch: {
+            /** General Instructions */
+            general_instructions?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Appearance */
+            appearance?: ("system" | "dark" | "light") | null;
+            /** Language */
+            language?: string | null;
+            /** Notifications */
+            notifications?: boolean | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1578,6 +1754,24 @@ export interface components {
             classify_sweep_interval?: number | null;
             /** Classify Batch */
             classify_batch?: number | null;
+        };
+        /** IntegrationRead */
+        IntegrationRead: {
+            /** Id */
+            id: number;
+            /** User Id */
+            user_id: number;
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+            /** Credentials Ref */
+            credentials_ref: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ItemBrief */
         ItemBrief: {
@@ -1766,6 +1960,10 @@ export interface components {
             user_id?: number | null;
             /** Email */
             email?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Role */
+            role?: string | null;
         };
         /** MemoryCandidateRead */
         MemoryCandidateRead: {
@@ -1849,6 +2047,14 @@ export interface components {
             started_at: string;
             /** Uptime Seconds */
             uptime_seconds: number;
+        };
+        /**
+         * ProfileUpdate
+         * @description Self profile edit from Settings, General.
+         */
+        ProfileUpdate: {
+            /** Name */
+            name?: string | null;
         };
         /** ProjectBrief */
         ProjectBrief: {
@@ -2104,6 +2310,26 @@ export interface components {
             /** Mode */
             mode: string;
         };
+        /** SkillEntry */
+        SkillEntry: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+            /** Model Key */
+            model_key: string;
+            /** Resolved Model */
+            resolved_model?: string | null;
+        };
+        /** SkillsResponse */
+        SkillsResponse: {
+            /** Skills */
+            skills: components["schemas"]["SkillEntry"][];
+            /** Connectors */
+            connectors: components["schemas"]["ConnectorHealth"][];
+        };
         /** SuggestedIntegration */
         SuggestedIntegration: {
             /** Provider */
@@ -2153,6 +2379,52 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** UserInvite */
+        UserInvite: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Role
+             * @default member
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+        };
+        /** UserRead */
+        UserRead: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /** Name */
+            name: string | null;
+            /** Role */
+            role: string;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * UserUpdate
+         * @description Change a user's role, display name, or status. Only supplied fields change.
+         */
+        UserUpdate: {
+            /** Role */
+            role?: ("owner" | "admin" | "member") | null;
+            /** Name */
+            name?: string | null;
+            /** Status */
+            status?: ("active" | "invited" | "removed") | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2265,6 +2537,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    update_me_auth_me_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4101,6 +4406,59 @@ export interface operations {
             };
         };
     };
+    get_general_settings_general_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneralSettings"];
+                };
+            };
+        };
+    };
+    patch_general_settings_general_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeneralSettingsPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneralSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_knowledge_policy_settings_knowledge_policy_get: {
         parameters: {
             query?: never;
@@ -4150,6 +4508,229 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_users_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"][];
+                };
+            };
+        };
+    };
+    invite_user_users_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserInvite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_user_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_user_users__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integrations_integrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationRead"][];
+                };
+            };
+        };
+    };
+    connect_integrations_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_integrations__integration_id__disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_skills_skills_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillsResponse"];
                 };
             };
         };

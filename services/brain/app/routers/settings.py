@@ -10,6 +10,8 @@ from app.db import get_db
 from app.models.user import User
 from app.models.workspace import AppSetting
 from app.schemas.settings import (
+    GeneralSettings,
+    GeneralSettingsPatch,
     IntakeSettings,
     IntakeSettingsPatch,
     KnowledgePolicy,
@@ -22,6 +24,16 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 INTAKE_KEY = "intake"
 KNOWLEDGE_POLICY_KEY = "knowledge_policy"
+GENERAL_KEY = "general"
+
+# US market defaults. general_instructions is the system level instruction, empty until set.
+GENERAL_DEFAULTS: dict = {
+    "general_instructions": "",
+    "timezone": "America/New_York",
+    "appearance": "system",
+    "language": "en-US",
+    "notifications": True,
+}
 
 # The human gate stays the default: ingestion off, approval required, connector memory off.
 KNOWLEDGE_POLICY_DEFAULTS: dict = {
@@ -88,6 +100,26 @@ def patch_settings(
     current.update(payload.model_dump(exclude_none=True))
     _persist(db, user, INTAKE_KEY, current)
     return IntakeSettings(**current)
+
+
+@router.get("/general", response_model=GeneralSettings)
+def get_general(
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> GeneralSettings:
+    return GeneralSettings(**_merged(db, user, GENERAL_KEY, GENERAL_DEFAULTS))
+
+
+@router.patch("/general", response_model=GeneralSettings)
+def patch_general(
+    payload: GeneralSettingsPatch,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> GeneralSettings:
+    current = _merged(db, user, GENERAL_KEY, GENERAL_DEFAULTS)
+    current.update(payload.model_dump(exclude_none=True))
+    _persist(db, user, GENERAL_KEY, current)
+    return GeneralSettings(**current)
 
 
 @router.get("/knowledge-policy", response_model=KnowledgePolicy)
