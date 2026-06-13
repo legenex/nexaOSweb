@@ -21,6 +21,7 @@ from app.db import get_db
 from app.json_extract import synthesize_json
 from app.models.inbox import ClassificationRecord, InboxItem
 from app.models.user import User
+from app.project_modes import is_valid_mode
 from app.safety import ensure_within_root
 from app.schemas.entities import ClassificationRecordRead, InboxItemRead
 from app.schemas.intake import ExpandRequest, ExpandResponse, ItemsPage
@@ -37,18 +38,24 @@ def capture(
     name: str = Form(...),
     body: str = Form(""),
     source: str = Form("note"),
+    mode: str = Form(""),
     file: UploadFile | None = File(None),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> InboxItem:
     settings = get_settings()
+    # A chosen project mode rides along on the capture stage entry so it reaches the project
+    # when Route or Process creates it. An unknown mode is ignored, the project default holds.
+    capture_entry: dict = {"stage": "capture", "state": "done"}
+    if is_valid_mode(mode):
+        capture_entry["mode"] = mode
     item = InboxItem(
         user_id=user.id,
         name=name.strip() or "Untitled",
         body=body,
         source=source,
         status="captured",
-        stage_history=[{"stage": "capture", "state": "done"}],
+        stage_history=[capture_entry],
     )
     db.add(item)
     db.flush()  # assign id before placing the upload
