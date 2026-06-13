@@ -17,6 +17,15 @@ class SetModeRequest(BaseModel):
     mode: str
 
 
+class ProjectRenameRequest(BaseModel):
+    name: str
+
+
+class DeleteFileResponse(BaseModel):
+    path: str
+    deleted: bool
+
+
 class ConnectedIntegration(BaseModel):
     provider: str
     status: str  # "connected" or "available"

@@ -210,6 +210,68 @@ def test_editor_rollback_of_new_file_removes_it(client, db_session, tmp_path, mo
     assert not (tmp_path / "app-one" / "notes.md").exists()
 
 
+def test_rename_project_changes_name_keeps_slug(client, db_session, tmp_path, monkeypatch):
+    _, _, project = _setup(db_session, tmp_path, monkeypatch)
+    res = client.patch(f"/projects/{project.id}", json={"name": "Renamed App"}, headers=BEARER)
+    assert res.status_code == 200
+    assert res.json()["name"] == "Renamed App"
+    assert res.json()["slug"] == "app-one"
+
+    blank = client.patch(f"/projects/{project.id}", json={"name": "   "}, headers=BEARER)
+    assert blank.status_code == 400
+
+
+def test_duplicate_project_copies_row_and_files(client, db_session, tmp_path, monkeypatch):
+    _, _, project = _setup(db_session, tmp_path, monkeypatch)
+    res = client.post(f"/projects/{project.id}/duplicate", headers=BEARER)
+    assert res.status_code == 201
+    copy = res.json()
+    assert copy["id"] != project.id
+    assert copy["name"] == "App One (copy)"
+    assert copy["slug"] != project.slug
+    assert copy["stage"] == "idea"
+    # The on disk folder was copied into the new slug folder.
+    files = client.get(f"/projects/{copy['id']}/files", headers=BEARER).json()
+    assert "project_plan.md" in {n["path"] for n in files["tree"]}
+    # Both the original and the copy are listed.
+    listed = {p["id"] for p in client.get("/projects", headers=BEARER).json()}
+    assert {project.id, copy["id"]} <= listed
+
+
+def test_soft_delete_hides_project_but_keeps_row(client, db_session, tmp_path, monkeypatch):
+    _, _, project = _setup(db_session, tmp_path, monkeypatch)
+    res = client.delete(f"/projects/{project.id}", headers=BEARER)
+    assert res.status_code == 204
+    # Gone from the list and no longer loadable, but the row survives for recovery.
+    listed = {p["id"] for p in client.get("/projects", headers=BEARER).json()}
+    assert project.id not in listed
+    assert client.get(f"/projects/{project.id}/overview", headers=BEARER).status_code == 404
+    db_session.expire_all()
+    assert db_session.get(Project, project.id) is not None
+
+
+def test_delete_file_removes_it_and_logs(client, db_session, tmp_path, monkeypatch):
+    _, _, project = _setup(db_session, tmp_path, monkeypatch)
+    res = client.delete(
+        f"/projects/{project.id}/files", params={"path": "project_plan.md"}, headers=BEARER
+    )
+    assert res.status_code == 200
+    assert res.json()["deleted"] is True
+    assert not (tmp_path / "app-one" / "project_plan.md").exists()
+    log = client.get(f"/projects/{project.id}/build-log", headers=BEARER).json()
+    assert any(e["action"] == "delete" and e["file_path"] == "project_plan.md" for e in log)
+
+    missing = client.delete(
+        f"/projects/{project.id}/files", params={"path": "project_plan.md"}, headers=BEARER
+    )
+    assert missing.status_code == 404
+
+    escape = client.delete(
+        f"/projects/{project.id}/files", params={"path": "../../etc/passwd"}, headers=BEARER
+    )
+    assert escape.status_code == 400
+
+
 def test_editor_propose_rejects_escaping_path(client, db_session, tmp_path, monkeypatch):
     _, _, project = _setup(db_session, tmp_path, monkeypatch)
     # No synthesize patch needed: the path gate fails before any model call.

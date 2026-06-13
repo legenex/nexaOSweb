@@ -4,8 +4,14 @@ The workspace exposes a project overview, its files tree and content, the build 
 update log, a project mode setter, and a gated AI editor. The editor proposes a change and
 returns a diff summary, writing nothing until an explicit approval arrives. Every file read
 and write is confined to the project's own folder by the path safety gate.
+
+Card level actions on a project (rename, duplicate, delete) and file deletion in the
+workspace live here too. Delete is a soft delete: it flags the project deleted in its
+workspace blob and keeps the row, its files, and its history, so a removed project is
+recoverable rather than physically destroyed.
 """
 
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
@@ -33,6 +39,7 @@ from app.schemas.entities import ProjectRead
 from app.schemas.projects import (
     BuildLogRead,
     ConnectedIntegration,
+    DeleteFileResponse,
     EditorApplyRequest,
     EditorApplyResponse,
     EditorProposal,
@@ -42,6 +49,7 @@ from app.schemas.projects import (
     FilesResponse,
     ProjectModeRead,
     ProjectOverview,
+    ProjectRenameRequest,
     RequiredFileStatus,
     RollbackRequest,
     RollbackResponse,
@@ -51,6 +59,7 @@ from app.schemas.projects import (
 from app.schemas.research import ProjectUpdateRead
 from app.security.auth import current_user
 from app.settings import get_settings
+from app.util import slugify
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -58,15 +67,35 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 _MAX_FILES = 2000
 
 
+def _is_deleted(project: Project) -> bool:
+    # A soft deleted project carries a deleted flag, set by build projects in the workspace
+    # blob and by research projects in research_config. Either hides the project from its list.
+    return bool((project.workspace or {}).get("deleted")) or bool(
+        (project.research_config or {}).get("deleted")
+    )
+
+
 def _load_owned_project(project_id: int, user: User, db: Session) -> Project:
     project = db.get(Project, project_id)
-    if project is None:
+    if project is None or _is_deleted(project):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "project not found")
     if project.item_id is not None:
         item = db.get(InboxItem, project.item_id)
         if item is None or item.user_id != user.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "project not found")
     return project
+
+
+def _unique_slug(db: Session, base: str) -> str:
+    """Return a project slug not already taken on disk identity, suffixing -2, -3 as needed."""
+    candidate = base or "project"
+    existing = {row.slug for row in db.query(Project.slug).all()}
+    if candidate not in existing:
+        return candidate
+    suffix = 2
+    while f"{candidate}-{suffix}"[:160] in existing:
+        suffix += 1
+    return f"{candidate}-{suffix}"[:160]
 
 
 def _connected_integrations(
@@ -95,15 +124,17 @@ def list_projects(
     db: Session = Depends(get_db),
 ) -> list[Project]:
     # Projects linked to the user's items, plus shared container projects (item_id null).
+    # Soft deleted projects are excluded so a removed project leaves the list.
     owned_item_ids = [
         row.id for row in db.query(InboxItem.id).filter(InboxItem.user_id == user.id).all()
     ]
-    return (
+    projects = (
         db.query(Project)
         .filter((Project.item_id.in_(owned_item_ids)) | (Project.item_id.is_(None)))
         .order_by(Project.created_at.desc(), Project.id.desc())
         .all()
     )
+    return [project for project in projects if not _is_deleted(project)]
 
 
 @router.get("/modes", response_model=list[ProjectModeRead])
@@ -118,6 +149,86 @@ def list_modes(_user: User = Depends(current_user)) -> list[ProjectModeRead]:
         )
         for mode in PROJECT_MODES.values()
     ]
+
+
+@router.patch("/{project_id}", response_model=ProjectRead)
+def rename_project(
+    project_id: int,
+    payload: ProjectRenameRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> Project:
+    project = _load_owned_project(project_id, user, db)
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "name cannot be empty")
+    # The slug stays fixed: it is the on disk folder identity. Only the display name changes.
+    project.name = name[:300]
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+@router.post(
+    "/{project_id}/duplicate", response_model=ProjectRead, status_code=status.HTTP_201_CREATED
+)
+def duplicate_project(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> Project:
+    source = _load_owned_project(project_id, user, db)
+    name = f"{source.name} (copy)"
+    slug = _unique_slug(db, slugify(name, fallback="project-copy"))
+    # The copy carries the same mode, plan, destination, integrations, and config, but starts
+    # fresh at the idea stage and is not soft deleted regardless of the source flag.
+    workspace = {k: v for k, v in (source.workspace or {}).items() if k != "deleted"}
+    research_config = {
+        k: v for k, v in (source.research_config or {}).items() if k != "deleted"
+    }
+    copy = Project(
+        item_id=source.item_id,
+        name=name[:300],
+        slug=slug,
+        stage="idea",
+        mode=source.mode,
+        plan_json=dict(source.plan_json or {}),
+        build_destination=source.build_destination,
+        selected_integrations=list(source.selected_integrations or []),
+        workspace=workspace,
+        research_target_id=source.research_target_id,
+        research_config=research_config,
+    )
+    db.add(copy)
+    db.commit()
+    db.refresh(copy)
+
+    # Copy the on disk project folder, if any, into the new slug folder. Both paths are gated.
+    settings = get_settings()
+    src_dir = ensure_within_root(settings.nexa_projects_root, source.slug)
+    dst_dir = ensure_within_root(settings.nexa_projects_root, copy.slug)
+    if src_dir.exists() and src_dir.is_dir() and not dst_dir.exists():
+        shutil.copytree(src_dir, dst_dir)
+        # The plan path, if set, pointed at the source folder; repoint it at the copy.
+        if source.plan_path:
+            plan_name = Path(source.plan_path).name
+            copy.plan_path = str(dst_dir / plan_name)
+            db.commit()
+            db.refresh(copy)
+    return copy
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    project = _load_owned_project(project_id, user, db)
+    # Soft delete: flag the project deleted in its workspace blob and keep the row, its files
+    # on disk, and its build and update history, so a removed project stays recoverable.
+    project.workspace = {**(project.workspace or {}), "deleted": True}
+    db.commit()
 
 
 @router.post("/{project_id}/mode", response_model=ProjectRead)
@@ -241,6 +352,49 @@ def file_content(
             status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "file is not text"
         ) from exc
     return FileContent(path=Path(path).as_posix(), content=content)
+
+
+@router.delete("/{project_id}/files", response_model=DeleteFileResponse)
+def delete_file(
+    project_id: int,
+    path: str = Query(..., description="path relative to the project folder"),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> DeleteFileResponse:
+    project = _load_owned_project(project_id, user, db)
+    settings = get_settings()
+    project_dir = ensure_within_root(settings.nexa_projects_root, project.slug)
+    try:
+        target = ensure_within_root(project_dir, path)
+    except PathSafetyError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "path escapes the project folder") from exc
+    if target == project_dir:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "cannot delete the project folder")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "file not found")
+
+    # Snapshot the prior content for the audit log and possible recovery, when it is text.
+    try:
+        before = target.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        before = None
+
+    relative = Path(path).as_posix()
+    target.unlink()
+    db.add(
+        BuildLogEntry(
+            project_id=project.id,
+            action="delete",
+            status="applied",
+            summary=f"Deleted {relative}",
+            file_path=relative,
+            diff_summary=f"Removed file {relative}",
+            before_content=before,
+            after_content=None,
+        )
+    )
+    db.commit()
+    return DeleteFileResponse(path=relative, deleted=True)
 
 
 @router.get("/{project_id}/build-log", response_model=list[BuildLogRead])
