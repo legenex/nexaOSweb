@@ -656,6 +656,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Insights */
+        get: operations["get_insights_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Insights */
+        post: operations["refresh_insights_insights_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_insights_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/{insight_id}/save-to-knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save To Knowledge */
+        post: operations["save_to_knowledge_insights__insight_id__save_to_knowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/{insight_id}/create-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Task */
+        post: operations["create_task_insights__insight_id__create_task_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/{insight_id}/create-project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Project */
+        post: operations["create_project_insights__insight_id__create_project_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/insights/{insight_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismiss */
+        post: operations["dismiss_insights__insight_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/knowledge": {
         parameters: {
             query?: never;
@@ -981,6 +1100,11 @@ export interface components {
              * @default note
              */
             source: string;
+            /**
+             * Mode
+             * @default
+             */
+            mode: string;
             /** File */
             file?: string | null;
         };
@@ -1110,6 +1234,24 @@ export interface components {
             label: string;
             /** Blended Per Mtok */
             blended_per_mtok?: number | null;
+        };
+        /** CreateProjectResponse */
+        CreateProjectResponse: {
+            /** Insight Id */
+            insight_id: number;
+            /** Project Id */
+            project_id: number;
+            /** Status */
+            status: string;
+        };
+        /** CreateTaskResponse */
+        CreateTaskResponse: {
+            /** Insight Id */
+            insight_id: number;
+            /** Task Id */
+            task_id: number;
+            /** Status */
+            status: string;
         };
         /** CsrfResponse */
         CsrfResponse: {
@@ -1350,6 +1492,70 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** InsightRead */
+        InsightRead: {
+            /** Id */
+            id: number;
+            /** Run Id */
+            run_id: number;
+            /** Category */
+            category: string;
+            /** Idea Kind */
+            idea_kind: string | null;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Confidence */
+            confidence: number;
+            /** Source */
+            source: string;
+            /** Reasoning */
+            reasoning: string;
+            /** Source Refs */
+            source_refs: unknown[];
+            /** Status */
+            status: string;
+            /** Action Ref */
+            action_ref: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * InsightsResponse
+         * @description The cached latest batch, grouped by category for the four surfaces.
+         */
+        InsightsResponse: {
+            /** Run Id */
+            run_id: number | null;
+            /** Generated At */
+            generated_at: string | null;
+            /** Extraction Model Key */
+            extraction_model_key: string | null;
+            /** Synthesis Model Key */
+            synthesis_model_key: string | null;
+            /**
+             * Personal Patterns
+             * @default []
+             */
+            personal_patterns: components["schemas"]["InsightRead"][];
+            /**
+             * Work Patterns
+             * @default []
+             */
+            work_patterns: components["schemas"]["InsightRead"][];
+            profile_summary?: components["schemas"]["InsightRead"] | null;
+            /**
+             * Innovation
+             * @default []
+             */
+            innovation: components["schemas"]["InsightRead"][];
         };
         /** IntakeSettings */
         IntakeSettings: {
@@ -1881,6 +2087,15 @@ export interface components {
             build_log_id: number;
             /** File Path */
             file_path: string;
+            /** Status */
+            status: string;
+        };
+        /** SaveToKnowledgeResponse */
+        SaveToKnowledgeResponse: {
+            /** Insight Id */
+            insight_id: number;
+            /** Knowledge Entry Id */
+            knowledge_entry_id: number;
             /** Status */
             status: string;
         };
@@ -3217,6 +3432,201 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KnowledgeEntryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_insights_insights_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsResponse"];
+                };
+            };
+        };
+    };
+    refresh_insights_insights_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsResponse"];
+                };
+            };
+        };
+    };
+    get_run_insights_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_to_knowledge_insights__insight_id__save_to_knowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                insight_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaveToKnowledgeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_insights__insight_id__create_task_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                insight_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateTaskResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_project_insights__insight_id__create_project_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                insight_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateProjectResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismiss_insights__insight_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                insight_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsightRead"];
                 };
             };
             /** @description Validation Error */

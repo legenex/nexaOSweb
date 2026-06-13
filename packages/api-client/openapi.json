@@ -1753,6 +1753,258 @@
         }
       }
     },
+    "/insights": {
+      "get": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Get Insights",
+        "operationId": "get_insights_insights_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/refresh": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Refresh Insights",
+        "operationId": "refresh_insights_insights_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_insights_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/save-to-knowledge": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Save To Knowledge",
+        "operationId": "save_to_knowledge_insights__insight_id__save_to_knowledge_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveToKnowledgeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/create-task": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Create Task",
+        "operationId": "create_task_insights__insight_id__create_task_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTaskResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/create-project": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Create Project",
+        "operationId": "create_project_insights__insight_id__create_project_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateProjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/insights/{insight_id}/dismiss": {
+      "post": {
+        "tags": [
+          "insights"
+        ],
+        "summary": "Dismiss",
+        "operationId": "dismiss_insights__insight_id__dismiss_post",
+        "parameters": [
+          {
+            "name": "insight_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Insight Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/knowledge": {
       "get": {
         "tags": [
@@ -2656,6 +2908,11 @@
             "title": "Source",
             "default": "note"
           },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": ""
+          },
           "file": {
             "anyOf": [
               {
@@ -2979,6 +3236,52 @@
           "label"
         ],
         "title": "CostHint"
+      },
+      "CreateProjectResponse": {
+        "properties": {
+          "insight_id": {
+            "type": "integer",
+            "title": "Insight Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insight_id",
+          "project_id",
+          "status"
+        ],
+        "title": "CreateProjectResponse"
+      },
+      "CreateTaskResponse": {
+        "properties": {
+          "insight_id": {
+            "type": "integer",
+            "title": "Insight Id"
+          },
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insight_id",
+          "task_id",
+          "status"
+        ],
+        "title": "CreateTaskResponse"
       },
       "CsrfResponse": {
         "properties": {
@@ -3594,6 +3897,181 @@
           "created_at"
         ],
         "title": "InboxItemRead"
+      },
+      "InsightRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "idea_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idea Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "reasoning": {
+            "type": "string",
+            "title": "Reasoning"
+          },
+          "source_refs": {
+            "items": {},
+            "type": "array",
+            "title": "Source Refs"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "action_ref": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Action Ref"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "category",
+          "idea_kind",
+          "title",
+          "body",
+          "confidence",
+          "source",
+          "reasoning",
+          "source_refs",
+          "status",
+          "action_ref",
+          "created_at"
+        ],
+        "title": "InsightRead"
+      },
+      "InsightsResponse": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "extraction_model_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Model Key"
+          },
+          "synthesis_model_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synthesis Model Key"
+          },
+          "personal_patterns": {
+            "items": {
+              "$ref": "#/components/schemas/InsightRead"
+            },
+            "type": "array",
+            "title": "Personal Patterns",
+            "default": []
+          },
+          "work_patterns": {
+            "items": {
+              "$ref": "#/components/schemas/InsightRead"
+            },
+            "type": "array",
+            "title": "Work Patterns",
+            "default": []
+          },
+          "profile_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InsightRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "innovation": {
+            "items": {
+              "$ref": "#/components/schemas/InsightRead"
+            },
+            "type": "array",
+            "title": "Innovation",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "generated_at",
+          "extraction_model_key",
+          "synthesis_model_key"
+        ],
+        "title": "InsightsResponse",
+        "description": "The cached latest batch, grouped by category for the four surfaces."
       },
       "IntakeSettings": {
         "properties": {
@@ -5098,6 +5576,29 @@
           "status"
         ],
         "title": "RollbackResponse"
+      },
+      "SaveToKnowledgeResponse": {
+        "properties": {
+          "insight_id": {
+            "type": "integer",
+            "title": "Insight Id"
+          },
+          "knowledge_entry_id": {
+            "type": "integer",
+            "title": "Knowledge Entry Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insight_id",
+          "knowledge_entry_id",
+          "status"
+        ],
+        "title": "SaveToKnowledgeResponse"
       },
       "SetModeRequest": {
         "properties": {
