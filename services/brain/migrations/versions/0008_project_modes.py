@@ -18,7 +18,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # Additive columns on projects. Server defaults backfill existing rows; the ORM owns
-    # the value going forward.
+    # the value going forward. mode and workspace use constant defaults. updated_at uses a
+    # constant placeholder default (not func.now) because SQLite, the dev target, rejects a
+    # non constant default on a NOT NULL ADD COLUMN; existing rows are then backfilled from
+    # created_at. Postgres accepts the same constant default.
     op.add_column(
         "projects",
         sa.Column("mode", sa.String(length=40), nullable=False, server_default="app"),
@@ -33,9 +36,10 @@ def upgrade() -> None:
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
-            server_default=sa.func.now(),
+            server_default=sa.text("'1970-01-01 00:00:00'"),
         ),
     )
+    op.execute("UPDATE projects SET updated_at = created_at")
 
     op.create_table(
         "build_log_entries",
