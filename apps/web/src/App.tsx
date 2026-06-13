@@ -12,6 +12,7 @@ import { Login } from './components/Login';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { FlowPanorama } from './features/flow/FlowPanorama';
+import { InsightsView } from './features/insights/InsightsView';
 import { FlowProvider } from './features/flow/FlowProvider';
 import { ProjectsView } from './features/projects/ProjectsView';
 import { ResearchView } from './features/research/ResearchView';
@@ -46,6 +47,8 @@ function Surface({ active, label }: { active: string; label: string }) {
   switch (active) {
     case 'dashboard':
       return <DashboardView />;
+    case 'insights':
+      return <InsightsView />;
     case 'project-builder':
       return <FlowPanorama />;
     case 'projects':
