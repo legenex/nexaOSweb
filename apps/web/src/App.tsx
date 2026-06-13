@@ -99,36 +99,46 @@ function Shell() {
 
   return (
     <FlowProvider>
-    <NavigationContext.Provider value={setActive}>
-    <div className="flex h-screen w-screen flex-col overflow-hidden">
-      <DesktopTitleBar />
-      <div className="flex flex-1 overflow-hidden">
-      <Sidebar active={active} onSelect={setActive} />
-      <main className="relative flex-1 overflow-auto p-8">
-        <HolographicBackdrop />
-        {HOLO_VARIANT[active] ? (
-          <HoloObject
-            variant={HOLO_VARIANT[active]!}
-            className="pointer-events-none absolute right-6 top-4 z-0 opacity-60"
-          />
-        ) : null}
-        <div className="relative z-10 mb-4 flex items-center justify-between">
-          <PageHeader title={current.label} label={`${current.key} ${current.description}`} />
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="mono-label rounded-md border border-line px-3 py-1 hover:text-accent"
-          >
-            {me?.email ? `sign out ${me.email}` : 'sign out'}
-          </button>
+      <NavigationContext.Provider value={setActive}>
+        <div className="flex h-screen w-screen flex-col overflow-hidden">
+          <DesktopTitleBar />
+          <div className="flex flex-1 overflow-hidden">
+            <Sidebar active={active} onSelect={setActive} />
+            <main className="relative flex-1 overflow-auto p-8">
+              <HolographicBackdrop />
+              {HOLO_VARIANT[active] ? (
+                // A full bleed clipping layer behind the content. It is absolutely positioned and
+                // overflow hidden, so the large object can bleed past the edges without ever adding
+                // a scrollbar or shifting layout, and pointer-events-none keeps it from blocking the
+                // content above it (which sits on z-10).
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+                >
+                  <HoloObject
+                    variant={HOLO_VARIANT[active]!}
+                    size={520}
+                    className="absolute -bottom-20 -right-16 opacity-30"
+                  />
+                </div>
+              ) : null}
+              <div className="relative z-10 mb-4 flex items-center justify-between">
+                <PageHeader title={current.label} label={`${current.key} ${current.description}`} />
+                <button
+                  type="button"
+                  onClick={() => void logout()}
+                  className="mono-label rounded-md border border-line px-3 py-1 hover:text-accent"
+                >
+                  {me?.email ? `sign out ${me.email}` : 'sign out'}
+                </button>
+              </div>
+              <div className="relative z-10">
+                <Surface active={active} label={current.label} />
+              </div>
+            </main>
+          </div>
         </div>
-        <div className="relative z-10">
-          <Surface active={active} label={current.label} />
-        </div>
-      </main>
-      </div>
-    </div>
-    </NavigationContext.Provider>
+      </NavigationContext.Provider>
     </FlowProvider>
   );
 }
