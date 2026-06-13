@@ -1,12 +1,12 @@
-import { useState } from 'react';
-
 import { SETTINGS_TABS } from '../../app/nav';
 import { KnowledgePanel } from './knowledge/KnowledgePanel';
 import { ModelsAgentsPanel } from './ModelsAgentsPanel';
 import { SystemPanel } from './SystemPanel';
 
-// What each settings sub tab will hold. One line each, so the routes read as intent until the
-// real panels land. Orange is the only brand color, all surfaces come from CSS variables.
+// The Settings surface is driven by the sidebar: it expands inline to the seven sub tabs and
+// routes straight to one via the composite settings:<subtab> nav key. This view renders the
+// panel for the active sub tab. Models and Agents, Knowledge, and System keep their panels;
+// the remaining tabs are built out over their endpoints in a following change.
 const TAB_BLURB: Record<string, string> = {
   general: 'Workspace name, locale, and the defaults that frame every other surface.',
   users: 'People with access, their roles, and invitations.',
@@ -30,37 +30,14 @@ function TabBody({ tabKey }: { tabKey: string }) {
   }
 }
 
-export function SettingsView() {
-  const [tab, setTab] = useState(SETTINGS_TABS[0]!.key);
+export function SettingsView({ tab }: { tab: string }) {
   const current = SETTINGS_TABS.find((t) => t.key === tab) ?? SETTINGS_TABS[0]!;
 
   return (
-    <section className="flex gap-6">
-      <nav aria-label="Settings" className="flex w-[180px] shrink-0 flex-col gap-1">
-        {SETTINGS_TABS.map((t) => {
-          const isActive = t.key === tab;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              aria-current={isActive ? 'page' : undefined}
-              className={[
-                'rounded-md px-3 py-2 text-left text-sm transition',
-                isActive ? 'bg-accent text-canvas' : 'text-cream/80 hover:bg-white/5',
-              ].join(' ')}
-            >
-              {t.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="border-electric flex-1 rounded-glass border border-line bg-surface/60 p-6">
-        <div className="mono-label">settings / {current.key}</div>
-        <h2 className="mt-2 mb-4 text-lg font-semibold text-cream">{current.label}</h2>
-        <TabBody tabKey={current.key} />
-      </div>
+    <section className="border-electric rounded-glass border border-line bg-surface/60 p-6">
+      <div className="mono-label">settings / {current.key}</div>
+      <h2 className="mb-4 mt-2 text-lg font-semibold text-cream">{current.label}</h2>
+      <TabBody tabKey={current.key} />
     </section>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { AuthProvider, useAuth } from './app/AuthProvider';
-import { DEFAULT_NAV_KEY, NAV_ITEMS } from './app/nav';
+import { DEFAULT_NAV_KEY, NAV_ITEMS, navBaseKey, settingsTabKey } from './app/nav';
 import { NavigationContext } from './app/navigation';
 import { ComingSoon } from './components/ComingSoon';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
@@ -43,8 +43,10 @@ function Placeholder({ label }: { label: string }) {
 }
 
 // Every nav key resolves to a surface. Project Builder renders the internal Flow panorama.
+// Settings uses a composite key (settings or settings:<subtab>), so we switch on the base key
+// and pass the resolved sub tab through to the SettingsView.
 function Surface({ active, label }: { active: string; label: string }) {
-  switch (active) {
+  switch (navBaseKey(active)) {
     case 'dashboard':
       return <DashboardView />;
     case 'insights':
@@ -56,7 +58,7 @@ function Surface({ active, label }: { active: string; label: string }) {
     case 'research':
       return <ResearchView />;
     case 'settings':
-      return <SettingsView />;
+      return <SettingsView tab={settingsTabKey(active)} />;
     case 'journal':
       return (
         <ComingSoon
@@ -93,9 +95,9 @@ const HOLO_VARIANT: Record<string, HoloVariant> = {
 };
 
 function Shell() {
-  const { me, logout } = useAuth();
   const [active, setActive] = useState(DEFAULT_NAV_KEY);
-  const current = NAV_ITEMS.find((item) => item.key === active) ?? NAV_ITEMS[0]!;
+  const baseKey = navBaseKey(active);
+  const current = NAV_ITEMS.find((item) => item.key === baseKey) ?? NAV_ITEMS[0]!;
 
   return (
     <FlowProvider>
@@ -106,7 +108,7 @@ function Shell() {
             <Sidebar active={active} onSelect={setActive} />
             <main className="relative flex-1 overflow-auto p-8">
               <HolographicBackdrop />
-              {HOLO_VARIANT[active] ? (
+              {HOLO_VARIANT[baseKey] ? (
                 // A full bleed clipping layer behind the content. It is absolutely positioned and
                 // overflow hidden, so the large object can bleed past the edges without ever adding
                 // a scrollbar or shifting layout, and pointer-events-none keeps it from blocking the
@@ -116,21 +118,14 @@ function Shell() {
                   className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
                 >
                   <HoloObject
-                    variant={HOLO_VARIANT[active]!}
+                    variant={HOLO_VARIANT[baseKey]!}
                     size={520}
                     className="absolute -bottom-20 -right-16 opacity-30"
                   />
                 </div>
               ) : null}
-              <div className="relative z-10 mb-4 flex items-center justify-between">
+              <div className="relative z-10 mb-4">
                 <PageHeader title={current.label} label={`${current.key} ${current.description}`} />
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  className="mono-label rounded-md border border-line px-3 py-1 hover:text-accent"
-                >
-                  {me?.email ? `sign out ${me.email}` : 'sign out'}
-                </button>
               </div>
               <div className="relative z-10">
                 <Surface active={active} label={current.label} />

@@ -11,6 +11,8 @@ export interface Me {
   kind: string;
   user_id: number | null;
   email: string | null;
+  name?: string | null;
+  role?: string | null;
 }
 
 interface AuthState {
