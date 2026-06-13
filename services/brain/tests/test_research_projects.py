@@ -67,7 +67,7 @@ def test_duplicate_and_delete(client, seed_user, db_session, monkeypatch):
 def test_generate_config(client, seed_user, monkeypatch):
     _enable_bearer(monkeypatch)
 
-    def fake_synth(key, prompt, schema):
+    def fake_synth(key, prompt, schema, **_):
         assert key == "research_synthesis"
         return {
             "purpose": "Understand the residential solar market.",
@@ -94,7 +94,7 @@ def test_generate_config(client, seed_user, monkeypatch):
 def test_run_carries_analysis_and_suggestions(client, seed_user, monkeypatch):
     _enable_bearer(monkeypatch)
 
-    def fake_synth(key, prompt, schema):
+    def fake_synth(key, prompt, schema, **_):
         return {
             "summary": "Two findings.",
             "analysis": "The market is fragmented and price sensitive.",
@@ -112,3 +112,24 @@ def test_run_carries_analysis_and_suggestions(client, seed_user, monkeypatch):
     assert body["key_takeaways"] == ["fragmented", "price sensitive"]
     assert body["suggestions"] == ["target installers"]
     assert body["findings_count"] == 2
+
+
+def test_generate_is_honest_without_a_model(client, seed_user, monkeypatch):
+    # No provider key and no injected model: generate must fail clearly, not return stubs.
+    _enable_bearer(monkeypatch)
+    response = client.post(
+        "/research/generate-config",
+        json={"topic": "residential solar", "name": "Solar scan"},
+        headers=BEARER,
+    )
+    assert response.status_code == 503
+
+
+def test_run_is_honest_without_a_model(client, seed_user, monkeypatch):
+    # A run with no model fails and writes no placeholder findings.
+    _enable_bearer(monkeypatch)
+    pid = _create(client).json()["id"]
+    run = client.post(f"/research/{pid}/runs", headers=BEARER)
+    assert run.status_code == 503
+    findings = client.get(f"/research/{pid}/findings", headers=BEARER).json()
+    assert findings == []

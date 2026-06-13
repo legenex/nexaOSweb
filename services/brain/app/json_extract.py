@@ -46,12 +46,22 @@ def parse_json(content: str) -> dict[str, Any]:
         return json.loads(match.group(0))
 
 
+class ModelUnavailableError(RuntimeError):
+    """Raised when a real model is required but none is configured or the call fails.
+
+    Used by user initiated AI actions (for example research Generate with AI and a research
+    run) that must surface an honest failure rather than presenting the offline placeholder
+    fallback as a genuine model result.
+    """
+
+
 def synthesize_json(
     key: str,
     prompt: str,
     schema: dict[str, Any] | None = None,
     *,
     router: ModelRouter | None = None,
+    allow_offline: bool = True,
 ) -> dict[str, Any]:
     router = router or get_router()
     system = (
@@ -67,14 +77,19 @@ def synthesize_json(
     ]
 
     # With no provider key and no injected completion (tests), use the offline fallback
-    # rather than calling a provider that would fail.
+    # rather than calling a provider that would fail. When allow_offline is False the caller
+    # requires a real model, so raise instead of returning placeholder content.
     if not has_provider_keys() and model_router._completion_fn is None:
+        if not allow_offline:
+            raise ModelUnavailableError("no model provider is configured")
         return offline_synthesize(prompt, schema)
 
     try:
         response = router.route_completion(key, messages)
         return parse_json(_extract_content(response))
-    except Exception:  # noqa: BLE001  fall back so the pipeline still produces output
+    except Exception as exc:  # noqa: BLE001  fall back so the pipeline still produces output
+        if not allow_offline:
+            raise ModelUnavailableError("the model call failed") from exc
         logger.warning("provider synthesis failed for key %s, using offline fallback", key)
         return offline_synthesize(prompt, schema)
 

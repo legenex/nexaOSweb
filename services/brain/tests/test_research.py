@@ -10,7 +10,7 @@ def _enable_bearer(monkeypatch):
     monkeypatch.setattr(get_settings(), "nexa_desktop_bearer", "test-bearer")
 
 
-def _fake_synth(key, prompt, schema):
+def _fake_synth(key, prompt, schema, **_):
     # Deterministic findings so the run is independent of any provider.
     return {
         "summary": "Two grounded findings about the build.",

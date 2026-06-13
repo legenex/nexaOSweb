@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.research import generate_config, run_research
 from app.db import get_db
+from app.json_extract import ModelUnavailableError
 from app.models.knowledge import KnowledgeEntry
 from app.models.project import Project
 from app.models.research import ProjectUpdate, ResearchFinding, ResearchRun
@@ -204,7 +205,14 @@ def generate_research_config(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> GenerateConfigResponse:
-    draft = generate_config(payload.topic, payload.name)
+    # Require a real model: never present the offline placeholder fallback as a generated draft.
+    try:
+        draft = generate_config(payload.topic, payload.name, allow_offline=False)
+    except ModelUnavailableError as exc:
+        raise HTTPException(
+            http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Generate with AI is unavailable: no model is configured.",
+        ) from exc
     return GenerateConfigResponse(**draft)
 
 
@@ -251,7 +259,14 @@ def trigger_run(
     db: Session = Depends(get_db),
 ) -> ResearchRun:
     research = _load_project(research_id, db)
-    run = run_research(db, research)
+    # Require a real model so a run never writes placeholder findings as if generated.
+    try:
+        run = run_research(db, research, allow_offline=False)
+    except ModelUnavailableError as exc:
+        raise HTTPException(
+            http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Run is unavailable: no model is configured.",
+        ) from exc
     # Attach the run's findings as a transient attribute for the response.
     run.findings = (
         db.query(ResearchFinding)

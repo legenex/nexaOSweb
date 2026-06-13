@@ -114,8 +114,13 @@ def run_research(
     project: Project,
     *,
     synthesize: Synthesizer | None = None,
+    allow_offline: bool = True,
 ) -> ResearchRun:
-    """Run one research pass. On completion, post findings into the attached build project."""
+    """Run one research pass. On completion, post findings into the attached build project.
+
+    With allow_offline False a real model is required; if none is available the run is marked
+    failed and the error propagates, rather than writing placeholder findings.
+    """
     synthesize = synthesize or synthesize_json
     run = ResearchRun(project_id=project.id, status="running", summary="")
     db.add(run)
@@ -123,7 +128,9 @@ def run_research(
     db.refresh(run)
 
     try:
-        result = synthesize(RESEARCH_MODEL_KEY, _prompt(project), _SCHEMA)
+        result = synthesize(
+            RESEARCH_MODEL_KEY, _prompt(project), _SCHEMA, allow_offline=allow_offline
+        )
         summary = str(result.get("summary", "")).strip()
         findings = _coerce_findings(result.get("findings"))
         target_id = project.research_target_id
@@ -178,8 +185,13 @@ def generate_config(
     name: str = "",
     *,
     synthesize: Synthesizer | None = None,
+    allow_offline: bool = True,
 ) -> dict[str, Any]:
-    """Draft a research config (purpose, goals, depth, lookback, schedule) from a topic."""
+    """Draft a research config (purpose, goals, depth, lookback, schedule) from a topic.
+
+    With allow_offline False a real model is required; if none is available a
+    ModelUnavailableError propagates rather than returning placeholder content.
+    """
     synthesize = synthesize or synthesize_json
     prompt = (
         "Draft a research configuration for the topic below.\n\n"
@@ -188,7 +200,7 @@ def generate_config(
         "Return a one sentence purpose, three to five concrete goals, a depth of quick, standard, "
         "or deep, a lookback in days, and a schedule of off, daily, or weekly."
     )
-    result = synthesize(RESEARCH_MODEL_KEY, prompt, _CONFIG_SCHEMA)
+    result = synthesize(RESEARCH_MODEL_KEY, prompt, _CONFIG_SCHEMA, allow_offline=allow_offline)
 
     depth = result.get("depth")
     if depth not in ("quick", "standard", "deep"):
