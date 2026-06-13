@@ -4,7 +4,6 @@ import { apiFetch } from '../app/api';
 import { useNavigation } from '../app/navigation';
 import { useReducedMotion } from '../app/useReducedMotion';
 import { useFlow } from '../features/flow/FlowProvider';
-import { HoloObject } from './HoloObject';
 import { DocumentIcon, ImageIcon, JournalIcon, VoiceIcon } from './paletteIcons';
 import { MonoLabel } from './primitives';
 
@@ -284,19 +283,12 @@ export function CommandBar() {
             aria-modal="true"
             aria-label="Ask Nexa"
             onMouseDown={(event) => event.stopPropagation()}
-            className={`border-electric relative w-full max-w-xl overflow-hidden rounded-glass border border-line bg-surface/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-md ${
+            className={`border-electric border-electric-on relative w-full max-w-xl rounded-glass border border-line bg-surface/95 p-7 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-md ${
               reduced ? '' : 'palette-pop'
             }`}
           >
-            {/* Holographic accent, kept faint behind the content. */}
-            <HoloObject
-              variant="insights"
-              size={96}
-              className="pointer-events-none absolute -right-2 -top-2 z-0 opacity-40"
-            />
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-2">
+            <div>
+              <div className="flex items-center gap-4">
                 <span aria-hidden className="text-lg text-accent">
                   ⌕
                 </span>
@@ -313,8 +305,9 @@ export function CommandBar() {
                   className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-cream outline-none placeholder:text-muted"
                 />
 
-                {/* Action row: four upload affordances on the right of the input. */}
-                <div className="flex shrink-0 items-center gap-1">
+                {/* Action row: four upload affordances, set off from the input edge as a
+                    clearly separated cluster. */}
+                <div className="flex shrink-0 items-center gap-2 border-l border-line pl-4">
                   {actions.map((action) => (
                     <button
                       key={action.key}
@@ -337,12 +330,12 @@ export function CommandBar() {
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-6 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => void ask()}
                   disabled={!text.trim() || busy !== null}
-                  className="mono-label flex-1 rounded-md border border-accent px-3 py-1.5 text-accent hover:bg-accent/10 disabled:opacity-50"
+                  className="mono-label flex-1 rounded-md border border-accent px-4 py-2.5 text-accent hover:bg-accent/10 disabled:opacity-50"
                 >
                   {busy === 'ask' ? 'asking' : 'ask'}
                 </button>
@@ -350,14 +343,14 @@ export function CommandBar() {
                   type="button"
                   onClick={() => void doCapture()}
                   disabled={!text.trim() || busy !== null}
-                  className="mono-label flex-1 rounded-md bg-accent px-3 py-1.5 text-black hover:bg-accent-hi disabled:opacity-50"
+                  className="mono-label flex-1 rounded-md bg-accent px-4 py-2.5 text-black hover:bg-accent-hi disabled:opacity-50"
                 >
                   {busy === 'capture' ? 'capturing' : 'capture'}
                 </button>
               </div>
 
               {recording ? (
-                <p className="mt-2 flex items-center gap-2 text-sm text-muted">
+                <p className="mt-4 flex items-center gap-2 text-sm text-muted">
                   <span
                     aria-hidden
                     className="inline-block h-2 w-2 rounded-full bg-danger"
@@ -367,11 +360,11 @@ export function CommandBar() {
                 </p>
               ) : null}
               {busy === 'voice' && !recording ? (
-                <p className="mt-2 text-sm text-muted">Transcribing voice note.</p>
+                <p className="mt-4 text-sm text-muted">Transcribing voice note.</p>
               ) : null}
 
               {result ? (
-                <div className="mt-3 border-t border-line pt-3">
+                <div className="mt-5 border-t border-line pt-4">
                   <div className="mb-1 flex items-center justify-between">
                     <MonoLabel tone="accent">
                       {result.kind === 'answer'

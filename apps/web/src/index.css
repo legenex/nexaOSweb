@@ -133,6 +133,21 @@
     0 0 6px color-mix(in srgb, var(--gate-gold) 25%, transparent);
 }
 
+/* Always on variant. An active modal (the Ask Nexa palette) adds this so the current runs
+   continuously while it is open, not only on hover. It mirrors the hover treatment, so the
+   reduced motion fallback at the file end covers it too. */
+.border-electric-on::before {
+  opacity: 1;
+  animation: border-travel 2.4s linear infinite;
+}
+
+.border-electric-on {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--accent) 38%, transparent),
+    0 0 6px color-mix(in srgb, var(--gate-gold) 25%, transparent);
+}
+
 @keyframes border-travel {
   to {
     --be-angle: 360deg;
@@ -305,12 +320,14 @@
   }
 
   /* Electric border under reduced motion: no travelling light, a static intensified glow
-     and a brighter accent edge instead. */
-  .border-electric:hover::before {
+     and a brighter accent edge instead. Applies to the hover and the always on variants. */
+  .border-electric:hover::before,
+  .border-electric-on::before {
     opacity: 0;
   }
 
-  .border-electric:hover {
+  .border-electric:hover,
+  .border-electric-on {
     border-color: var(--accent);
     box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 55%, transparent);
   }
