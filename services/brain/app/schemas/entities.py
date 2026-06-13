@@ -55,6 +55,7 @@ class ProjectRead(ORMModel):
     plan_json: dict[str, Any]
     build_destination: str | None
     selected_integrations: list[Any]
+    research_target_id: int | None
     created_at: datetime
 
 

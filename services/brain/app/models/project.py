@@ -20,6 +20,10 @@ class Project(Base, TimestampMixin):
     plan_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     build_destination: Mapped[str | None] = mapped_column(String(200), nullable=True)
     selected_integrations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    # When this is a research project attached to a build project, the target build project.
+    research_target_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id"), index=True, nullable=True
+    )
 
 
 class Integration(Base, TimestampMixin):

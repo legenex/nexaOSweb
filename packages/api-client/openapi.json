@@ -796,6 +796,52 @@
         }
       }
     },
+    "/projects/{project_id}/updates": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "List Updates",
+        "operationId": "list_updates_projects__project_id__updates_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectUpdateRead"
+                  },
+                  "title": "Response List Updates Projects  Project Id  Updates Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{project_id}/approve": {
       "post": {
         "tags": [
@@ -872,6 +918,358 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProjectRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/{research_id}/attach": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Attach",
+        "operationId": "attach_research__research_id__attach_post",
+        "parameters": [
+          {
+            "name": "research_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Research Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/{research_id}/detach": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Detach",
+        "operationId": "detach_research__research_id__detach_post",
+        "parameters": [
+          {
+            "name": "research_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Research Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/{research_id}/runs": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Trigger Run",
+        "operationId": "trigger_run_research__research_id__runs_post",
+        "parameters": [
+          {
+            "name": "research_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Research Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResearchRunRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_research__research_id__runs_get",
+        "parameters": [
+          {
+            "name": "research_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Research Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResearchRunRead"
+                  },
+                  "title": "Response List Runs Research  Research Id  Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/{research_id}/findings": {
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "List Findings",
+        "operationId": "list_findings_research__research_id__findings_get",
+        "parameters": [
+          {
+            "name": "research_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Research Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResearchFindingRead"
+                  },
+                  "title": "Response List Findings Research  Research Id  Findings Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/findings/{finding_id}/to-task": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Finding To Task",
+        "operationId": "finding_to_task_research_findings__finding_id__to_task_post",
+        "parameters": [
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/findings/{finding_id}/to-update": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Finding To Update",
+        "operationId": "finding_to_update_research_findings__finding_id__to_update_post",
+        "parameters": [
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectUpdateRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/findings/{finding_id}/to-knowledge": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Finding To Knowledge",
+        "operationId": "finding_to_knowledge_research_findings__finding_id__to_knowledge_post",
+        "parameters": [
+          {
+            "name": "finding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Finding Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntryRead"
                 }
               }
             }
@@ -1762,6 +2160,19 @@
           "model_key"
         ],
         "title": "AgentBinding"
+      },
+      "AttachRequest": {
+        "properties": {
+          "target_project_id": {
+            "type": "integer",
+            "title": "Target Project Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_project_id"
+        ],
+        "title": "AttachRequest"
       },
       "Body_capture_intake_capture_post": {
         "properties": {
@@ -3385,6 +3796,17 @@
             "type": "array",
             "title": "Selected Integrations"
           },
+          "research_target_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Research Target Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -3402,9 +3824,55 @@
           "plan_json",
           "build_destination",
           "selected_integrations",
+          "research_target_id",
           "created_at"
         ],
         "title": "ProjectRead"
+      },
+      "ProjectUpdateRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "source_ref": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source Ref"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "kind",
+          "title",
+          "body",
+          "source_ref",
+          "created_at"
+        ],
+        "title": "ProjectUpdateRead"
       },
       "PromoteResponse": {
         "properties": {
@@ -3497,6 +3965,129 @@
           "confidence"
         ],
         "title": "ResearchFinding"
+      },
+      "ResearchFindingRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "run_id",
+          "title",
+          "detail",
+          "url",
+          "status",
+          "created_at"
+        ],
+        "title": "ResearchFindingRead"
+      },
+      "ResearchRunRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "findings_count": {
+            "type": "integer",
+            "title": "Findings Count"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ResearchFindingRead"
+            },
+            "type": "array",
+            "title": "Findings",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "status",
+          "summary",
+          "findings_count",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "ResearchRunRead"
       },
       "RestartRequest": {
         "properties": {
@@ -3624,6 +4215,59 @@
           "status"
         ],
         "title": "TaskBrief"
+      },
+      "TaskRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "project_id",
+          "title",
+          "status",
+          "created_at"
+        ],
+        "title": "TaskRead"
       },
       "ValidationError": {
         "properties": {

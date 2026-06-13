@@ -17,6 +17,7 @@ from .routers import (
     knowledge,
     model_config,
     projects,
+    research,
     system,
 )
 from .routers import settings as settings_router
@@ -39,6 +40,7 @@ app.include_router(dashboard.router)
 app.include_router(intake.router)
 app.include_router(flow.router)
 app.include_router(projects.router)
+app.include_router(research.router)
 app.include_router(knowledge.router)
 app.include_router(dreaming.router)
 app.include_router(model_config.router)

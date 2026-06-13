@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.inbox import InboxItem
 from app.models.project import Project
+from app.models.research import ProjectUpdate
 from app.models.user import User
 from app.schemas.entities import ProjectRead
+from app.schemas.research import ProjectUpdateRead
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -37,6 +39,22 @@ def list_projects(
         db.query(Project)
         .filter((Project.item_id.in_(owned_item_ids)) | (Project.item_id.is_(None)))
         .order_by(Project.created_at.desc(), Project.id.desc())
+        .all()
+    )
+
+
+@router.get("/{project_id}/updates", response_model=list[ProjectUpdateRead])
+def list_updates(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[ProjectUpdate]:
+    # The project's Update Log, newest first. Research findings land here on a completed run.
+    _load_owned_project(project_id, user, db)
+    return (
+        db.query(ProjectUpdate)
+        .filter(ProjectUpdate.project_id == project_id)
+        .order_by(ProjectUpdate.created_at.desc(), ProjectUpdate.id.desc())
         .all()
     )
 
