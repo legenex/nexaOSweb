@@ -42,7 +42,7 @@ nexaOSweb is a personal AI operating system built on two pillars joined by a dec
 - Knowledge is a Settings sub tab, not a top level sidebar item and not a tab named Memory. Inside Knowledge the internal tabs are General, Personal, Development, API connections, Dreaming. The memory candidate review and approval queue lives in Settings, Knowledge, Dreaming, and is also surfaced on the Dashboard as the Dream Digest.
 
 ## Model router
-The Brain selects a model by semantic key from services/brain/config/models.yaml, never by hardcoding a model id in business logic. Keys at minimum: general, agentic_code, research_synthesis, bulk, journal_reflection, vision. Resolve the concrete model through the router so a key swap is a config change.
+The Brain selects a model by semantic key from services/brain/config/models.yaml, never by hardcoding a model id in business logic. Keys at minimum: general, agentic_code, research_synthesis, bulk, journal_reflection, vision, dreaming, transcription. Resolve the concrete model through the router so a key swap is a config change.
 
 ## Dev commands (keep this section current as the build grows)
 - Brain: cd services/brain, create a venv, pip install, alembic upgrade head, uvicorn app.main:app --reload --port 8847.
@@ -51,4 +51,4 @@ The Brain selects a model by semantic key from services/brain/config/models.yaml
 - Client regen: pnpm gen:client after the Brain OpenAPI changes.
 
 ## Working style
-Prompts are pasted one at a time from docs/BUILD_PLAYBOOK.md. Close a prompt's acceptance criteria before advancing. Prefer a stated recommendation over a menu of options. Keep this file updated when a decision or a model name changes.
+Prompts come from docs/BUILD_PLAYBOOK.md. Always look for prompts that can be combined and run together, and say so before starting: group prompts that are independent (no shared files, no migration or model ordering conflict) into one batch, and call out which prompt IDs can run together versus which must run alone. Keep migration prompts and model or config prompts serial, since each persists what the next reads. When a prompt assumes backend or data that does not exist yet, surface the gap and propose the smallest cross lane path rather than shipping a half wired surface. Close each prompt's acceptance criteria before advancing. Prefer a stated recommendation over a menu of options. Keep this file updated when a decision or a model name changes.
