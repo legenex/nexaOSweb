@@ -98,7 +98,7 @@ export function FlowPanorama() {
         <div
           data-deck
           role="list"
-          aria-label="Flow pipeline stages"
+          aria-label="Project Builder pipeline stages"
           className="scroll-themed relative z-10 flex gap-7 overflow-x-auto pb-6"
         >
           {STAGES.map((stage, index) => {

@@ -26,6 +26,7 @@ export interface CaptureInput {
   name: string;
   body: string;
   source: string;
+  mode?: string;
   file?: File | null;
 }
 
@@ -91,6 +92,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       form.append('name', input.name);
       form.append('body', input.body);
       form.append('source', input.source);
+      if (input.mode) form.append('mode', input.mode);
       if (input.file) form.append('file', input.file);
       const response = await apiFetch('/intake/capture', { method: 'POST', body: form });
       if (!response.ok) throw new Error('capture failed');

@@ -1,22 +1,45 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { Schemas } from '@nexaosweb/api-client';
 
+import { api } from '../../../app/client';
 import { Button, GlassCard, MonoLabel, Pill } from '../../../components/primitives';
 import { useFlow } from '../FlowProvider';
+
+type ProjectMode = Schemas['ProjectModeRead'];
 
 const SOURCES = ['note', 'voice', 'md', 'pdf', 'url', 'youtube', 'image', 'telegram', 'slack'];
 
 // The interactive capture box: a drop target, name and description fields, source chips, a
-// Generate with AI button, a details modal, and a Capture button that starts the run.
+// project mode selector that drives the questions and destination, a Generate with AI button,
+// a details modal, and a Capture button that starts the run.
 export function CaptureCard() {
   const { capture, expand } = useFlow();
   const [name, setName] = useState('');
   const [body, setBody] = useState('');
   const [source, setSource] = useState('note');
   const [file, setFile] = useState<File | null>(null);
+  const [modes, setModes] = useState<ProjectMode[]>([]);
+  const [mode, setMode] = useState('');
   const [busy, setBusy] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const { data } = await api.GET('/projects/modes');
+      if (!active || !data) return;
+      const list = data as ProjectMode[];
+      setModes(list);
+      if (list.length > 0) setMode(list[0]!.key);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const selectedMode = modes.find((entry) => entry.key === mode) ?? null;
 
   async function onCapture() {
     if (!name.trim()) {
@@ -26,7 +49,7 @@ export function CaptureCard() {
     setBusy(true);
     setError(null);
     try {
-      await capture({ name, body, source, file });
+      await capture({ name, body, source, mode, file });
       setName('');
       setBody('');
       setFile(null);
@@ -87,6 +110,38 @@ export function CaptureCard() {
         rows={3}
         className="mb-3 w-full resize-none rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-cream outline-none focus:border-accent"
       />
+
+      {/* Project mode drives the capture questions and the build destination. */}
+      {modes.length > 0 ? (
+        <div className="mb-3">
+          <MonoLabel tone="faint">build mode</MonoLabel>
+          <select
+            aria-label="Build mode"
+            value={mode}
+            onChange={(event) => setMode(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-cream outline-none focus:border-accent"
+          >
+            {modes.map((entry) => (
+              <option key={entry.key} value={entry.key}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+          {selectedMode ? (
+            <div className="mt-2 rounded-lg border border-line bg-canvas/60 p-3">
+              <div className="flex items-center justify-between">
+                <MonoLabel tone="faint">guiding questions</MonoLabel>
+                <Pill variant="accent">{selectedMode.build_destination}</Pill>
+              </div>
+              <ul className="mt-1 list-disc pl-4 text-xs text-muted">
+                {selectedMode.capture_questions.map((question) => (
+                  <li key={question}>{question}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mb-3 flex flex-wrap gap-1.5">
         {SOURCES.map((entry) => (
