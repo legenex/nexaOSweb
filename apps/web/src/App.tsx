@@ -15,6 +15,7 @@ import { DashboardView } from './features/dashboard/DashboardView';
 import { FlowPanorama } from './features/flow/FlowPanorama';
 import { FlowProvider } from './features/flow/FlowProvider';
 import { ProjectsView } from './features/projects/ProjectsView';
+import { ResearchView } from './features/research/ResearchView';
 import { SettingsView } from './features/settings/SettingsView';
 
 function PageHeader({ title, label }: { title: string; label: string }) {
@@ -50,6 +51,8 @@ function Surface({ active, label }: { active: string; label: string }) {
       return <FlowPanorama />;
     case 'projects':
       return <ProjectsView />;
+    case 'research':
+      return <ResearchView />;
     case 'settings':
       return <SettingsView />;
     case 'journal':
