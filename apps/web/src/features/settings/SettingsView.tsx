@@ -1,7 +1,11 @@
 import { SETTINGS_TABS } from '../../app/nav';
+import { GeneralPanel } from './GeneralPanel';
+import { IntegrationsPanel } from './IntegrationsPanel';
 import { KnowledgePanel } from './knowledge/KnowledgePanel';
 import { ModelsAgentsPanel } from './ModelsAgentsPanel';
+import { SkillsPanel } from './SkillsPanel';
 import { SystemPanel } from './SystemPanel';
+import { UsersPanel } from './UsersPanel';
 
 // The Settings surface is driven by the sidebar: it expands inline to the seven sub tabs and
 // routes straight to one via the composite settings:<subtab> nav key. This view renders the
@@ -19,6 +23,14 @@ const TAB_BLURB: Record<string, string> = {
 
 function TabBody({ tabKey }: { tabKey: string }) {
   switch (tabKey) {
+    case 'general':
+      return <GeneralPanel />;
+    case 'users':
+      return <UsersPanel />;
+    case 'integrations':
+      return <IntegrationsPanel />;
+    case 'skills-connectors':
+      return <SkillsPanel />;
     case 'knowledge':
       return <KnowledgePanel />;
     case 'models-agents':
