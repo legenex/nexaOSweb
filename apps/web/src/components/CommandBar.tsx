@@ -35,7 +35,6 @@ export function CommandBar() {
   const inputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const audioInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
 
   const close = () => {
@@ -103,9 +102,9 @@ export function CommandBar() {
     }
   };
 
-  // Voice note: send recorded or picked audio to /journal/transcribe, then place the transcript
-  // in the input for Ask or Capture. The transcribe endpoint is the canonical target; its Brain
-  // implementation lands in a later milestone, so a missing endpoint surfaces as a clear error.
+  // Voice note: upload the recorded audio to /journal/transcribe, then place the transcript in
+  // the input for Ask or Capture. Only a genuine 501 from the Brain reads as "not available
+  // yet"; every other failure gets its own distinct message.
   const transcribe = async (audio: Blob, filename: string) => {
     setBusy('voice');
     setResult(null);
@@ -113,19 +112,109 @@ export function CommandBar() {
       const form = new FormData();
       form.append('file', audio, filename);
       const response = await apiFetch('/journal/transcribe', { method: 'POST', body: form });
-      if (!response.ok) throw new Error('transcribe failed');
+      if (response.status === 501) {
+        setResult({ kind: 'error', text: 'Voice transcription is not available yet.' });
+        return;
+      }
+      if (!response.ok) {
+        setResult({ kind: 'error', text: 'Could not transcribe the recording. Try again.' });
+        return;
+      }
       const data = (await response.json()) as { transcript?: string; text?: string };
       const transcript = (data.transcript ?? data.text ?? '').trim();
       if (transcript) {
         setText(transcript);
         inputRef.current?.focus();
       } else {
-        setResult({ kind: 'error', text: 'No speech was transcribed.' });
+        setResult({ kind: 'error', text: 'No speech was detected in the recording.' });
       }
     } catch {
-      setResult({ kind: 'error', text: 'Voice transcription is not available yet.' });
+      setResult({
+        kind: 'error',
+        text: 'Could not reach the Brain to transcribe. Check the connection.',
+      });
     } finally {
       setBusy(null);
+    }
+  };
+
+  // Pick a recording mime the browser supports and the Brain (whisper) accepts.
+  const pickMime = (): string | undefined => {
+    if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) return undefined;
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+  };
+
+  const startRecording = async () => {
+    // Failure state 2: no secure context or an unsupported browser. getUserMedia is only exposed
+    // on secure origins, so report that distinctly rather than as a generic failure.
+    const insecure = typeof window !== 'undefined' && window.isSecureContext === false;
+    const unsupported =
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === 'undefined';
+    if (insecure || unsupported) {
+      setResult({
+        kind: 'error',
+        text: insecure
+          ? 'Recording needs a secure context. Open this app over https to use the microphone.'
+          : 'This browser does not support in app voice recording.',
+      });
+      return;
+    }
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (error) {
+      // Failure state 1: permission denied, told apart from other capture errors.
+      const name = error instanceof DOMException ? error.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
+        setResult({
+          kind: 'error',
+          text: 'Microphone permission denied. Allow mic access in your browser, then try again.',
+        });
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        setResult({ kind: 'error', text: 'No microphone was found on this device.' });
+      } else {
+        setResult({ kind: 'error', text: 'Could not start recording. Try again.' });
+      }
+      return;
+    }
+
+    // Failure state 3: recording errors surface distinctly via onerror and the start guard.
+    try {
+      const mime = pickMime();
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        recorderRef.current = null;
+        setResult({ kind: 'error', text: 'Recording failed. Try again.' });
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        recorderRef.current = null;
+        if (chunks.length === 0) {
+          setResult({ kind: 'error', text: 'Nothing was recorded. Try again.' });
+          return;
+        }
+        const type = recorder.mimeType || mime || 'audio/webm';
+        const ext = type.includes('ogg') ? 'ogg' : type.includes('mp4') ? 'm4a' : 'webm';
+        void transcribe(new Blob(chunks, { type }), `voice-note.${ext}`);
+      };
+      recorder.start();
+      recorderRef.current = recorder;
+      setRecording(true);
+      setResult(null);
+    } catch {
+      stream.getTracks().forEach((track) => track.stop());
+      setResult({ kind: 'error', text: 'Could not start recording. Try again.' });
     }
   };
 
@@ -135,30 +224,7 @@ export function CommandBar() {
       recorderRef.current?.stop();
       return;
     }
-    // Try to record from the mic; fall back to picking an audio file if that is unavailable.
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      audioInputRef.current?.click();
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
-      recorder.ondataavailable = (event) => chunks.push(event.data);
-      recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        setRecording(false);
-        recorderRef.current = null;
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-        void transcribe(blob, 'voice-note.webm');
-      };
-      recorder.start();
-      recorderRef.current = recorder;
-      setRecording(true);
-    } catch {
-      // Permission denied or unsupported: fall back to the file picker.
-      audioInputRef.current?.click();
-    }
+    await startRecording();
   };
 
   // Journal: no dedicated journal entry endpoint exists yet, so capture the current input as an
@@ -258,18 +324,6 @@ export function CommandBar() {
           event.target.value = '';
         }}
       />
-      <input
-        ref={audioInputRef}
-        type="file"
-        accept="audio/*"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void transcribe(file, file.name);
-          event.target.value = '';
-        }}
-      />
-
       {/* Open: a centered Spotlight overlay. The backdrop dims and closes the app behind it. */}
       {open ? (
         <div
@@ -360,7 +414,13 @@ export function CommandBar() {
                 </p>
               ) : null}
               {busy === 'voice' && !recording ? (
-                <p className="mt-4 text-sm text-muted">Transcribing voice note.</p>
+                <p className="mt-4 flex items-center gap-2 text-sm text-muted">
+                  <span
+                    aria-hidden
+                    className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-line border-t-accent"
+                  />
+                  Transcribing voice note.
+                </p>
               ) : null}
 
               {result ? (
