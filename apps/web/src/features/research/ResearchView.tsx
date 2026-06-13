@@ -96,6 +96,7 @@ export function ResearchView() {
   const [runs, setRuns] = useState<ResearchRun[]>([]);
   const [findings, setFindings] = useState<ResearchFinding[]>([]);
   const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
   const [attachTarget, setAttachTarget] = useState<number | ''>('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -140,6 +141,7 @@ export function ResearchView() {
     async (id: number) => {
       setSelectedId(id);
       setAttachTarget('');
+      setRunError(null);
       await loadDetail(id);
     },
     [loadDetail],
@@ -187,10 +189,16 @@ export function ResearchView() {
   const runNow = useCallback(async () => {
     if (selectedId === null) return;
     setRunning(true);
+    setRunError(null);
     try {
-      await api.POST('/research/{research_id}/runs', {
+      const { error } = await api.POST('/research/{research_id}/runs', {
         params: { path: { research_id: selectedId } },
       });
+      if (error) {
+        const detail = (error as { detail?: string } | undefined)?.detail;
+        setRunError(detail || 'The research run failed.');
+        return;
+      }
       await loadDetail(selectedId);
     } finally {
       setRunning(false);
@@ -403,6 +411,8 @@ export function ResearchView() {
                 <Pill variant="grey">{selected.lookback}d lookback</Pill>
                 <Pill variant="grey">schedule {selected.schedule}</Pill>
               </div>
+
+              {runError ? <p className="mt-3 text-sm text-danger">{runError}</p> : null}
 
               <div className="mt-4 border-t border-line pt-4">
                 <MonoLabel tone="faint">attach to project</MonoLabel>

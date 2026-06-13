@@ -77,7 +77,12 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
       const { data, error: err } = await api.POST('/research/generate-config', {
         body: { topic: topic.trim(), name: name.trim() },
       });
-      if (err || !data) throw new Error('generate failed');
+      if (err || !data) {
+        // Surface the real reason and leave every field untouched: never fall back to
+        // placeholder content when the model call fails.
+        const detail = (err as { detail?: string } | undefined)?.detail;
+        throw new Error(detail || 'Generate with AI failed.');
+      }
       setPurpose(data.purpose);
       setGoals(data.goals);
       setSchedule(data.schedule as Schedule);
@@ -91,8 +96,8 @@ export function ResearchProjectDialog({ open, initial, onClose, onSaved }: Dialo
       const next = fromDays(days);
       setLookbackValue(next.value);
       setLookbackUnit(next.unit);
-    } catch {
-      setError('Could not draft a config. Check the Brain connection.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Generate with AI failed.');
     } finally {
       setBusy(null);
     }
