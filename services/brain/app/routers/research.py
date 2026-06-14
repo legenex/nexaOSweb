@@ -17,6 +17,7 @@ from app.models.project import Project
 from app.models.research import ProjectUpdate, ResearchFinding, ResearchRun
 from app.models.user import User
 from app.models.workspace import Task
+from app.offline import has_provider_keys
 from app.schemas.entities import ProjectRead, TaskRead
 from app.schemas.knowledge import KnowledgeEntryRead
 from app.schemas.research import (
@@ -34,6 +35,21 @@ from app.security.auth import current_user
 from app.util import slugify
 
 router = APIRouter(prefix="/research", tags=["research"])
+
+
+def _model_unavailable_detail(action: str) -> str:
+    """Honest 503 detail: distinguish no provider connected from a failed model call.
+
+    Both surface as ModelUnavailableError, but the fix differs: a missing provider needs a key
+    connected in Settings, Models and Agents, while a failed call points at the connected key.
+    Naming the cause turns a dead end into a next step.
+    """
+    if has_provider_keys():
+        return f"{action} is unavailable: the model call failed. Check the connected provider key."
+    return (
+        f"{action} is unavailable: no model provider is connected. "
+        "Connect one in Settings, Models and Agents."
+    )
 
 # Default config so a project created before a field existed still reads cleanly.
 _CONFIG_DEFAULTS = {
@@ -211,7 +227,7 @@ def generate_research_config(
     except ModelUnavailableError as exc:
         raise HTTPException(
             http_status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Generate with AI is unavailable: no model is configured.",
+            _model_unavailable_detail("Generate with AI"),
         ) from exc
     return GenerateConfigResponse(**draft)
 
@@ -265,7 +281,7 @@ def trigger_run(
     except ModelUnavailableError as exc:
         raise HTTPException(
             http_status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Run is unavailable: no model is configured.",
+            _model_unavailable_detail("Run"),
         ) from exc
     # Attach the run's findings as a transient attribute for the response.
     run.findings = (
