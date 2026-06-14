@@ -70,9 +70,13 @@ def can_auto_resolve(payload: dict[str, Any] | None, autonomy_level: int) -> boo
     return is_safe_set(payload)
 
 
-def recommend_gate(step: AgentStep) -> dict[str, Any]:
-    """The recommended default and proceed-or-change framing for an approval request."""
-    if materially_affects_outcome(step.payload):
+def recommend_for_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    """The recommended default and proceed-or-change framing for a step payload.
+
+    Pure over the payload, so a caller can compute the recommendation before a step exists and
+    fold it into the payload it is about to author, rather than mutating an authored payload.
+    """
+    if materially_affects_outcome(payload):
         return {
             "recommended_default": "change",
             "materially_affects": True,
@@ -86,3 +90,8 @@ def recommend_gate(step: AgentStep) -> dict[str, Any]:
         "materially_affects": False,
         "framing": "Safe default. Proceed unless you want to change it.",
     }
+
+
+def recommend_gate(step: AgentStep) -> dict[str, Any]:
+    """The recommended default and proceed-or-change framing for an approval request."""
+    return recommend_for_payload(step.payload)

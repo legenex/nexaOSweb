@@ -31,9 +31,10 @@ from sqlalchemy.orm import Session
 
 from app.agents.project_editor import apply_edit, proposed_entry, render_edit
 from app.agents.readiness import readiness_satisfied
-from app.gates import SAFE_TAGS
+from app.gates import SAFE_TAGS, recommend_for_payload
 from app.models.project import Project
 from app.models.runtime import AgentRun, AgentStep
+from app.project_modes import checks_for
 from app.runtime import (
     COMPLETED_UNVERIFIED,
     COMPLETED_VERIFIED,
@@ -41,16 +42,32 @@ from app.runtime import (
     propose_step,
     record_execution,
 )
-from app.safety import PROTECTED_BRANCHES, ensure_within_root, is_dangerous
+from app.safety import (
+    PROTECTED_BRANCHES,
+    ensure_within_root,
+    is_dangerous,
+    safe_write_text,
+)
 from app.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 # An executor run is an AgentRun of this kind; its plan is AgentSteps of the plan kind, and each
-# applied file change is an AgentStep of the edit kind.
+# applied file change is an AgentStep of the edit kind. Phase c adds check, diff, and
+# approval_request steps.
 EXECUTOR_KIND = "executor"
 PLAN_STEP_KIND = "plan"
 EDIT_STEP_KIND = "edit"
+CHECK_STEP_KIND = "check"
+DIFF_STEP_KIND = "diff"
+APPROVAL_STEP_KIND = "approval_request"
+
+# How long a single check may run before it is killed and recorded as a timeout failure.
+CHECK_TIMEOUT_SECONDS = 300
+# The full check output and the worktree diff are always spilled to a file under the runtime root
+# and referenced from evidence by content_ref; only a short preview is kept inline.
+_CHECK_PREVIEW_CHARS = 500
+_DIFF_CAP = 16000
 
 # The terminal completed states a succeeded edit step lands on, used to detect a re-run no-op.
 _COMPLETED_STATES = (COMPLETED_VERIFIED, COMPLETED_UNVERIFIED)
@@ -69,6 +86,18 @@ _PLAN_RISK = {tag: True for tag in SAFE_TAGS}
 # local to the worktree, and touches nothing external, so it is classified safe and lands planned
 # at the executor's non zero autonomy rather than at the human gate.
 _EDIT_RISK = {tag: True for tag in SAFE_TAGS}
+
+# A check and a diff run read only inside the isolated worktree, so they are classified safe and
+# record their outcome without a per step gate. The single gate is the approval_request below.
+_CHECK_RISK = {tag: True for tag in SAFE_TAGS}
+_DIFF_RISK = {tag: True for tag in SAFE_TAGS}
+
+# The approval_request always parks at the human gate before anything leaves the worktree, so it
+# carries an unsafe tag: releasing the work is user facing and is never auto resolved.
+_APPROVAL_RISK = {"user_facing": True}
+
+# The executor lifecycle marker after phase c has run the checks and parked at the gate.
+PHASE_GATE = "gate"
 
 # Git identity used only for the baseline commit in a fresh project repo, so a commit exists to
 # branch a worktree from. It never touches the user's global config.
@@ -417,3 +446,306 @@ def execute_planned_edits(
         )
     db.refresh(run)
     return steps
+
+
+# --- phase c: real checks, evidence, diff, and the gate -----------------------------------
+
+
+def _spill(run_id: int, relative: str, content: str) -> dict:
+    """Write text under the runtime root and return a content reference, never the inline body.
+
+    The full check output and the worktree diff are persisted by reference so the row carries
+    only a path, a byte count, and a short preview, never the whole output.
+    """
+    settings = get_settings()
+    rel = str(Path(f"run_{run_id}") / relative)
+    safe_write_text(settings.nexa_runtime_root, rel, content)
+    return {
+        "ref": rel,
+        "bytes": len(content.encode("utf-8")),
+        "preview": content[:_CHECK_PREVIEW_CHARS],
+    }
+
+
+def _run_one_check(worktree: Path, run_id: int, check: dict, timeout: int) -> tuple[dict, str]:
+    """Run one check inside the worktree. Returns (tool evidence, outcome).
+
+    The dangerous-command guard refuses anything is_dangerous flags: it is recorded ran false,
+    never a pass. A missing executable is also ran false. A real run captures the true exit code
+    and spills stdout and stderr by reference. outcome is completed (exit 0), failed (nonzero or
+    timeout), or blocked (could not run): a check that cannot run never verifies.
+    """
+    name = str(check["name"])
+    command = [str(part) for part in check["command"]]
+    command_str = " ".join(command)
+    evidence: dict = {"source": "tool", "tool": "check", "name": name, "command": command_str}
+
+    if is_dangerous(command_str):
+        evidence.update(
+            {
+                "ran": False,
+                "passed": False,
+                "exit_code": None,
+                "reason": "refused: dangerous command",
+            }
+        )
+        return evidence, "blocked"
+
+    try:
+        result = subprocess.run(
+            command, cwd=str(worktree), capture_output=True, text=True, timeout=timeout
+        )
+    except FileNotFoundError:
+        evidence.update(
+            {
+                "ran": False,
+                "passed": False,
+                "exit_code": None,
+                "reason": f"executable not found: {command[0]}",
+            }
+        )
+        return evidence, "blocked"
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout if isinstance(exc.stdout, str) else ""
+        stderr = exc.stderr if isinstance(exc.stderr, str) else ""
+        out = _spill(run_id, f"checks/{name}.stdout.txt", stdout)
+        err = _spill(run_id, f"checks/{name}.stderr.txt", stderr)
+        evidence.update(
+            {
+                "ran": True,
+                "passed": False,
+                "exit_code": None,
+                "timed_out": True,
+                "reason": f"timed out after {timeout}s",
+                "stdout_ref": out["ref"],
+                "stdout_bytes": out["bytes"],
+                "stderr_ref": err["ref"],
+                "stderr_bytes": err["bytes"],
+            }
+        )
+        return evidence, "failed"
+
+    out = _spill(run_id, f"checks/{name}.stdout.txt", result.stdout or "")
+    err = _spill(run_id, f"checks/{name}.stderr.txt", result.stderr or "")
+    passed = result.returncode == 0
+    evidence.update(
+        {
+            "ran": True,
+            "passed": passed,
+            "exit_code": result.returncode,
+            "stdout_ref": out["ref"],
+            "stdout_bytes": out["bytes"],
+            "stdout_preview": out["preview"],
+            "stderr_ref": err["ref"],
+            "stderr_bytes": err["bytes"],
+            "stderr_preview": err["preview"],
+        }
+    )
+    return evidence, ("completed" if passed else "failed")
+
+
+def run_checks(
+    db: Session,
+    run: AgentRun,
+    *,
+    checks: list[dict] | None = None,
+    timeout: int = CHECK_TIMEOUT_SECONDS,
+    proposed_by: str = "system",
+) -> list[AgentStep]:
+    """Run the mode's checks inside the worktree, one check-kind step each, with tool evidence.
+
+    Defaults to the project mode's checks; a caller may pass an explicit list. Every check is run
+    through the dangerous-command guard, on a non protected branch only, inside the isolated
+    worktree. A passing check lands completed_verified on its tool evidence; a failing check lands
+    failed with the real exit code; a check that cannot run lands blocked, recorded honestly and
+    never verified.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("checks run only on an executor run")
+    if run.branch_ref in PROTECTED_BRANCHES:
+        raise ExecutorError(f"refused to run checks on a protected branch: {run.branch_ref}")
+    worktree = _worktree_root(run)
+    if not worktree.is_dir():
+        raise ExecutorError(f"worktree does not exist: {worktree}")
+    project = db.get(Project, run.project_id) if run.project_id is not None else None
+    if project is None:
+        raise ExecutorError("an executor run requires a project to check")
+
+    if checks is None:
+        checks = [{"name": c.name, "command": list(c.command)} for c in checks_for(project.mode)]
+
+    steps: list[AgentStep] = []
+    for check in checks:
+        evidence, outcome = _run_one_check(worktree, run.id, check, timeout)
+        step = propose_step(
+            db,
+            run,
+            kind=CHECK_STEP_KIND,
+            title=f"Check {check['name']}",
+            intent=f"Run the {check['name']} check: {' '.join(str(p) for p in check['command'])}",
+            payload={
+                "check": {
+                    "name": str(check["name"]),
+                    "command": evidence["command"],
+                    "ran": evidence["ran"],
+                    "passed": evidence["passed"],
+                    "exit_code": evidence.get("exit_code"),
+                },
+                "risk": dict(_CHECK_RISK),
+            },
+            proposed_by=proposed_by,
+        )
+        failure = (
+            None
+            if outcome == "completed"
+            else {
+                "name": str(check["name"]),
+                "exit_code": evidence.get("exit_code"),
+                "reason": evidence.get("reason"),
+            }
+        )
+        record_execution(db, step, outcome=outcome, evidence=[evidence], failure=failure)
+        steps.append(step)
+    return steps
+
+
+def compute_diff_step(db: Session, run: AgentRun, *, proposed_by: str = "system") -> AgentStep:
+    """Record the worktree diff versus the branch base as a diff-kind step.
+
+    The base is the worktree HEAD the branch was cut from (phase b commits nothing). All changes,
+    new files included, are staged inside the isolated worktree and diffed against that base. The
+    full diff is spilled by reference and the diff-kind step carries the shortstat summary, capped.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("a diff runs only on an executor run")
+    worktree = _worktree_root(run)
+    if not worktree.is_dir():
+        raise ExecutorError(f"worktree does not exist: {worktree}")
+
+    base = _run_git(worktree, "rev-parse", "HEAD").strip()
+    # Stage everything inside the isolated worktree so new files appear in the diff; nothing
+    # leaves the worktree and no commit is made.
+    _run_git(worktree, *_GIT_USER, "add", "-A")
+    full = _run_git(worktree, "diff", "--cached")
+    shortstat = _run_git(worktree, "diff", "--cached", "--shortstat").strip()
+    capped = len(full) > _DIFF_CAP
+    spilled = _spill(run.id, "diff/worktree.diff", full)
+
+    step = propose_step(
+        db,
+        run,
+        kind=DIFF_STEP_KIND,
+        title="Worktree diff versus base",
+        intent=f"Diff of the worktree against base {base[:12]}",
+        payload={
+            "diff": {
+                "base": base,
+                "shortstat": shortstat or "no changes",
+                "capped": capped,
+                "bytes": spilled["bytes"],
+            },
+            "risk": dict(_DIFF_RISK),
+        },
+        proposed_by=proposed_by,
+    )
+    record_execution(
+        db,
+        step,
+        outcome="completed",
+        evidence=[
+            {
+                "source": "tool",
+                "tool": "git_diff",
+                "base": base,
+                "shortstat": shortstat,
+                "capped": capped,
+                "diff_ref": spilled["ref"],
+                "diff_bytes": spilled["bytes"],
+                "diff_preview": spilled["preview"],
+            }
+        ],
+    )
+    return step
+
+
+def _checks_summary(check_steps: list[AgentStep]) -> dict:
+    """Roll the check steps up into passed, failed, and cannot_run name lists for the gate."""
+    summary: dict[str, list[str]] = {"passed": [], "failed": [], "cannot_run": []}
+    for step in check_steps:
+        check = step.payload.get("check", {}) if isinstance(step.payload, dict) else {}
+        name = str(check.get("name", ""))
+        if not check.get("ran"):
+            summary["cannot_run"].append(name)
+        elif check.get("passed"):
+            summary["passed"].append(name)
+        else:
+            summary["failed"].append(name)
+    return summary
+
+
+def request_approval(
+    db: Session,
+    run: AgentRun,
+    *,
+    checks_summary: dict,
+    proposed_by: str = "system",
+) -> AgentStep:
+    """Park the run at the human gate before anything leaves the worktree.
+
+    The approval_request carries the checks summary and the recommended default from the gates,
+    computed over its own payload so nothing authored is mutated after the fact. It is classified
+    user facing, so it always lands at waiting_approval.
+    """
+    payload = {
+        "approval_request": {
+            "phase": PHASE_GATE,
+            "checks": checks_summary,
+            "note": "Approve before anything leaves the isolated worktree.",
+        },
+        "risk": dict(_APPROVAL_RISK),
+    }
+    payload["approval_request"]["gate"] = recommend_for_payload(payload)
+    return propose_step(
+        db,
+        run,
+        kind=APPROVAL_STEP_KIND,
+        title="Approve before leaving the worktree",
+        intent="Human gate: approve before anything leaves the isolated worktree.",
+        payload=payload,
+        proposed_by=proposed_by,
+    )
+
+
+def run_checks_and_gate(
+    db: Session,
+    run: AgentRun,
+    *,
+    checks: list[dict] | None = None,
+    timeout: int = CHECK_TIMEOUT_SECONDS,
+    proposed_by: str = "system",
+) -> dict:
+    """Phase c: run the checks, record the diff, and park at the human gate.
+
+    Runs the mode's checks with real exit codes and tool evidence, records the worktree diff, then
+    proposes the approval_request that holds the run at waiting_approval before anything leaves the
+    worktree. This phase performs no merge and pushes nothing: the gate is the boundary.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("phase c runs only on an executor run")
+    if run.branch_ref in PROTECTED_BRANCHES:
+        raise ExecutorError(f"refused to run on a protected branch: {run.branch_ref}")
+
+    check_steps = run_checks(db, run, checks=checks, timeout=timeout, proposed_by=proposed_by)
+    diff_step = compute_diff_step(db, run, proposed_by=proposed_by)
+    summary = _checks_summary(check_steps)
+    approval_step = request_approval(db, run, checks_summary=summary, proposed_by=proposed_by)
+
+    run.phase = PHASE_GATE
+    db.commit()
+    db.refresh(run)
+    return {
+        "check_steps": check_steps,
+        "diff_step": diff_step,
+        "approval_step": approval_step,
+        "summary": summary,
+    }
