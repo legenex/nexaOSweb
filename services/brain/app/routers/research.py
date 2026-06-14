@@ -333,6 +333,7 @@ def finding_to_task(
         project_id=research.research_target_id or finding.project_id,
         title=finding.title,
         status="open",
+        source="research",
     )
     db.add(task)
     finding.status = "tasked"

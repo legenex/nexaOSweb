@@ -170,7 +170,7 @@ def build_summary(db: Session, user: User, *, version: str) -> DashboardSummary:
 
     open_tasks = (
         db.query(Task)
-        .filter(Task.user_id == user.id, Task.status == "open")
+        .filter(Task.user_id == user.id, Task.status == "open", Task.deleted_at.is_(None))
         .order_by(Task.created_at.desc(), Task.id.desc())
         .all()
     )
@@ -232,7 +232,7 @@ def _gather_facts(db: Session, user: User) -> dict:
     findings = _research_findings(db, user, projects)
     open_tasks = (
         db.query(Task)
-        .filter(Task.user_id == user.id, Task.status == "open")
+        .filter(Task.user_id == user.id, Task.status == "open", Task.deleted_at.is_(None))
         .order_by(Task.created_at.desc())
         .all()
     )
