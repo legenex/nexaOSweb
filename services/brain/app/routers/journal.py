@@ -27,6 +27,7 @@ from app.db import get_db
 from app.models.base import utcnow
 from app.models.user import User
 from app.models.workspace import JournalAttachment, JournalNote, JournalTopic
+from app.router import model_router
 from app.router.model_router import get_router
 from app.safety import PathSafetyError, safe_write_bytes
 from app.schemas.journal import (
@@ -292,20 +293,16 @@ def delete_attachment(
 
 # --- transcription and capture -------------------------------------------------------------
 
-# Maps a model id prefix to the settings field holding that provider's key.
-_PROVIDER_KEY = {
-    "openai/": "openai_api_key",
-    "anthropic/": "anthropic_api_key",
-    "gemini/": "gemini_api_key",
-}
-
 
 def _has_key_for(model_id: str) -> bool:
-    settings = get_settings()
-    for prefix, field in _PROVIDER_KEY.items():
-        if model_id.startswith(prefix):
-            return bool(getattr(settings, field, ""))
-    # Unknown provider prefix: let the call proceed and surface any provider error.
+    """Whether a key is available for the model's provider, connected store first then environment.
+
+    A model id with no known provider prefix is allowed through so any provider error surfaces from
+    the call rather than being pre empted here.
+    """
+    provider = model_router.provider_of(model_id)
+    if provider in model_router.KNOWN_PROVIDERS:
+        return model_router.has_provider_key(provider)
     return True
 
 
@@ -332,7 +329,10 @@ def transcribe(
         # A named in memory buffer: the provider SDK needs a filename, nothing touches disk.
         buffer = io.BytesIO(content)
         buffer.name = file.filename or "audio.webm"
-        response = litellm.transcription(model=model_id, file=buffer)
+        # Resolve the provider key store first, then environment, and pass it per call.
+        api_key = model_router.resolve_provider_key(model_router.provider_of(model_id))
+        kwargs = {"api_key": api_key} if api_key else {}
+        response = litellm.transcription(model=model_id, file=buffer, **kwargs)
         text = getattr(response, "text", None)
         if text is None and isinstance(response, dict):
             text = response.get("text")
@@ -405,7 +405,10 @@ def capture(
     try:
         import litellm
 
-        response = litellm.completion(model=model_id, messages=messages)
+        # Resolve the provider key store first, then environment, and pass it per call.
+        api_key = model_router.resolve_provider_key(model_router.provider_of(model_id))
+        kwargs = {"api_key": api_key} if api_key else {}
+        response = litellm.completion(model=model_id, messages=messages, **kwargs)
         text = _vision_text(response)
     except Exception as exc:  # noqa: BLE001  surface as a capture failure
         logger.warning("handwriting capture failed: %s", exc)

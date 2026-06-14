@@ -2,9 +2,10 @@
 
 Provider secrets live only here, on the server, under NEXA_SECRETS_ROOT. The runtime ledger,
 the readiness assessment, agent context, and every API response carry a reference into this store
-(secret://<provider>), never the value. There is deliberately no function that returns a stored
-secret to a caller: the store is write and reference only from the application's point of view.
-The router that needs a provider key at call time reads it here on the server, never over HTTP.
+(secret://<provider>), never the value. The store is write and reference only from the API's point
+of view: no HTTP route ever returns a stored secret. The only sanctioned read is read_secret, used
+server side by the model router to hand a connected provider key to litellm at call time; the value
+is read on the server and never crosses the API boundary.
 
 Storing a secret as a file under a safe root mirrors how provider keys live in the server side
 .env (per the secrets rule): the value never crosses the API boundary.
@@ -36,6 +37,17 @@ def is_secret_ref(value: object) -> bool:
     return isinstance(value, str) and value.startswith(_REF_SCHEME)
 
 
+def mask_hint(secret: str) -> str:
+    """A non secret last four hint for a stored key, for example ****1234.
+
+    The hint reveals only the trailing characters so an operator can recognise which key is
+    connected without the value ever being exposed. It is safe to persist and return; it is not a
+    secret bearing field.
+    """
+    tail = secret.strip()[-4:]
+    return f"****{tail}" if tail else "****"
+
+
 def _path_for(provider: str) -> Path:
     settings = get_settings()
     return Path(settings.nexa_secrets_root).expanduser().resolve() / f"{_slug(provider)}.secret"
@@ -56,3 +68,26 @@ def store_secret(provider: str, secret: str) -> str:
 def has_secret(provider: str) -> bool:
     """Whether a secret is stored for the provider. Never reveals the value."""
     return _path_for(provider).exists()
+
+
+def read_secret(provider: str) -> str | None:
+    """Read a stored provider secret, or None when none is stored. Server side only.
+
+    This is the single sanctioned read of the store, used by the model router to resolve a
+    connected provider key and hand it to litellm per call. There is deliberately no HTTP route
+    that calls this: the value is read on the server and never crosses the API boundary, is never
+    logged, and never enters the ledger. The redaction guard is the structural backstop on every
+    serialised seam.
+    """
+    path = _path_for(provider)
+    if not path.exists():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value or None
+
+
+def delete_secret(provider: str) -> None:
+    """Remove a stored provider secret if present. Used when a provider is disconnected."""
+    path = _path_for(provider)
+    if path.exists():
+        path.unlink()

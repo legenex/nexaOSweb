@@ -17,8 +17,22 @@ from typing import Any
 
 import yaml
 
+from app.security.secret_store import has_secret, read_secret
+from app.settings import get_settings
+
 # Resolved fresh on each read so tests can redirect it to a temporary file.
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "models.yaml"
+
+# The providers the Brain knows how to resolve a key for, mapped to the settings field that holds
+# that provider's key when it is configured through the server side .env. The connected secret
+# store is consulted first (see resolve_provider_key) so a key connected through the API takes
+# precedence and nothing need live in .env.
+PROVIDER_ENV_FIELDS: dict[str, str] = {
+    "anthropic": "anthropic_api_key",
+    "openai": "openai_api_key",
+    "gemini": "gemini_api_key",
+}
+KNOWN_PROVIDERS: tuple[str, ...] = tuple(PROVIDER_ENV_FIELDS.keys())
 
 # Sampling parameters that may be forwarded to the provider.
 _ALLOWED_SAMPLING = {"temperature", "top_p", "max_tokens", "stop"}
@@ -75,6 +89,54 @@ def normalize_sampling(entry: dict[str, Any], overrides: dict[str, Any]) -> dict
     return params
 
 
+def provider_of(model_id: str) -> str:
+    """The provider prefix of a model id (the part before the first slash), lowercased.
+
+    For example anthropic/claude-sonnet-4-6 resolves to anthropic. An id with no prefix has no
+    known provider and resolves to the empty string.
+    """
+    if "/" not in (model_id or ""):
+        return ""
+    return model_id.split("/", 1)[0].strip().lower()
+
+
+def resolve_provider_key(provider: str) -> str | None:
+    """Resolve a provider's API key, the connected secret store first, then the environment.
+
+    Store first means a key connected through the API (written into the secret store by reference)
+    is used before any value in the server side .env, so a connected provider works with nothing in
+    .env. The resolved value is handed straight to litellm per call (see route_completion); it is
+    never returned over HTTP, logged, or written to the ledger.
+    """
+    provider = (provider or "").strip().lower()
+    if not provider:
+        return None
+    stored = read_secret(provider)
+    if stored:
+        return stored
+    field = PROVIDER_ENV_FIELDS.get(provider)
+    if field:
+        value = getattr(get_settings(), field, "")
+        if value:
+            return str(value)
+    return None
+
+
+def has_provider_key(provider: str) -> bool:
+    """Whether a key is available for the provider, by connected secret or environment.
+
+    Cheaper than resolve_provider_key for the connected case: it checks the store for a file and
+    the environment for a non empty value without reading the secret material.
+    """
+    provider = (provider or "").strip().lower()
+    if not provider:
+        return False
+    if has_secret(provider):
+        return True
+    field = PROVIDER_ENV_FIELDS.get(provider)
+    return bool(getattr(get_settings(), field, "")) if field else False
+
+
 def cost_hint(model_id: str) -> dict[str, Any]:
     """A coarse cost tier badge for a concrete model id. Display hint only."""
     name = model_id.lower()
@@ -108,8 +170,14 @@ class ModelRouter:
     ) -> Any:
         entry = self._entry(key)
         params = normalize_sampling(entry, overrides)
+        model_id = str(entry["model"])
+        # Resolve the provider key store first, then environment, and pass it to litellm per call.
+        # When neither is configured we omit api_key so litellm keeps its own resolution path.
+        api_key = resolve_provider_key(provider_of(model_id))
+        if api_key:
+            params["api_key"] = api_key
         completion = _get_completion()
-        return completion(model=entry["model"], messages=messages, **params)
+        return completion(model=model_id, messages=messages, **params)
 
 
 def load_config() -> dict[str, Any]:
