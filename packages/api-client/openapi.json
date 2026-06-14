@@ -2438,9 +2438,62 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/StepRead"
+                    "$ref": "#/components/schemas/ApprovalRequest"
                   },
                   "title": "Response List Approval Candidates Runtime Runs  Run Id  Approvals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/steps/{step_id}/resolve": {
+      "post": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "Resolve Step",
+        "description": "Resolve a waiting_approval step. The single human gate write into the runtime.\n\nDelegates to the resolve_approval writer, which owns only the approval exit edges (approve\nmoves to planned, reject to skipped). Resolving anything not at the gate is a conflict.",
+        "operationId": "resolve_step_runtime_steps__step_id__resolve_post",
+        "parameters": [
+          {
+            "name": "step_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Step Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StepRead"
                 }
               }
             }
@@ -4064,6 +4117,169 @@
           "model_key"
         ],
         "title": "AgentBinding"
+      },
+      "ApprovalRequest": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "proposed_by": {
+            "type": "string",
+            "title": "Proposed By"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "evidence": {
+            "items": {},
+            "type": "array",
+            "title": "Evidence"
+          },
+          "tool_call": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval"
+          },
+          "correction_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correction Note"
+          },
+          "corrected_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected From"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "recommended_default": {
+            "type": "string",
+            "title": "Recommended Default"
+          },
+          "framing": {
+            "type": "string",
+            "title": "Framing"
+          },
+          "materially_affects": {
+            "type": "boolean",
+            "title": "Materially Affects"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "seq",
+          "status",
+          "kind",
+          "title",
+          "intent",
+          "payload",
+          "proposed_by",
+          "outcome",
+          "evidence",
+          "tool_call",
+          "failure",
+          "approval",
+          "correction_note",
+          "corrected_from",
+          "created_at",
+          "updated_at",
+          "recommended_default",
+          "framing",
+          "materially_affects"
+        ],
+        "title": "ApprovalRequest",
+        "description": "A waiting_approval step plus its gate guidance.\n\nEvery approval request carries a recommended_default (proceed or change) and a one line\nframing, so a human sees a clear default and whether the decision materially affects the\noutcome."
       },
       "AttachRequest": {
         "properties": {
@@ -7350,6 +7566,29 @@
           "finished_at"
         ],
         "title": "ResearchRunRead"
+      },
+      "ResolveApprovalRequest": {
+        "properties": {
+          "resolution": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ],
+            "title": "Resolution"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "resolution"
+        ],
+        "title": "ResolveApprovalRequest",
+        "description": "The one human gate write: approve or reject a waiting_approval step, with an optional note.\n\nThe runtime is read only otherwise; this resolves only the approval exit edge through the\nresolve_approval writer, never any other field."
       },
       "RestartRequest": {
         "properties": {

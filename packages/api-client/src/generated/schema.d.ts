@@ -848,6 +848,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runtime/steps/{step_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Step
+         * @description Resolve a waiting_approval step. The single human gate write into the runtime.
+         *
+         *     Delegates to the resolve_approval writer, which owns only the approval exit edges (approve
+         *     moves to planned, reject to skipped). Resolving anything not at the gate is a conflict.
+         */
+        post: operations["resolve_step_runtime_steps__step_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/runtime/runs/{run_id}/failed": {
         parameters: {
             query?: never;
@@ -1461,6 +1484,72 @@ export interface components {
             model_key: string;
             /** Resolved Model */
             resolved_model?: string | null;
+        };
+        /**
+         * ApprovalRequest
+         * @description A waiting_approval step plus its gate guidance.
+         *
+         *     Every approval request carries a recommended_default (proceed or change) and a one line
+         *     framing, so a human sees a clear default and whether the decision materially affects the
+         *     outcome.
+         */
+        ApprovalRequest: {
+            /** Id */
+            id: number;
+            /** Run Id */
+            run_id: number;
+            /** Seq */
+            seq: number;
+            /** Status */
+            status: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Intent */
+            intent: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Proposed By */
+            proposed_by: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Evidence */
+            evidence: unknown[];
+            /** Tool Call */
+            tool_call: {
+                [key: string]: unknown;
+            } | null;
+            /** Failure */
+            failure: {
+                [key: string]: unknown;
+            } | null;
+            /** Approval */
+            approval: {
+                [key: string]: unknown;
+            } | null;
+            /** Correction Note */
+            correction_note: string | null;
+            /** Corrected From */
+            corrected_from: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Recommended Default */
+            recommended_default: string;
+            /** Framing */
+            framing: string;
+            /** Materially Affects */
+            materially_affects: boolean;
         };
         /** AttachRequest */
         AttachRequest: {
@@ -2686,6 +2775,25 @@ export interface components {
              * @default []
              */
             findings: components["schemas"]["ResearchFindingRead"][];
+        };
+        /**
+         * ResolveApprovalRequest
+         * @description The one human gate write: approve or reject a waiting_approval step, with an optional note.
+         *
+         *     The runtime is read only otherwise; this resolves only the approval exit edge through the
+         *     resolve_approval writer, never any other field.
+         */
+        ResolveApprovalRequest: {
+            /**
+             * Resolution
+             * @enum {string}
+             */
+            resolution: "approved" | "rejected";
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** RestartRequest */
         RestartRequest: {
@@ -4773,7 +4881,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StepRead"][];
+                    "application/json": components["schemas"]["ApprovalRequest"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_step_runtime_steps__step_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepRead"];
                 };
             };
             /** @description Validation Error */

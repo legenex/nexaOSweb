@@ -16,8 +16,22 @@ from app.models.inbox import InboxItem
 from app.models.project import Project
 from app.models.runtime import AgentRun, AgentStep
 from app.models.user import User
-from app.runtime import ACTIVE_RUN_STATUSES, COMPLETED_VERIFIED, FAILED, WAITING_APPROVAL
-from app.schemas.runtime import ApprovalRequest, ProofOfWork, RunRead, RunWithSteps, StepRead
+from app.runtime import (
+    ACTIVE_RUN_STATUSES,
+    COMPLETED_VERIFIED,
+    FAILED,
+    WAITING_APPROVAL,
+    RuntimeWriteError,
+    resolve_approval,
+)
+from app.schemas.runtime import (
+    ApprovalRequest,
+    ProofOfWork,
+    ResolveApprovalRequest,
+    RunRead,
+    RunWithSteps,
+    StepRead,
+)
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
@@ -116,6 +130,34 @@ def list_approval_candidates(
         ApprovalRequest(**StepRead.model_validate(step).model_dump(), **recommend_gate(step))
         for step in gated
     ]
+
+
+@router.post("/steps/{step_id}/resolve", response_model=StepRead)
+def resolve_step(
+    step_id: int,
+    payload: ResolveApprovalRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> AgentStep:
+    """Resolve a waiting_approval step. The single human gate write into the runtime.
+
+    Delegates to the resolve_approval writer, which owns only the approval exit edges (approve
+    moves to planned, reject to skipped). Resolving anything not at the gate is a conflict.
+    """
+    step = db.get(AgentStep, step_id)
+    if step is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "step not found")
+    _load_run(step.run_id, user, db)  # ownership gate via the parent run
+    try:
+        return resolve_approval(
+            db,
+            step,
+            resolution=payload.resolution,
+            resolved_by=user.email or "user",
+            note=payload.note,
+        )
+    except RuntimeWriteError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
 
 
 @router.get("/runs/{run_id}/failed", response_model=list[StepRead])

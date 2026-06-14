@@ -6,9 +6,20 @@ pure projection or aggregation of the stored truth.
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+
+class ResolveApprovalRequest(BaseModel):
+    """The one human gate write: approve or reject a waiting_approval step, with an optional note.
+
+    The runtime is read only otherwise; this resolves only the approval exit edge through the
+    resolve_approval writer, never any other field.
+    """
+
+    resolution: Literal["approved", "rejected"]
+    note: str = ""
 
 
 class StepRead(BaseModel):

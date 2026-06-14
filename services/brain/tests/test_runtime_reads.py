@@ -129,15 +129,21 @@ def test_resolve_approval_then_read_reflects_it(client, db_session, monkeypatch)
     assert approvals == []  # resolved out of the waiting queue
 
 
-def test_no_protected_field_is_writable_through_any_public_endpoint():
-    # The runtime ledger is authored only through the four in-process writers. Prove the HTTP
-    # surface is read only: no runtime route accepts a mutating method, so status, evidence,
-    # tool_call, failure, approval, and corrections can never be set over the wire.
+def test_only_the_resolve_gate_is_writable_on_the_runtime_surface():
+    # The runtime ledger is authored only through the four in-process writers. The single HTTP
+    # write is the human gate, POST /runtime/steps/{step_id}/resolve, which delegates to
+    # resolve_approval and touches only the approval exit edge. No other runtime route accepts a
+    # mutating method, so status, evidence, tool_call, failure, and corrections can never be set
+    # over the wire.
     mutating = {"POST", "PUT", "PATCH", "DELETE"}
+    allowed = {("/runtime/steps/{step_id}/resolve", "POST")}
     offenders = []
     for route in app.routes:
         path = getattr(route, "path", "")
         methods = getattr(route, "methods", set()) or set()
-        if path.startswith("/runtime") and (methods & mutating):
-            offenders.append((path, sorted(methods & mutating)))
+        if not path.startswith("/runtime"):
+            continue
+        for method in methods & mutating:
+            if (path, method) not in allowed:
+                offenders.append((path, method))
     assert offenders == []
