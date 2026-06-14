@@ -13,6 +13,7 @@ from .routers import (
     dashboard,
     dreaming,
     flow,
+    focus,
     insights,
     intake,
     integrations,
@@ -51,6 +52,7 @@ app.include_router(projects.router)
 app.include_router(research.router)
 app.include_router(runtime.router)
 app.include_router(insights.router)
+app.include_router(focus.router)
 app.include_router(knowledge.router)
 app.include_router(dreaming.router)
 app.include_router(model_config.router)
