@@ -4139,6 +4139,275 @@
         }
       }
     },
+    "/settings/providers": {
+      "get": {
+        "tags": [
+          "settings",
+          "providers"
+        ],
+        "summary": "List Providers",
+        "description": "Every known provider plus any extra provider already connected, with status and hint.",
+        "operationId": "list_providers_settings_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderStatus"
+                  },
+                  "type": "array",
+                  "title": "Response List Providers Settings Providers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/providers/connect": {
+      "post": {
+        "tags": [
+          "settings",
+          "providers"
+        ],
+        "summary": "Connect Provider",
+        "description": "Connect a provider: write the key to the secret store by reference, keep a last four hint.\n\nThe key is written only to the server side store. The row carries the reference and the hint,\nnever the value, and the response is the non secret status view.",
+        "operationId": "connect_provider_settings_providers_connect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectProviderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/providers/{provider}/disconnect": {
+      "post": {
+        "tags": [
+          "settings",
+          "providers"
+        ],
+        "summary": "Disconnect Provider",
+        "description": "Disconnect a provider: clear the stored key and the row reference.\n\nThe stored secret is removed and the row returns to available. A provider still configured\nthrough the server side .env reports connected by environment; this never touches .env.",
+        "operationId": "disconnect_provider_settings_providers__provider__disconnect_post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/providers/{provider}/refresh": {
+      "post": {
+        "tags": [
+          "settings",
+          "providers"
+        ],
+        "summary": "Refresh Models",
+        "description": "Pull live models for a connected provider and cache them, auto enabling referenced models.",
+        "operationId": "refresh_models_settings_providers__provider__refresh_post",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveredModelRead"
+                  },
+                  "title": "Response Refresh Models Settings Providers  Provider  Refresh Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/providers/models": {
+      "get": {
+        "tags": [
+          "settings",
+          "providers"
+        ],
+        "summary": "List Discovered Models",
+        "operationId": "list_discovered_models_settings_providers_models_get",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoveredModelRead"
+                  },
+                  "title": "Response List Discovered Models Settings Providers Models Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings/providers/models/{model_id}": {
+      "patch": {
+        "tags": [
+          "settings",
+          "providers"
+        ],
+        "summary": "Toggle Model",
+        "operationId": "toggle_model_settings_providers_models__model_id__patch",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleModelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveredModelRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/system/health": {
       "get": {
         "tags": [
@@ -5649,6 +5918,28 @@
         ],
         "title": "ClassificationRecordRead"
       },
+      "ConnectProviderRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "title": "Provider"
+          },
+          "api_key": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "api_key"
+        ],
+        "title": "ConnectProviderRequest",
+        "description": "Connect a model provider by supplying its API key once.\n\nThe key is accepted only over the authenticated session and is written straight to the Brain\nsecret store. It is never echoed back, logged, or written to the ledger."
+      },
       "ConnectRequest": {
         "properties": {
           "provider": {
@@ -5973,6 +6264,39 @@
           "deleted"
         ],
         "title": "DeleteFileResponse"
+      },
+      "DiscoveredModelRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "model_id",
+          "name",
+          "enabled"
+        ],
+        "title": "DiscoveredModelRead"
       },
       "DreamRunRead": {
         "properties": {
@@ -8502,6 +8826,51 @@
         "title": "ProofOfWork",
         "description": "The evidence behind one step, and whether that evidence earned a verified status."
       },
+      "ProviderStatus": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "status",
+          "connected"
+        ],
+        "title": "ProviderStatus"
+      },
       "RankedAction": {
         "properties": {
           "rank": {
@@ -10170,6 +10539,19 @@
         },
         "type": "object",
         "title": "TaskUpdate"
+      },
+      "ToggleModelRequest": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "ToggleModelRequest"
       },
       "TopicCreate": {
         "properties": {

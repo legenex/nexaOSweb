@@ -1450,6 +1450,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Providers
+         * @description Every known provider plus any extra provider already connected, with status and hint.
+         */
+        get: operations["list_providers_settings_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/providers/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect Provider
+         * @description Connect a provider: write the key to the secret store by reference, keep a last four hint.
+         *
+         *     The key is written only to the server side store. The row carries the reference and the hint,
+         *     never the value, and the response is the non secret status view.
+         */
+        post: operations["connect_provider_settings_providers_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/providers/{provider}/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disconnect Provider
+         * @description Disconnect a provider: clear the stored key and the row reference.
+         *
+         *     The stored secret is removed and the row returns to available. A provider still configured
+         *     through the server side .env reports connected by environment; this never touches .env.
+         */
+        post: operations["disconnect_provider_settings_providers__provider__disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/providers/{provider}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh Models
+         * @description Pull live models for a connected provider and cache them, auto enabling referenced models.
+         */
+        post: operations["refresh_models_settings_providers__provider__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/providers/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Discovered Models */
+        get: operations["list_discovered_models_settings_providers_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/providers/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Toggle Model */
+        patch: operations["toggle_model_settings_providers_models__model_id__patch"];
+        trace?: never;
+    };
     "/system/health": {
         parameters: {
             query?: never;
@@ -2013,6 +2133,19 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * ConnectProviderRequest
+         * @description Connect a model provider by supplying its API key once.
+         *
+         *     The key is accepted only over the authenticated session and is written straight to the Brain
+         *     secret store. It is never echoed back, logged, or written to the ledger.
+         */
+        ConnectProviderRequest: {
+            /** Provider */
+            provider: string;
+            /** Api Key */
+            api_key: string;
+        };
         /** ConnectRequest */
         ConnectRequest: {
             /** Provider */
@@ -2127,6 +2260,19 @@ export interface components {
             path: string;
             /** Deleted */
             deleted: boolean;
+        };
+        /** DiscoveredModelRead */
+        DiscoveredModelRead: {
+            /** Id */
+            id: number;
+            /** Provider */
+            provider: string;
+            /** Model Id */
+            model_id: string;
+            /** Name */
+            name: string;
+            /** Enabled */
+            enabled: boolean;
         };
         /** DreamRunRead */
         DreamRunRead: {
@@ -3037,6 +3183,19 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** ProviderStatus */
+        ProviderStatus: {
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+            /** Connected */
+            connected: boolean;
+            /** Source */
+            source?: string | null;
+            /** Hint */
+            hint?: string | null;
+        };
         /** RankedAction */
         RankedAction: {
             /** Rank */
@@ -3626,6 +3785,11 @@ export interface components {
             status?: string | null;
             /** Project Id */
             project_id?: number | null;
+        };
+        /** ToggleModelRequest */
+        ToggleModelRequest: {
+            /** Enabled */
+            enabled: boolean;
         };
         /** TopicCreate */
         TopicCreate: {
@@ -6691,6 +6855,187 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ModelEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_providers_settings_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderStatus"][];
+                };
+            };
+        };
+    };
+    connect_provider_settings_providers_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectProviderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_provider_settings_providers__provider__disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_models_settings_providers__provider__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveredModelRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_discovered_models_settings_providers_models_get: {
+        parameters: {
+            query?: {
+                provider?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveredModelRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_model_settings_providers_models__model_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiscoveredModelRead"];
                 };
             };
             /** @description Validation Error */
