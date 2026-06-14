@@ -14,6 +14,7 @@ import { UplinkLight } from './components/UplinkLight';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { FlowPanorama } from './features/flow/FlowPanorama';
 import { InsightsView } from './features/insights/InsightsView';
+import { JournalView } from './features/journal/JournalView';
 import { FlowProvider } from './features/flow/FlowProvider';
 import { ProjectsView } from './features/projects/ProjectsView';
 import { ResearchView } from './features/research/ResearchView';
@@ -61,12 +62,7 @@ function Surface({ active, label }: { active: string; label: string }) {
     case 'settings':
       return <SettingsView tab={settingsTabKey(active)} />;
     case 'journal':
-      return (
-        <ComingSoon
-          title="Journal"
-          blurb="Capture notes and daily reflections that feed the nightly Dreaming consolidation."
-        />
-      );
+      return <JournalView />;
     case 'tasks':
       return (
         <ComingSoon
