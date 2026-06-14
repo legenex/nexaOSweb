@@ -11,12 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.gates import recommend_gate
 from app.models.inbox import InboxItem
 from app.models.project import Project
 from app.models.runtime import AgentRun, AgentStep
 from app.models.user import User
 from app.runtime import ACTIVE_RUN_STATUSES, COMPLETED_VERIFIED, FAILED, WAITING_APPROVAL
-from app.schemas.runtime import ProofOfWork, RunRead, RunWithSteps, StepRead
+from app.schemas.runtime import ApprovalRequest, ProofOfWork, RunRead, RunWithSteps, StepRead
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
@@ -103,14 +104,18 @@ def list_steps_after_cursor(
     return [step for step in _ordered_steps(db, run_id) if step.seq > after_seq]
 
 
-@router.get("/runs/{run_id}/approvals", response_model=list[StepRead])
+@router.get("/runs/{run_id}/approvals", response_model=list[ApprovalRequest])
 def list_approval_candidates(
     run_id: int,
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-) -> list[AgentStep]:
+) -> list[ApprovalRequest]:
     _load_run(run_id, user, db)
-    return [step for step in _ordered_steps(db, run_id) if step.status == WAITING_APPROVAL]
+    gated = [step for step in _ordered_steps(db, run_id) if step.status == WAITING_APPROVAL]
+    return [
+        ApprovalRequest(**StepRead.model_validate(step).model_dump(), **recommend_gate(step))
+        for step in gated
+    ]
 
 
 @router.get("/runs/{run_id}/failed", response_model=list[StepRead])

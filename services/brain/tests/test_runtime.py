@@ -56,9 +56,15 @@ def test_propose_step_authors_intent_only(db_session):
     assert step.correction_note is None
     assert step.corrected_from is None
 
+    # The entry gate is deny-by-default. At a higher autonomy level a step auto-resolves to
+    # planned only when it carries an explicit safe classification; see test_gates.py.
     autonomous = create_run(db_session, autonomy_level=2)
-    ungated = propose_step(db_session, autonomous, title="No gate")
+    safe_risk = {"low_risk": True, "reversible": True, "local": True, "non_external": True}
+    ungated = propose_step(db_session, autonomous, title="No gate", payload={"risk": safe_risk})
     assert ungated.status == PLANNED
+    # Without a safe classification, even an autonomous run keeps the step gated.
+    still_gated = propose_step(db_session, autonomous, title="Unclassified")
+    assert still_gated.status == WAITING_APPROVAL
 
 
 def test_propose_step_cannot_set_protected_fields(db_session):
@@ -135,8 +141,11 @@ def test_record_execution_cannot_mutate_a_terminal_step(db_session):
 
 
 def test_resolve_approval_requires_waiting_approval(db_session):
-    run = create_run(db_session, autonomy_level=1)  # non-zero, so the step is planned
-    step = propose_step(db_session, run, title="x")
+    run = create_run(db_session, autonomy_level=1)
+    # A safe classification auto-resolves the step to planned, so it is not at the gate.
+    safe_risk = {"low_risk": True, "reversible": True, "local": True, "non_external": True}
+    step = propose_step(db_session, run, title="x", payload={"risk": safe_risk})
+    assert step.status == PLANNED
     with pytest.raises(RuntimeWriteError):
         resolve_approval(db_session, step, resolution="approved")
 

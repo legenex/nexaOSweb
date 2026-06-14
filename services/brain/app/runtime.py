@@ -19,6 +19,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.gates import can_auto_resolve
 from app.models.base import utcnow
 from app.models.runtime import AgentRun, AgentStep
 from app.safety import safe_write_text
@@ -206,12 +207,15 @@ def propose_step(
 ) -> AgentStep:
     """Author a step's intent and place it at the entry gate.
 
-    propose_step owns the entry edge and nothing else: at autonomy_level 0 the step is created
-    waiting_approval, otherwise planned. It never sets an outcome, evidence, a tool_call, a
-    failure, or an approval resolution; it has no parameters for them. The prompt 8 safe set
-    check will later refine the non-zero branch.
+    propose_step owns the entry edge and nothing else: it never sets an outcome, evidence, a
+    tool_call, a failure, or an approval resolution; it has no parameters for them. The entry
+    gate is deny-by-default. A step is created planned (auto-resolved past the gate) only when
+    can_auto_resolve passes: a higher autonomy level and an explicit safe classification in the
+    payload. Autonomy 0, an unclassified step, a missing safe tag, or any unsafe tag all leave
+    the step waiting_approval for a human.
     """
-    status = WAITING_APPROVAL if run.autonomy_level == 0 else PLANNED
+    payload = payload or {}
+    status = PLANNED if can_auto_resolve(payload, run.autonomy_level) else WAITING_APPROVAL
     step = AgentStep(
         run_id=run.id,
         seq=_next_seq(db, run),

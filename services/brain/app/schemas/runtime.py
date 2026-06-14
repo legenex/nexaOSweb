@@ -55,6 +55,19 @@ class RunRead(BaseModel):
     finished_at: datetime | None
 
 
+class ApprovalRequest(StepRead):
+    """A waiting_approval step plus its gate guidance.
+
+    Every approval request carries a recommended_default (proceed or change) and a one line
+    framing, so a human sees a clear default and whether the decision materially affects the
+    outcome.
+    """
+
+    recommended_default: str
+    framing: str
+    materially_affects: bool
+
+
 class RunWithSteps(RunRead):
     steps: list[StepRead]
 
