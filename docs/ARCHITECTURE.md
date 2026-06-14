@@ -29,6 +29,17 @@ The interface is organized around the two pillars and the decide layer, not arou
 ## Deferred milestone, project manager and specialist agents
 The Execute stage currently writes requirements.md as the source of truth, hands off to the builder within the path safety gate, and records a PMRun stub. The full project manager agent and the specialist sub agents (developer, researcher, market research, creative, technical, data, QA, operations, analytics) are a dedicated later milestone after the Execute handoff proves out. They are intentionally not built in F6.
 
+## Agent runtime (the spine the executor will drive)
+The runtime is the durable ledger of what an agent intended, did, and proved. It exists before the executor so the executor has truth to write into, and so the honesty rules are enforced by the data layer rather than by the agent that will later run on top of it. Two tables only.
+- AgentRun is the per run header: project_id (nullable), a cached status, an integer autonomy_level (the full 0 to 4 range is stored and only the binary is honored now, where 0 gates every step at waiting_approval and non-zero does not force the gate; the prompt 8 safe set check refines the non-zero branch later), the plan (json), goal_summary, context_summary, schema_version, and proposed_by. branch_ref and cursor_step_id are seams for the future executor and resume path and carry no logic yet; cursor_step_id has no DB level foreign key to avoid a circular constraint with agent_steps, so the relationship is enforced in the app. parent_run_id and pm_run_id are nullable seams for multi run handoff and the project manager link.
+- AgentStep is the ordered ledger, indexed on (run_id, seq). Its fields are partitioned across four writers with no shared write path, so no single function authors a step end to end:
+  - propose_step authors intent only (kind, title, intent, payload, proposed_by) and owns the entry gate (planned, or waiting_approval at autonomy 0). It has no parameter for status, outcome, evidence, or approval.
+  - record_execution authors outcome, evidence, tool_call, and failure. It derives the terminal status from the work: a completed step is completed_verified only when its evidence carries at least one tool sourced item, otherwise completed_unverified. A verified status is never accepted as a target, and a terminal step cannot be mutated here.
+  - resolve_approval owns only the approval exit edges: approve moves waiting_approval to planned, reject moves it to skipped. It writes only the approval resolution.
+  - correct_step is the only writer that may change a terminal status. It records corrected_from and a required correction note and touches nothing else, and it can never set the derived completed_verified.
+
+Principle enforcement. completed_verified is earned, never asserted: it is reachable only from executing and only with tool sourced evidence, and there is no code path, in process or over HTTP, that sets it directly. The eight step states (planned, waiting_approval, blocked, executing, completed_verified, completed_unverified, failed, skipped) move only along a single transition table the writers consult; there is no transition framework. failed is terminal except through the named correction or a future resume. The cached AgentRun.status is a pure derivation of its step statuses, refreshed after every writer call, and a test asserts the cache equals the derivation. Large tool output is not inlined: evidence over a size threshold spills to a file under NEXA_RUNTIME_ROOT and is kept in the row only by content_ref, with a byte count and a short preview. The /runtime surface is read only by design (a run with its steps, steps after a cursor, approval candidates, failed steps, proof of work per step, runs per project, the active runs, and per status counts); a test proves no runtime route accepts a mutating method, so no protected field is writable over the wire.
+
 ## Repo layout
 nexaOSweb/
   CLAUDE.md
@@ -52,6 +63,8 @@ nexaOSweb/
 - ProjectUpdate: id, project_id, kind (research_finding, manual, system), title, body, source_ref (json), created_at. The project Update Log.
 - ResearchRun: id, project_id, status, summary, findings_count, finished_at, created_at.
 - ResearchFinding: id, project_id, run_id, title, detail, url, status (new, tasked, logged, saved), created_at.
+- AgentRun: id, project_id (nullable), status (cached, derived from steps), autonomy_level (int 0 to 4), branch_ref (seam, no logic), cursor_step_id (seam, no DB level FK), plan (json), goal_summary, context_summary, schema_version, proposed_by, parent_run_id (self-referential seam), pm_run_id (seam), created_at, updated_at, finished_at.
+- AgentStep: id, run_id, seq, status (one of eight), kind, title, intent, payload (json), proposed_by, outcome, evidence (json), tool_call (json), failure (json), approval (json), correction_note, corrected_from, created_at, updated_at. Indexed on (run_id, seq). Authored only through the four runtime writers, see the Agent runtime section.
 - Task, JournalNote, AppSetting: present from the data layer so the other tabs can grow later. AppSetting also holds the intake knobs, the knowledge policy, and the per day per mode dashboard brief cache, keyed per user.
 
 ## API surface (v1)
@@ -62,6 +75,7 @@ nexaOSweb/
 - Research: POST /research/{id}/attach, POST /research/{id}/detach, POST /research/{id}/runs, GET /research/{id}/runs, GET /research/{id}/findings, POST /research/findings/{id}/to-task, POST /research/findings/{id}/to-update, POST /research/findings/{id}/to-knowledge.
 - Dashboard: GET /dashboard/summary, GET /dashboard/brief.
 - Settings: GET /settings, PATCH /settings (intake knobs), GET /settings/knowledge-policy, PATCH /settings/knowledge-policy (ingestion and long term memory policy).
+- Runtime (read only): GET /runtime/runs (filterable by project_id and active), GET /runtime/runs/{id} (run with steps), GET /runtime/runs/{id}/steps (after a cursor), GET /runtime/runs/{id}/approvals, GET /runtime/runs/{id}/failed, GET /runtime/runs/{id}/status-counts, GET /runtime/steps/{id}/proof. The ledger is authored only by the in-process writers, never over HTTP.
 - Also shipped, see the OpenAPI for the full request and response shapes: Knowledge CRUD under /knowledge, the Dreaming review queue under /dreaming, Models and Agents under /settings/models, and System health and restart under /system.
 - Health: GET /healthz.
 The OpenAPI is the contract. After any change, regenerate packages/api-client.
@@ -100,4 +114,4 @@ The Brain runs as a Dockerized uvicorn service, or as a Plesk Python application
 apps/desktop is Tauri v2 pointing at the built apps/web. A GitHub Actions matrix builds the Mac dmg on macOS and the Windows msi on Windows, signs each, and publishes the installers. The Tauri updater can pull new versions.
 
 ## Environment variables
-DATABASE_URL, NEXA_SESSION_SECRET, NEXA_PUBLIC_HTTPS, NEXA_DESKTOP_BEARER, NEXA_PROJECTS_ROOT, NEXA_UPLOADS_ROOT, CORS_ORIGINS, and the provider keys ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY. Provider keys are read only by the Brain.
+DATABASE_URL, NEXA_SESSION_SECRET, NEXA_PUBLIC_HTTPS, NEXA_DESKTOP_BEARER, NEXA_PROJECTS_ROOT, NEXA_UPLOADS_ROOT, NEXA_RUNTIME_ROOT (where large runtime tool output is stored by reference), CORS_ORIGINS, and the provider keys ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY. Provider keys are read only by the Brain.
