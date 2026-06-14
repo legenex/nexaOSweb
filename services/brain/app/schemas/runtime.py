@@ -51,6 +51,7 @@ class RunRead(BaseModel):
     id: int
     project_id: int | None
     status: str
+    kind: str
     autonomy_level: int
     branch_ref: str | None
     cursor_step_id: int | None

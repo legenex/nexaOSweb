@@ -31,7 +31,12 @@ _INSTRUCTIONS_CHARS = 1500
 _MAX_KNOWLEDGE = 40
 _MAX_REJECTED = 10
 _MAX_CORRECTIONS = 10
+_MAX_READINESS = 12
 _CONTEXT_SCOPES = ("development", "general")
+
+# Readiness steps that count as answered: a resolved (known) step, or a gate a human approved.
+_READINESS_KIND = "readiness"
+_RESOLVED_READINESS_STATUSES = ("completed_verified", "completed_unverified", "planned")
 
 
 def estimate_tokens(text: str) -> int:
@@ -97,6 +102,53 @@ def _recent_corrections(db: Session) -> list[AgentStep]:
     )
 
 
+def _resolved_readiness(db: Session) -> list[AgentStep]:
+    """Recent readiness items that are already answered, newest first.
+
+    An item is answered when it was resolved from a knowledge source (a known, completed step) or
+    when a human approved its gate. These flow into the context so the agent does not re ask what
+    the readiness evaluation already settled.
+    """
+    candidates = (
+        db.query(AgentStep)
+        .filter(
+            AgentStep.kind == _READINESS_KIND,
+            AgentStep.status.in_(_RESOLVED_READINESS_STATUSES),
+        )
+        .order_by(AgentStep.updated_at.desc())
+        .limit(_MAX_READINESS * 4)
+        .all()
+    )
+    out: list[AgentStep] = []
+    for step in candidates:
+        rd = step.payload.get("readiness") if isinstance(step.payload, dict) else None
+        if not isinstance(rd, dict):
+            continue
+        known = rd.get("resolution") == "known" and step.status != "planned"
+        approved = (
+            isinstance(step.approval, dict) and step.approval.get("resolution") == "approved"
+        )
+        if known or approved:
+            out.append(step)
+        if len(out) >= _MAX_READINESS:
+            break
+    return out
+
+
+def _readiness_answer(step: AgentStep) -> str:
+    rd = step.payload.get("readiness") if isinstance(step.payload, dict) else {}
+    rd = rd if isinstance(rd, dict) else {}
+    if isinstance(step.approval, dict) and step.approval.get("resolution") == "approved":
+        note = str(step.approval.get("note") or "").strip()
+        return f"answered by you: {_summarise(note) or 'approved'}"
+    detail = ""
+    if isinstance(step.evidence, list) and step.evidence:
+        first = step.evidence[0]
+        if isinstance(first, dict):
+            detail = str(first.get("detail") or first.get("content_preview") or "")
+    return f"resolved from {rd.get('source')}: {_summarise(detail)}".rstrip(": ")
+
+
 def assemble_context(db: Session) -> str:
     """Build the bounded context string. Never exceeds MAX_CONTEXT_TOKENS by estimate."""
     parts: list[str] = []
@@ -142,6 +194,13 @@ def assemble_context(db: Session) -> str:
             for step in corrections
         ]
         add("## Recent corrections\n" + "\n".join(lines))
+
+    readiness = _resolved_readiness(db)
+    if readiness:
+        lines = [
+            f"- {_summarise(step.title)}: {_readiness_answer(step)}" for step in readiness
+        ]
+        add("## Resolved readiness answers (do not re-ask)\n" + "\n".join(lines))
 
     return "\n\n".join(parts)
 

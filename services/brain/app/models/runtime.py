@@ -46,6 +46,9 @@ class AgentRun(Base, TimestampMixin):
     )
     # Cached roll up of the step statuses. Always equal to derive_run_status(steps).
     status: Mapped[str] = mapped_column(String(40), default="planned", index=True, nullable=False)
+    # The run's kind: general agent work, or a specialised run such as readiness. A pure label
+    # that lets a reader filter runs (for example the readiness evaluation) without a new table.
+    kind: Mapped[str] = mapped_column(String(40), default="general", index=True, nullable=False)
     # The full autonomy range 0 to 4 is stored and no writer clamps it. Only the binary is
     # honored now: 0 gates every step at waiting_approval, non-zero does not force the gate.
     # The prompt 8 safe set check will refine the non-zero behaviour later.
