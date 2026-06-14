@@ -780,6 +780,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runtime/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_runtime_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_runtime_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/runs/{run_id}/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Steps After Cursor */
+        get: operations["list_steps_after_cursor_runtime_runs__run_id__steps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/runs/{run_id}/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approval Candidates */
+        get: operations["list_approval_candidates_runtime_runs__run_id__approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/runs/{run_id}/failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Failed Steps */
+        get: operations["list_failed_steps_runtime_runs__run_id__failed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/runs/{run_id}/status-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Step Status Counts */
+        get: operations["step_status_counts_runtime_runs__run_id__status_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runtime/steps/{step_id}/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Step Proof Of Work */
+        get: operations["step_proof_of_work_runtime_steps__step_id__proof_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/insights": {
         parameters: {
             query?: never;
@@ -2362,6 +2481,28 @@ export interface components {
             /** Requirements Path */
             requirements_path: string;
         };
+        /**
+         * ProofOfWork
+         * @description The evidence behind one step, and whether that evidence earned a verified status.
+         */
+        ProofOfWork: {
+            /** Step Id */
+            step_id: number;
+            /** Status */
+            status: string;
+            /** Verified */
+            verified: boolean;
+            /** Evidence Count */
+            evidence_count: number;
+            /** Tool Evidence Count */
+            tool_evidence_count: number;
+            /** Evidence */
+            evidence: unknown[];
+            /** Tool Call */
+            tool_call: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** RemapKeyRequest */
         RemapKeyRequest: {
             /** Model */
@@ -2575,6 +2716,94 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** RunRead */
+        RunRead: {
+            /** Id */
+            id: number;
+            /** Project Id */
+            project_id: number | null;
+            /** Status */
+            status: string;
+            /** Autonomy Level */
+            autonomy_level: number;
+            /** Branch Ref */
+            branch_ref: string | null;
+            /** Cursor Step Id */
+            cursor_step_id: number | null;
+            /** Plan */
+            plan: {
+                [key: string]: unknown;
+            };
+            /** Goal Summary */
+            goal_summary: string;
+            /** Context Summary */
+            context_summary: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Proposed By */
+            proposed_by: string;
+            /** Parent Run Id */
+            parent_run_id: number | null;
+            /** Pm Run Id */
+            pm_run_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Finished At */
+            finished_at: string | null;
+        };
+        /** RunWithSteps */
+        RunWithSteps: {
+            /** Id */
+            id: number;
+            /** Project Id */
+            project_id: number | null;
+            /** Status */
+            status: string;
+            /** Autonomy Level */
+            autonomy_level: number;
+            /** Branch Ref */
+            branch_ref: string | null;
+            /** Cursor Step Id */
+            cursor_step_id: number | null;
+            /** Plan */
+            plan: {
+                [key: string]: unknown;
+            };
+            /** Goal Summary */
+            goal_summary: string;
+            /** Context Summary */
+            context_summary: string;
+            /** Schema Version */
+            schema_version: number;
+            /** Proposed By */
+            proposed_by: string;
+            /** Parent Run Id */
+            parent_run_id: number | null;
+            /** Pm Run Id */
+            pm_run_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Finished At */
+            finished_at: string | null;
+            /** Steps */
+            steps: components["schemas"]["StepRead"][];
+        };
         /** SaveToKnowledgeResponse */
         SaveToKnowledgeResponse: {
             /** Insight Id */
@@ -2608,6 +2837,59 @@ export interface components {
             skills: components["schemas"]["SkillEntry"][];
             /** Connectors */
             connectors: components["schemas"]["ConnectorHealth"][];
+        };
+        /** StepRead */
+        StepRead: {
+            /** Id */
+            id: number;
+            /** Run Id */
+            run_id: number;
+            /** Seq */
+            seq: number;
+            /** Status */
+            status: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Intent */
+            intent: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Proposed By */
+            proposed_by: string;
+            /** Outcome */
+            outcome: string | null;
+            /** Evidence */
+            evidence: unknown[];
+            /** Tool Call */
+            tool_call: {
+                [key: string]: unknown;
+            } | null;
+            /** Failure */
+            failure: {
+                [key: string]: unknown;
+            } | null;
+            /** Approval */
+            approval: {
+                [key: string]: unknown;
+            } | null;
+            /** Correction Note */
+            correction_note: string | null;
+            /** Corrected From */
+            corrected_from: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** SuggestedIntegration */
         SuggestedIntegration: {
@@ -4364,6 +4646,229 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["KnowledgeEntryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_runtime_runs_get: {
+        parameters: {
+            query?: {
+                project_id?: number | null;
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_runtime_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunWithSteps"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_steps_after_cursor_runtime_runs__run_id__steps_get: {
+        parameters: {
+            query?: {
+                /** @description a step id; defaults to the run's cursor_step_id when omitted */
+                after?: number | null;
+            };
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_approval_candidates_runtime_runs__run_id__approvals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_failed_steps_runtime_runs__run_id__failed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StepRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    step_status_counts_runtime_runs__run_id__status_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    step_proof_of_work_runtime_steps__step_id__proof_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOfWork"];
                 };
             };
             /** @description Validation Error */

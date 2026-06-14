@@ -2243,6 +2243,355 @@
         }
       }
     },
+    "/runtime/runs": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "List Runs",
+        "operationId": "list_runs_runtime_runs_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunRead"
+                  },
+                  "title": "Response List Runs Runtime Runs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "Get Run",
+        "operationId": "get_run_runtime_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunWithSteps"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/runs/{run_id}/steps": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "List Steps After Cursor",
+        "operationId": "list_steps_after_cursor_runtime_runs__run_id__steps_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "a step id; defaults to the run's cursor_step_id when omitted",
+              "title": "After"
+            },
+            "description": "a step id; defaults to the run's cursor_step_id when omitted"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StepRead"
+                  },
+                  "title": "Response List Steps After Cursor Runtime Runs  Run Id  Steps Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/runs/{run_id}/approvals": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "List Approval Candidates",
+        "operationId": "list_approval_candidates_runtime_runs__run_id__approvals_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StepRead"
+                  },
+                  "title": "Response List Approval Candidates Runtime Runs  Run Id  Approvals Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/runs/{run_id}/failed": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "List Failed Steps",
+        "operationId": "list_failed_steps_runtime_runs__run_id__failed_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StepRead"
+                  },
+                  "title": "Response List Failed Steps Runtime Runs  Run Id  Failed Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/runs/{run_id}/status-counts": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "Step Status Counts",
+        "operationId": "step_status_counts_runtime_runs__run_id__status_counts_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Step Status Counts Runtime Runs  Run Id  Status Counts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runtime/steps/{step_id}/proof": {
+      "get": {
+        "tags": [
+          "runtime"
+        ],
+        "summary": "Step Proof Of Work",
+        "operationId": "step_proof_of_work_runtime_steps__step_id__proof_get",
+        "parameters": [
+          {
+            "name": "step_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Step Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProofOfWork"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/insights": {
       "get": {
         "tags": [
@@ -6454,6 +6803,59 @@
         ],
         "title": "PromoteResponse"
       },
+      "ProofOfWork": {
+        "properties": {
+          "step_id": {
+            "type": "integer",
+            "title": "Step Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified"
+          },
+          "evidence_count": {
+            "type": "integer",
+            "title": "Evidence Count"
+          },
+          "tool_evidence_count": {
+            "type": "integer",
+            "title": "Tool Evidence Count"
+          },
+          "evidence": {
+            "items": {},
+            "type": "array",
+            "title": "Evidence"
+          },
+          "tool_call": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_id",
+          "status",
+          "verified",
+          "evidence_count",
+          "tool_evidence_count",
+          "evidence",
+          "tool_call"
+        ],
+        "title": "ProofOfWork",
+        "description": "The evidence behind one step, and whether that evidence earned a verified status."
+      },
       "RemapKeyRequest": {
         "properties": {
           "model": {
@@ -7014,6 +7416,282 @@
         ],
         "title": "RollbackResponse"
       },
+      "RunRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "autonomy_level": {
+            "type": "integer",
+            "title": "Autonomy Level"
+          },
+          "branch_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Ref"
+          },
+          "cursor_step_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor Step Id"
+          },
+          "plan": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Plan"
+          },
+          "goal_summary": {
+            "type": "string",
+            "title": "Goal Summary"
+          },
+          "context_summary": {
+            "type": "string",
+            "title": "Context Summary"
+          },
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "proposed_by": {
+            "type": "string",
+            "title": "Proposed By"
+          },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
+          },
+          "pm_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pm Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "status",
+          "autonomy_level",
+          "branch_ref",
+          "cursor_step_id",
+          "plan",
+          "goal_summary",
+          "context_summary",
+          "schema_version",
+          "proposed_by",
+          "parent_run_id",
+          "pm_run_id",
+          "created_at",
+          "updated_at",
+          "finished_at"
+        ],
+        "title": "RunRead"
+      },
+      "RunWithSteps": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "autonomy_level": {
+            "type": "integer",
+            "title": "Autonomy Level"
+          },
+          "branch_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch Ref"
+          },
+          "cursor_step_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cursor Step Id"
+          },
+          "plan": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Plan"
+          },
+          "goal_summary": {
+            "type": "string",
+            "title": "Goal Summary"
+          },
+          "context_summary": {
+            "type": "string",
+            "title": "Context Summary"
+          },
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "proposed_by": {
+            "type": "string",
+            "title": "Proposed By"
+          },
+          "parent_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Run Id"
+          },
+          "pm_run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pm Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepRead"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "status",
+          "autonomy_level",
+          "branch_ref",
+          "cursor_step_id",
+          "plan",
+          "goal_summary",
+          "context_summary",
+          "schema_version",
+          "proposed_by",
+          "parent_run_id",
+          "pm_run_id",
+          "created_at",
+          "updated_at",
+          "finished_at",
+          "steps"
+        ],
+        "title": "RunWithSteps"
+      },
       "SaveToKnowledgeResponse": {
         "properties": {
           "insight_id": {
@@ -7112,6 +7790,153 @@
           "connectors"
         ],
         "title": "SkillsResponse"
+      },
+      "StepRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "seq": {
+            "type": "integer",
+            "title": "Seq"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "intent": {
+            "type": "string",
+            "title": "Intent"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "proposed_by": {
+            "type": "string",
+            "title": "Proposed By"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "evidence": {
+            "items": {},
+            "type": "array",
+            "title": "Evidence"
+          },
+          "tool_call": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "approval": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval"
+          },
+          "correction_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correction Note"
+          },
+          "corrected_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrected From"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "seq",
+          "status",
+          "kind",
+          "title",
+          "intent",
+          "payload",
+          "proposed_by",
+          "outcome",
+          "evidence",
+          "tool_call",
+          "failure",
+          "approval",
+          "correction_note",
+          "corrected_from",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "StepRead"
       },
       "SuggestedIntegration": {
         "properties": {
