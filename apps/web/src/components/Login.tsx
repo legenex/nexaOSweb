@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { useAuth } from '../app/AuthProvider';
 
 // A minimal login surface for the browser companion. The desktop wrapper authenticates
-// with its bearer and skips this screen.
-export function Login() {
+// with its bearer and skips this screen. When reached from the public marketing homepage an
+// onBack handler is passed so the visitor can return to the landing page.
+export function Login({ onBack }: { onBack?: () => void } = {}) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -66,6 +67,16 @@ export function Login() {
         >
           {busy ? 'Signing in' : 'Sign in'}
         </button>
+
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mono-label mt-4 block w-full text-center hover:text-accent"
+          >
+            back to home
+          </button>
+        ) : null}
       </form>
     </div>
   );

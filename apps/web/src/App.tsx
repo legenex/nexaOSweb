@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AuthProvider, useAuth } from './app/AuthProvider';
+import { isDesktop } from './app/config';
 import { DEFAULT_NAV_KEY, NAV_ITEMS, navBaseKey, settingsTabKey } from './app/nav';
 import { NavigationContext } from './app/navigation';
 import { ComingSoon } from './components/ComingSoon';
@@ -9,6 +10,7 @@ import { HoloObject } from './components/HoloObject';
 import type { HoloVariant } from './components/HoloObject';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
+import { MarketingHome } from './features/marketing/MarketingHome';
 import { Sidebar } from './components/Sidebar';
 import { UplinkLight } from './components/UplinkLight';
 import { DashboardView } from './features/dashboard/DashboardView';
@@ -135,6 +137,36 @@ function Shell() {
   );
 }
 
+// The public surface for anonymous web visitors: the marketing homepage by default, and the
+// sign-in form at #signin. A hash route keeps the sign-in link shareable and the browser back
+// button working without pulling in a router. The desktop wrapper authenticates with its bearer
+// and never lands here, so its anonymous state goes straight to the login form.
+function PublicSite() {
+  const [hash, setHash] = useState<string>(() =>
+    typeof window !== 'undefined' ? window.location.hash : '',
+  );
+
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const go = (next: string) => {
+    window.location.hash = next;
+  };
+
+  if (hash === '#signin') {
+    return (
+      <div className="relative h-full">
+        <HolographicBackdrop />
+        <Login onBack={() => go('')} />
+      </div>
+    );
+  }
+  return <MarketingHome onSignIn={() => go('signin')} />;
+}
+
 function Gate() {
   const { status } = useAuth();
   if (status === 'loading') {
@@ -144,7 +176,7 @@ function Gate() {
       </div>
     );
   }
-  if (status === 'anonymous') return <Login />;
+  if (status === 'anonymous') return isDesktop() ? <Login /> : <PublicSite />;
   return <Shell />;
 }
 
