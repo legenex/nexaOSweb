@@ -10,6 +10,7 @@ from .inbox import ClassificationRecord, InboxItem, PipelineRun
 from .insight import Insight, InsightRun
 from .knowledge import KnowledgeEntry
 from .project import BuildLogEntry, Integration, PMRun, Project
+from .provider import DiscoveredModel, ProviderCredential
 from .research import ProjectUpdate, ResearchFinding, ResearchRun
 from .runtime import AgentRun, AgentStep
 from .user import User
@@ -31,6 +32,8 @@ __all__ = [
     "Integration",
     "PMRun",
     "BuildLogEntry",
+    "ProviderCredential",
+    "DiscoveredModel",
     "Task",
     "JournalNote",
     "JournalTopic",

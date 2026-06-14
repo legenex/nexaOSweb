@@ -21,6 +21,7 @@ from .routers import (
     knowledge,
     model_config,
     projects,
+    providers,
     research,
     runtime,
     skills,
@@ -56,6 +57,7 @@ app.include_router(focus.router)
 app.include_router(knowledge.router)
 app.include_router(dreaming.router)
 app.include_router(model_config.router)
+app.include_router(providers.router)
 app.include_router(system.router)
 app.include_router(settings_router.router)
 app.include_router(users.router)

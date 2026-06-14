@@ -29,9 +29,11 @@ def test_transcribe_returns_transcript_when_configured(client, seed_user, monkey
 
     import litellm
 
-    def fake_transcription(model, file):
+    def fake_transcription(model, file, **kwargs):
         assert model == "openai/whisper-1"
         assert file.read() == b"fake-audio-bytes"
+        # The router resolves the provider key (here from the environment) and passes it per call.
+        assert kwargs["api_key"] == "sk-test"
         return FakeTranscription()
 
     monkeypatch.setattr(litellm, "transcription", fake_transcription)

@@ -10,18 +10,16 @@ Set a provider key to replace this with real generation.
 import re
 from typing import Any
 
-from app.settings import get_settings
+from app.router import model_router
 
 
 def has_provider_keys() -> bool:
-    settings = get_settings()
-    return any(
-        [
-            settings.anthropic_api_key,
-            settings.openai_api_key,
-            settings.gemini_api_key,
-        ]
-    )
+    """Whether any model provider key is available, connected through the store or the environment.
+
+    Store first means a provider connected through the API counts here too, so the pipeline runs on
+    that key with nothing in .env rather than falling back to offline synthesis.
+    """
+    return any(model_router.has_provider_key(p) for p in model_router.KNOWN_PROVIDERS)
 
 
 def _subject(prompt: str) -> str:
