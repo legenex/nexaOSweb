@@ -1,14 +1,19 @@
-"""Gated AI editor for the Projects workspace.
+"""Gated AI editor for the Projects workspace and the executor worktree.
 
-The editor proposes a change to a single project file, returns a diff summary, and writes
-nothing until an explicit approval arrives. Apply re-checks the path safety gate, writes the
-file, and records an applied build log entry that backs a later rollback. Every read and
-write is confined to the project's own folder under NEXA_PROJECTS_ROOT.
+The editor proposes a change to a single file, returns a diff summary, and writes nothing until
+an explicit approval (or the executor's apply step) arrives. Apply re-checks the path safety gate,
+writes the file, and records an applied build log entry that backs a later rollback.
+
+Every read and write is confined to a root by ensure_within_root. The root defaults to the
+project's own folder under NEXA_PROJECTS_ROOT, and the executor passes its isolated worktree root
+instead, so the same gated propose and apply serve both the live workspace and an executor run
+without either being able to escape its root.
 """
 
 import difflib
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -37,16 +42,36 @@ class EditorError(Exception):
     """Raised when a proposal cannot be made, applied, or rolled back."""
 
 
+@dataclass
+class RenderedEdit:
+    """A proposed change before anything is persisted or written.
+
+    before is the full prior content, or None when the file does not exist yet. after is the full
+    intended content. The executor hashes intent plus after into a content idempotency key and
+    compares after against the target before writing, so neither needs a database row to exist.
+    """
+
+    file_path: str
+    before: str | None
+    after: str
+    summary: str
+    diff_summary: str
+
+
 def _project_dir(project: Project) -> Path:
     """Resolve and gate the project's own folder under the projects root."""
     settings = get_settings()
     return ensure_within_root(settings.nexa_projects_root, project.slug)
 
 
-def _resolve_in_project(project: Project, file_path: str) -> Path:
-    """Gate a candidate file twice: inside the projects root and inside this project."""
-    project_dir = _project_dir(project)
-    return ensure_within_root(project_dir, file_path)
+def _edit_root(project: Project, root: str | Path | None) -> Path:
+    """The root every read and write of this edit is confined to.
+
+    Defaults to the project folder; the executor passes its worktree so the same gate serves an
+    isolated run. A root that is already gated (the worktree path) is re-resolved here, so a
+    crafted file path still cannot escape it.
+    """
+    return Path(root) if root is not None else _project_dir(project)
 
 
 def _diff_summary(before: str, after: str, file_path: str) -> str:
@@ -83,21 +108,23 @@ def _edit_prompt(file_path: str, before: str | None, instruction: str) -> str:
     )
 
 
-def propose_edit(
-    db: Session,
+def render_edit(
     project: Project,
     *,
     file_path: str,
     instruction: str,
     synthesize: Callable[..., dict[str, Any]] | None = None,
-) -> BuildLogEntry:
-    """Generate a proposed change and persist it as a proposed build log entry.
+    root: str | Path | None = None,
+) -> RenderedEdit:
+    """Produce the intended change without persisting or writing anything.
 
-    Nothing is written to disk. The path safety gate runs here so an escaping path is
-    rejected before any model call.
+    The path safety gate runs first, rooted at root (the project folder by default, the worktree
+    for an executor run), so an escaping path is rejected before any model call. Returns the
+    before and after content the caller can persist, hash for idempotency, or compare to disk.
     """
     synthesize = synthesize or synthesize_json
-    target = _resolve_in_project(project, file_path)  # raises PathSafetyError on escape
+    base = _edit_root(project, root)
+    target = ensure_within_root(base, file_path)  # raises PathSafetyError on escape
     before: str | None = target.read_text(encoding="utf-8") if target.exists() else None
 
     result = synthesize("agentic_code", _edit_prompt(file_path, before, instruction), _EDIT_SCHEMA)
@@ -105,16 +132,26 @@ def propose_edit(
         raise EditorError("the editor did not return new content")
     after = str(result.get("new_content", ""))
     summary = str(result.get("change_summary", "")).strip() or f"Edit {file_path}"
+    return RenderedEdit(
+        file_path=file_path,
+        before=before,
+        after=after,
+        summary=summary,
+        diff_summary=_diff_summary(before or "", after, file_path),
+    )
 
+
+def proposed_entry(db: Session, project: Project, rendered: RenderedEdit) -> BuildLogEntry:
+    """Persist a rendered change as a proposed build log entry. Writes nothing to disk."""
     entry = BuildLogEntry(
         project_id=project.id,
         action="edit",
         status="proposed",
-        summary=summary[:400],
-        file_path=file_path,
-        diff_summary=_diff_summary(before or "", after, file_path),
-        before_content=before,
-        after_content=after,
+        summary=rendered.summary[:400],
+        file_path=rendered.file_path,
+        diff_summary=rendered.diff_summary,
+        before_content=rendered.before,
+        after_content=rendered.after,
     )
     db.add(entry)
     db.commit()
@@ -122,16 +159,45 @@ def propose_edit(
     return entry
 
 
-def apply_edit(db: Session, project: Project, entry: BuildLogEntry) -> str:
-    """Apply an approved proposal. Re-checks the path safety gate before writing."""
+def propose_edit(
+    db: Session,
+    project: Project,
+    *,
+    file_path: str,
+    instruction: str,
+    synthesize: Callable[..., dict[str, Any]] | None = None,
+    root: str | Path | None = None,
+) -> BuildLogEntry:
+    """Generate a proposed change and persist it as a proposed build log entry.
+
+    Nothing is written to disk. The path safety gate runs in render_edit, rooted at root, so an
+    escaping path is rejected before any model call.
+    """
+    rendered = render_edit(
+        project, file_path=file_path, instruction=instruction, synthesize=synthesize, root=root
+    )
+    return proposed_entry(db, project, rendered)
+
+
+def apply_edit(
+    db: Session,
+    project: Project,
+    entry: BuildLogEntry,
+    *,
+    root: str | Path | None = None,
+) -> str:
+    """Apply an approved proposal. Re-checks the path safety gate before writing.
+
+    The write is confined to root: the project folder by default, the worktree for an executor
+    run. safe_write_text re-resolves the path against that root and creates parents.
+    """
     if entry.project_id != project.id:
         raise EditorError("proposal does not belong to this project")
     if entry.action != "edit" or entry.status != "proposed":
         raise EditorError("only a pending edit proposal can be applied")
 
-    project_dir = _project_dir(project)
-    # safe_write_text re-resolves the path against the project folder and creates parents.
-    written = safe_write_text(project_dir, entry.file_path, entry.after_content or "")
+    base = _edit_root(project, root)
+    written = safe_write_text(base, entry.file_path, entry.after_content or "")
     entry.status = "applied"
     db.commit()
     db.refresh(entry)

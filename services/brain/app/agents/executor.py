@@ -1,7 +1,9 @@
-"""Executor phase a: isolated branch and plan.
+"""Executor phases a and b: isolated branch and plan, then the gated edit loop.
 
-The executor drives an approved project to a build. This first phase does the two things that
-must happen before any work is attempted, and nothing more:
+The executor drives an approved project to a build on the existing AgentRun and AgentStep spine:
+an executor run is an AgentRun of kind executor, and there is no second run model.
+
+Phase a does the two things that must happen before any work is attempted, and nothing more:
 
     1. It refuses to start at all unless readiness is satisfied. A run whose blocking knowledge
        gaps are still open never reaches the workspace step.
@@ -9,13 +11,17 @@ must happen before any work is attempted, and nothing more:
        NEXA_RUNTIME_ROOT, through the path safety gate, and persists the plan as plan-kind steps
        read from requirements.md, the source of truth produced at promote.
 
-This phase plans only. It creates the worktree and the branch and records the plan, but it makes
-no edits inside the worktree and runs no build commands. Later phases pick the plan steps up and
-execute them through the existing runtime writers. The executor builds on the existing AgentRun
-and AgentStep spine: an executor run is an AgentRun of kind executor, and its plan is ordinary
-AgentSteps of kind plan. There is no second run model.
+Phase b runs the edit loop. For each planned file change the coordinator calls the gated editor
+rooted at the worktree, producing a proposed BuildLogEntry and an edit-kind AgentStep, then applies
+the change to the worktree. Edits happen only inside the worktree, never the live checkout, and
+every write passes ensure_within_root rooted at the worktree. Each step carries a content
+idempotency key (a hash of intent plus the intended content): re-running a succeeded step is a
+no-op, and an apply whose target already equals the intended content writes nothing. This phase
+only edits: it runs no checks and no merges. The protected-branch guard refuses to edit on a
+protected branch, and the dangerous-command guard wraps the few git commands phase a runs.
 """
 
+import hashlib
 import logging
 import re
 import subprocess
@@ -23,19 +29,31 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from app.agents.project_editor import apply_edit, proposed_entry, render_edit
 from app.agents.readiness import readiness_satisfied
 from app.gates import SAFE_TAGS
 from app.models.project import Project
-from app.models.runtime import AgentRun
-from app.runtime import create_run, propose_step
+from app.models.runtime import AgentRun, AgentStep
+from app.runtime import (
+    COMPLETED_UNVERIFIED,
+    COMPLETED_VERIFIED,
+    create_run,
+    propose_step,
+    record_execution,
+)
 from app.safety import PROTECTED_BRANCHES, ensure_within_root, is_dangerous
 from app.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-# An executor run is an AgentRun of this kind; its plan is AgentSteps of the plan kind.
+# An executor run is an AgentRun of this kind; its plan is AgentSteps of the plan kind, and each
+# applied file change is an AgentStep of the edit kind.
 EXECUTOR_KIND = "executor"
 PLAN_STEP_KIND = "plan"
+EDIT_STEP_KIND = "edit"
+
+# The terminal completed states a succeeded edit step lands on, used to detect a re-run no-op.
+_COMPLETED_STATES = (COMPLETED_VERIFIED, COMPLETED_UNVERIFIED)
 
 # The executor lifecycle marker stored on AgentRun.phase. Phase a ends with the plan recorded.
 PHASE_PLAN = "plan"
@@ -46,6 +64,11 @@ EXECUTOR_AUTONOMY = 1
 
 # A plan step is a record of intended work, not the work itself: reversible, local, non external.
 _PLAN_RISK = {tag: True for tag in SAFE_TAGS}
+
+# An edit inside the isolated worktree is reversible (the BuildLogEntry holds the prior content),
+# local to the worktree, and touches nothing external, so it is classified safe and lands planned
+# at the executor's non zero autonomy rather than at the human gate.
+_EDIT_RISK = {tag: True for tag in SAFE_TAGS}
 
 # Git identity used only for the baseline commit in a fresh project repo, so a commit exists to
 # branch a worktree from. It never touches the user's global config.
@@ -237,3 +260,160 @@ def start_executor_run(
 
     db.refresh(run)
     return run
+
+
+# --- phase b: the gated edit loop ---------------------------------------------------------
+
+
+def _edit_intent(file_path: str, instruction: str) -> str:
+    return f"edit {file_path}: {instruction}".strip()
+
+
+def _edit_idempotency_key(intent: str, intended_content: str) -> str:
+    """A stable per-run key for an edit: a hash of intent plus the intended target content.
+
+    Same intent and same intended content yield the same key, so re-proposing the unit is caught
+    before a second step or a second write. The key is namespaced so it never collides with a plan
+    step key.
+    """
+    digest = hashlib.sha256(f"{intent}\x00{intended_content}".encode()).hexdigest()
+    return f"edit:{digest[:48]}"
+
+
+def _succeeded_edit_step(db: Session, run: AgentRun, key: str) -> AgentStep | None:
+    """An already completed edit step for this exact unit, if one exists in the run."""
+    return (
+        db.query(AgentStep)
+        .filter(
+            AgentStep.run_id == run.id,
+            AgentStep.idempotency_key == key,
+            AgentStep.status.in_(_COMPLETED_STATES),
+        )
+        .first()
+    )
+
+
+def _worktree_root(run: AgentRun) -> Path:
+    """The run's worktree, re-gated under the runtime root so a stored path is never trusted."""
+    if not run.worktree_path:
+        raise ExecutorError("executor run has no worktree to edit in")
+    settings = get_settings()
+    return ensure_within_root(settings.nexa_runtime_root, run.worktree_path)
+
+
+def _apply_one_edit(
+    db: Session,
+    run: AgentRun,
+    project: Project,
+    worktree: Path,
+    change: dict,
+    synthesize,
+    proposed_by: str,
+) -> AgentStep:
+    """Propose and apply a single file change inside the worktree, idempotently.
+
+    The gated editor renders the intended content rooted at the worktree (the path gate runs
+    there). If a completed step already covers this exact unit, nothing new is created. Otherwise
+    a proposed BuildLogEntry and an edit-kind step are recorded, and the change is applied to the
+    worktree, unless the target already holds the intended content, in which case no write occurs.
+    """
+    file_path = str(change["file_path"])
+    instruction = str(change.get("instruction", ""))
+    intent = _edit_intent(file_path, instruction)
+
+    rendered = render_edit(
+        project,
+        file_path=file_path,
+        instruction=instruction,
+        synthesize=synthesize,
+        root=worktree,
+    )
+    key = _edit_idempotency_key(intent, rendered.after)
+
+    # Step-level idempotency: a succeeded step for this unit is a no-op, with no new step, entry,
+    # or write. This is what makes re-running an applied edit safe.
+    existing = _succeeded_edit_step(db, run, key)
+    if existing is not None:
+        return existing
+
+    entry = proposed_entry(db, project, rendered)
+    step = propose_step(
+        db,
+        run,
+        kind=EDIT_STEP_KIND,
+        title=f"Edit {file_path}",
+        intent=intent,
+        payload={
+            "edit": {
+                "file_path": file_path,
+                "build_log_id": entry.id,
+                "summary": entry.summary,
+            },
+            "risk": dict(_EDIT_RISK),
+        },
+        proposed_by=proposed_by,
+        idempotency_key=key,
+    )
+
+    # Content-level idempotency: only write when the target is not already the intended content.
+    target = ensure_within_root(worktree, file_path)
+    already_current = target.exists() and target.read_text(encoding="utf-8") == rendered.after
+    if already_current:
+        entry.status = "applied"  # the desired content is present; record applied without a write
+        db.commit()
+        wrote = False
+        written_path = str(target)
+    else:
+        written_path = apply_edit(db, project, entry, root=worktree)
+        wrote = True
+
+    evidence = [
+        {
+            "source": "tool",
+            "tool": "gated_editor",
+            "file_path": file_path,
+            "build_log_id": entry.id,
+            "wrote": wrote,
+            "written_path": written_path,
+        }
+    ]
+    record_execution(db, step, outcome="completed", evidence=evidence)
+    return step
+
+
+def execute_planned_edits(
+    db: Session,
+    run: AgentRun,
+    changes: list[dict],
+    *,
+    synthesize=None,
+    proposed_by: str = "system",
+) -> list[AgentStep]:
+    """Run the gated edit loop for an executor run, applying each change inside the worktree.
+
+    A change is a dict with a file_path and an instruction. Every edit is confined to the run's
+    worktree by ensure_within_root and never touches the live checkout. The protected-branch guard
+    refuses to edit on a protected branch. This phase only edits: it runs no checks and no merges.
+    Returns the edit step per change, the same step instance for a unit already satisfied.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("edits run only on an executor run")
+    if run.branch_ref in PROTECTED_BRANCHES:
+        raise ExecutorError(f"refused to edit on a protected branch: {run.branch_ref}")
+
+    worktree = _worktree_root(run)
+    if not worktree.is_dir():
+        raise ExecutorError(f"worktree does not exist: {worktree}")
+    project = db.get(Project, run.project_id) if run.project_id is not None else None
+    if project is None:
+        raise ExecutorError("an executor run requires a project to edit")
+
+    steps: list[AgentStep] = []
+    for change in changes:
+        if not isinstance(change, dict) or not change.get("file_path"):
+            raise ExecutorError("each change needs a file_path")
+        steps.append(
+            _apply_one_edit(db, run, project, worktree, change, synthesize, proposed_by)
+        )
+    db.refresh(run)
+    return steps

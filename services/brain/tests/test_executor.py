@@ -6,17 +6,21 @@ from pathlib import Path
 import pytest
 
 from app.agents.executor import (
+    EDIT_STEP_KIND,
     EXECUTOR_KIND,
     PHASE_PLAN,
     PLAN_STEP_KIND,
+    ExecutorError,
     ReadinessNotSatisfiedError,
+    execute_planned_edits,
     plan_steps_from_requirements,
     start_executor_run,
 )
 from app.agents.readiness import evaluate_readiness, readiness_satisfied
-from app.models.project import Project
+from app.models.project import BuildLogEntry, Project
 from app.models.runtime import AgentRun, AgentStep
-from app.runtime import PLANNED
+from app.runtime import COMPLETED_VERIFIED, PLANNED
+from app.safety import PathSafetyError
 from app.settings import get_settings
 
 
@@ -129,3 +133,157 @@ def test_plan_falls_back_to_headings_then_a_single_step():
 
     bare = plan_steps_from_requirements("# Requirements\n\nJust some prose, no tasks.\n")
     assert [s["title"] for s in bare] == ["Implement the approved requirements"]
+
+
+# --- phase b: the gated edit loop ---------------------------------------------------------
+
+
+def _fixed_synth(content, summary="edit"):
+    """A deterministic editor: the same intended content regardless of the prompt."""
+
+    def synth(key, prompt, schema=None):
+        return {"new_content": content, "change_summary": summary}
+
+    return synth
+
+
+def _started_run(db, monkeypatch, tmp_path, slug):
+    _roots(monkeypatch, tmp_path)
+    project = _project_with_requirements(db, tmp_path, slug=slug)
+    readiness = evaluate_readiness(db, plan={}, project_id=project.id)
+    run = start_executor_run(db, readiness_run=readiness, project_id=project.id)
+    return project, run
+
+
+def _edit_steps(db, run):
+    return (
+        db.query(AgentStep)
+        .filter(AgentStep.run_id == run.id, AgentStep.kind == EDIT_STEP_KIND)
+        .all()
+    )
+
+
+def test_edit_lands_in_worktree_not_checkout(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "edit1")
+    content = "print('hello')\n"
+
+    steps = execute_planned_edits(
+        db_session,
+        run,
+        [{"file_path": "app/main.py", "instruction": "create the entrypoint"}],
+        synthesize=_fixed_synth(content),
+    )
+
+    # One edit-kind step, completed_verified from its tool sourced write evidence.
+    assert len(steps) == 1
+    assert steps[0].kind == EDIT_STEP_KIND
+    assert steps[0].status == COMPLETED_VERIFIED
+
+    # The file lands inside the worktree, with the intended content.
+    worktree = Path(run.worktree_path)
+    assert (worktree / "app" / "main.py").read_text(encoding="utf-8") == content
+
+    # The live checkout never received it.
+    source = Path(tmp_path) / "projects" / project.slug
+    assert not (source / "app" / "main.py").exists()
+
+    # An applied build log entry backs the change, holding the before (none) and after content.
+    entry = (
+        db_session.query(BuildLogEntry)
+        .filter(BuildLogEntry.project_id == project.id, BuildLogEntry.action == "edit")
+        .one()
+    )
+    assert entry.status == "applied"
+    assert entry.before_content is None
+    assert entry.after_content == content
+
+
+def test_rerun_does_not_double_apply(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "edit2")
+    content = "VALUE = 1\n"
+    change = {"file_path": "config.py", "instruction": "set the value"}
+
+    first = execute_planned_edits(db_session, run, [change], synthesize=_fixed_synth(content))
+    second = execute_planned_edits(db_session, run, [change], synthesize=_fixed_synth(content))
+
+    # The re-run is a no-op: the same step is returned, with no second step and no second entry.
+    assert second[0].id == first[0].id
+    assert len(_edit_steps(db_session, run)) == 1
+    entries = (
+        db_session.query(BuildLogEntry)
+        .filter(BuildLogEntry.project_id == project.id, BuildLogEntry.action == "edit")
+        .all()
+    )
+    assert len(entries) == 1
+    assert (Path(run.worktree_path) / "config.py").read_text(encoding="utf-8") == content
+
+
+def test_apply_is_noop_when_target_already_matches(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "edit3")
+    content = "ready\n"
+    # The worktree already holds exactly the intended content before the edit runs.
+    (Path(run.worktree_path) / "status.txt").write_text(content, encoding="utf-8")
+
+    steps = execute_planned_edits(
+        db_session,
+        run,
+        [{"file_path": "status.txt", "instruction": "ensure the marker"}],
+        synthesize=_fixed_synth(content),
+    )
+
+    # The step completes, but no write happened because the content was already present.
+    assert steps[0].status == COMPLETED_VERIFIED
+    assert steps[0].evidence[0]["wrote"] is False
+    entry = (
+        db_session.query(BuildLogEntry)
+        .filter(BuildLogEntry.project_id == project.id, BuildLogEntry.action == "edit")
+        .one()
+    )
+    assert entry.status == "applied"
+
+
+def test_live_checkout_is_untouched(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "edit4")
+    source = Path(tmp_path) / "projects" / project.slug
+    head_before = _git(source, "rev-parse", "HEAD").strip()
+
+    execute_planned_edits(
+        db_session,
+        run,
+        [{"file_path": "new.txt", "instruction": "add a file"}],
+        synthesize=_fixed_synth("data\n"),
+    )
+
+    # The live checkout is clean, its HEAD is unmoved, and it never received the new file.
+    assert _git(source, "status", "--porcelain").strip() == ""
+    assert _git(source, "rev-parse", "HEAD").strip() == head_before
+    assert not (source / "new.txt").exists()
+
+
+def test_edit_refused_on_protected_branch(db_session, monkeypatch, tmp_path):
+    _project, run = _started_run(db_session, monkeypatch, tmp_path, "edit5")
+    run.branch_ref = "main"
+    db_session.commit()
+
+    with pytest.raises(ExecutorError):
+        execute_planned_edits(
+            db_session,
+            run,
+            [{"file_path": "x.txt", "instruction": "y"}],
+            synthesize=_fixed_synth("z"),
+        )
+
+
+def test_edit_path_escape_is_blocked(db_session, monkeypatch, tmp_path):
+    _project, run = _started_run(db_session, monkeypatch, tmp_path, "edit6")
+
+    with pytest.raises(PathSafetyError):
+        execute_planned_edits(
+            db_session,
+            run,
+            [{"file_path": "../escape.txt", "instruction": "escape"}],
+            synthesize=_fixed_synth("x"),
+        )
+
+    # Nothing escaped: no file was written beside the worktree.
+    assert not (Path(run.worktree_path).parent / "escape.txt").exists()
