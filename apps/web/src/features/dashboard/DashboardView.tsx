@@ -3,6 +3,7 @@ import type { Schemas } from '@nexaosweb/api-client';
 
 import { api } from '../../app/client';
 import { ApprovalQueue } from '../runtime/ApprovalQueue';
+import { FailureView } from '../runtime/FailureView';
 import { CommandRadar } from './CommandRadar';
 import { DreamDigest } from './DreamDigest';
 import { FocusStrip } from './FocusStrip';
@@ -52,6 +53,8 @@ export function DashboardView() {
       ) : (
         <p className="text-sm text-muted">Scanning local state…</p>
       )}
+
+      <FailureView />
     </div>
   );
 }
