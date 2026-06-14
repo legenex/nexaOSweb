@@ -519,11 +519,17 @@ export function ModelsAgentsPanel() {
       setBusy(true);
       setError(null);
       try {
-        const { error: err } = await api.POST('/settings/providers/connect', {
+        // openapi-fetch leaves `error` undefined when a non-2xx body does not match the schema
+        // (for example a bare 404). Gate on response.ok too so a failure is always surfaced and
+        // never falls through to the success path.
+        const { error: err, response } = await api.POST('/settings/providers/connect', {
           body: { provider, api_key: apiKey },
         });
-        if (err) {
-          setError(detailOf(err) ?? `Could not connect ${provider}. Check the key and try again.`);
+        if (err || !response.ok) {
+          setError(
+            detailOf(err) ??
+              `Could not connect ${provider} (HTTP ${response.status}). Check the key and try again.`,
+          );
           return false;
         }
         await loadProviders();
@@ -540,11 +546,12 @@ export function ModelsAgentsPanel() {
       setBusy(true);
       setError(null);
       try {
-        const { error: err } = await api.POST('/settings/providers/{provider}/disconnect', {
-          params: { path: { provider } },
-        });
-        if (err) {
-          setError(detailOf(err) ?? `Could not disconnect ${provider}.`);
+        const { error: err, response } = await api.POST(
+          '/settings/providers/{provider}/disconnect',
+          { params: { path: { provider } } },
+        );
+        if (err || !response.ok) {
+          setError(detailOf(err) ?? `Could not disconnect ${provider} (HTTP ${response.status}).`);
           return;
         }
         await loadProviders();
@@ -560,11 +567,14 @@ export function ModelsAgentsPanel() {
       setBusy(true);
       setError(null);
       try {
-        const { error: err } = await api.POST('/settings/providers/{provider}/refresh', {
-          params: { path: { provider } },
-        });
-        if (err) {
-          setError(detailOf(err) ?? `Could not refresh models for ${provider}.`);
+        const { error: err, response } = await api.POST(
+          '/settings/providers/{provider}/refresh',
+          { params: { path: { provider } } },
+        );
+        if (err || !response.ok) {
+          setError(
+            detailOf(err) ?? `Could not refresh models for ${provider} (HTTP ${response.status}).`,
+          );
           return;
         }
         await loadProviders();
@@ -580,13 +590,16 @@ export function ModelsAgentsPanel() {
       setBusy(true);
       setError(null);
       try {
-        const { error: err } = await api.PATCH('/settings/providers/models/{model_id}', {
-          params: { path: { model_id: model.id } },
-          body: { enabled },
-        });
-        if (err) {
+        const { error: err, response } = await api.PATCH(
+          '/settings/providers/models/{model_id}',
+          { params: { path: { model_id: model.id } }, body: { enabled } },
+        );
+        if (err || !response.ok) {
           // A 409 names the semantic keys still mapped to the model; surface it, never swallow it.
-          setError(detailOf(err) ?? `Could not ${enabled ? 'enable' : 'disable'} ${model.model_id}.`);
+          setError(
+            detailOf(err) ??
+              `Could not ${enabled ? 'enable' : 'disable'} ${model.model_id} (HTTP ${response.status}).`,
+          );
           return;
         }
         await loadProviders();
@@ -602,12 +615,15 @@ export function ModelsAgentsPanel() {
       setBusy(true);
       setError(null);
       try {
-        const { error: err } = await api.PATCH('/settings/models/keys/{key}', {
+        const { error: err, response } = await api.PATCH('/settings/models/keys/{key}', {
           params: { path: { key } },
           body: { model },
         });
-        if (err) {
-          setError(detailOf(err) ?? 'Remap rejected. Check the model id format (provider/model-id).');
+        if (err || !response.ok) {
+          setError(
+            detailOf(err) ??
+              `Remap rejected (HTTP ${response.status}). Check the model id format (provider/model-id).`,
+          );
           return;
         }
         await loadConfig();
