@@ -1040,6 +1040,90 @@
         }
       }
     },
+    "/flow/items/{item_id}/readiness": {
+      "post": {
+        "tags": [
+          "flow"
+        ],
+        "summary": "Evaluate Item Readiness",
+        "description": "Run the readiness assessment for this item's project at the Human Gate.\n\nAnswers every item it can from the knowledge sources before asking the user; blocking gaps land\nin the existing approval queue and credential gaps in the secure provide path. A secret is never\nwritten here. Returns the fresh assessment.",
+        "operationId": "evaluate_item_readiness_flow_items__item_id__readiness_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessAssessment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "flow"
+        ],
+        "summary": "Get Item Readiness",
+        "description": "The latest readiness assessment for this item's project.\n\n404 when the project has never been assessed, so the panel shows an honest not yet assessed\nstate rather than inventing data.",
+        "operationId": "get_item_readiness_flow_items__item_id__readiness_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessAssessment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects": {
       "get": {
         "tags": [
@@ -4135,6 +4219,48 @@
         }
       }
     },
+    "/integrations/credentials/fulfil": {
+      "post": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "Fulfil Credential",
+        "description": "Provide the secret for a pending credential request.\n\nThe secret arrives over the authenticated session only, is written straight to the Brain\nsecret store, flips the Integration to connected (by reference), and resolves the readiness\nstep. The response is the integration read model, which carries the reference and never the\nvalue. The secret is never returned, logged, or written to the ledger.",
+        "operationId": "fulfil_credential_integrations_credentials_fulfil_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FulfilCredentialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/integrations/{integration_id}/disconnect": {
       "post": {
         "tags": [
@@ -5472,6 +5598,26 @@
           "created_at"
         ],
         "title": "FlowItemDTO"
+      },
+      "FulfilCredentialRequest": {
+        "properties": {
+          "step_id": {
+            "type": "integer",
+            "title": "Step Id"
+          },
+          "secret": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_id",
+          "secret"
+        ],
+        "title": "FulfilCredentialRequest",
+        "description": "Provide a secret for a pending credential request, by waiting_approval step id.\n\nThe secret is accepted only over the authenticated session and is written straight to the\nBrain secret store. It is never echoed back, logged, or written to the runtime ledger."
       },
       "GeneralSettings": {
         "properties": {
@@ -7401,6 +7547,168 @@
         "title": "ProofOfWork",
         "description": "The evidence behind one step, and whether that evidence earned a verified status."
       },
+      "ReadinessAssessment": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "satisfied": {
+            "type": "boolean",
+            "title": "Satisfied"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          },
+          "blocking_open": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Blocking Open",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "kind",
+          "satisfied"
+        ],
+        "title": "ReadinessAssessment",
+        "description": "A project's build readiness: every item, whether it is satisfied, and what still blocks."
+      },
+      "ReadinessItem": {
+        "properties": {
+          "step_id": {
+            "type": "integer",
+            "title": "Step Id"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "item_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Kind"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "blocking": {
+            "type": "boolean",
+            "title": "Blocking",
+            "default": false
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "satisfied": {
+            "type": "boolean",
+            "title": "Satisfied",
+            "default": false
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "integration_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step_id",
+          "category",
+          "status"
+        ],
+        "title": "ReadinessItem",
+        "description": "One readiness item: a need the plan declared and how the assessment resolved it.\n\nprovider and integration_id are present only for a credential item, so the web can open the\nprovide control. Neither is or carries a secret value."
+      },
       "RemapKeyRequest": {
         "properties": {
           "model": {
@@ -8005,6 +8313,10 @@
             "type": "string",
             "title": "Status"
           },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
           "autonomy_level": {
             "type": "integer",
             "title": "Autonomy Level"
@@ -8102,6 +8414,7 @@
           "id",
           "project_id",
           "status",
+          "kind",
           "autonomy_level",
           "branch_ref",
           "cursor_step_id",
@@ -8138,6 +8451,10 @@
           "status": {
             "type": "string",
             "title": "Status"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
           },
           "autonomy_level": {
             "type": "integer",
@@ -8243,6 +8560,7 @@
           "id",
           "project_id",
           "status",
+          "kind",
           "autonomy_level",
           "branch_ref",
           "cursor_step_id",

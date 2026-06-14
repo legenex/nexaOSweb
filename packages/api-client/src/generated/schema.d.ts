@@ -369,6 +369,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/flow/items/{item_id}/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Item Readiness
+         * @description The latest readiness assessment for this item's project.
+         *
+         *     404 when the project has never been assessed, so the panel shows an honest not yet assessed
+         *     state rather than inventing data.
+         */
+        get: operations["get_item_readiness_flow_items__item_id__readiness_get"];
+        put?: never;
+        /**
+         * Evaluate Item Readiness
+         * @description Run the readiness assessment for this item's project at the Human Gate.
+         *
+         *     Answers every item it can from the knowledge sources before asking the user; blocking gaps land
+         *     in the existing approval queue and credential gaps in the secure provide path. A secret is never
+         *     written here. Returns the fresh assessment.
+         */
+        post: operations["evaluate_item_readiness_flow_items__item_id__readiness_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects": {
         parameters: {
             query?: never;
@@ -1440,6 +1471,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/integrations/credentials/fulfil": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fulfil Credential
+         * @description Provide the secret for a pending credential request.
+         *
+         *     The secret arrives over the authenticated session only, is written straight to the Brain
+         *     secret store, flips the Integration to connected (by reference), and resolves the readiness
+         *     step. The response is the integration read model, which carries the reference and never the
+         *     value. The secret is never returned, logged, or written to the ledger.
+         */
+        post: operations["fulfil_credential_integrations_credentials_fulfil_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/integrations/{integration_id}/disconnect": {
         parameters: {
             query?: never;
@@ -1989,6 +2045,19 @@ export interface components {
              * @default none
              */
             gate_state: string;
+        };
+        /**
+         * FulfilCredentialRequest
+         * @description Provide a secret for a pending credential request, by waiting_approval step id.
+         *
+         *     The secret is accepted only over the authenticated session and is written straight to the
+         *     Brain secret store. It is never echoed back, logged, or written to the runtime ledger.
+         */
+        FulfilCredentialRequest: {
+            /** Step Id */
+            step_id: number;
+            /** Secret */
+            secret: string;
         };
         /**
          * GeneralSettings
@@ -2665,6 +2734,69 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /**
+         * ReadinessAssessment
+         * @description A project's build readiness: every item, whether it is satisfied, and what still blocks.
+         */
+        ReadinessAssessment: {
+            /** Run Id */
+            run_id: number;
+            /** Project Id */
+            project_id?: number | null;
+            /** Kind */
+            kind: string;
+            /** Satisfied */
+            satisfied: boolean;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["ReadinessItem"][];
+            /**
+             * Blocking Open
+             * @default []
+             */
+            blocking_open: string[];
+        };
+        /**
+         * ReadinessItem
+         * @description One readiness item: a need the plan declared and how the assessment resolved it.
+         *
+         *     provider and integration_id are present only for a credential item, so the web can open the
+         *     provide control. Neither is or carries a secret value.
+         */
+        ReadinessItem: {
+            /** Step Id */
+            step_id: number;
+            /** Key */
+            key?: string | null;
+            /** Question */
+            question?: string | null;
+            /** Item Kind */
+            item_kind?: string | null;
+            /** Category */
+            category: string;
+            /**
+             * Blocking
+             * @default false
+             */
+            blocking: boolean;
+            /** Resolution */
+            resolution?: string | null;
+            /** Source */
+            source?: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Satisfied
+             * @default false
+             */
+            satisfied: boolean;
+            /** Provider */
+            provider?: string | null;
+            /** Integration Id */
+            integration_id?: number | null;
+        };
         /** RemapKeyRequest */
         RemapKeyRequest: {
             /** Model */
@@ -2905,6 +3037,8 @@ export interface components {
             project_id: number | null;
             /** Status */
             status: string;
+            /** Kind */
+            kind: string;
             /** Autonomy Level */
             autonomy_level: number;
             /** Branch Ref */
@@ -2948,6 +3082,8 @@ export interface components {
             project_id: number | null;
             /** Status */
             status: string;
+            /** Kind */
+            kind: string;
             /** Autonomy Level */
             autonomy_level: number;
             /** Branch Ref */
@@ -3974,6 +4110,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PromoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_item_readiness_flow_items__item_id__readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessAssessment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_item_readiness_flow_items__item_id__readiness_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessAssessment"];
                 };
             };
             /** @description Validation Error */
@@ -6157,6 +6355,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ConnectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fulfil_credential_integrations_credentials_fulfil_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FulfilCredentialRequest"];
             };
         };
         responses: {

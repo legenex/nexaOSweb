@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button, GlassCard, MonoLabel, Modal, Pill } from '../../../components/primitives';
 import { useFlow } from '../FlowProvider';
 import { renderMarkdown } from '../markdown';
+import { ReadinessPanel, type ReadinessSnapshot } from './ReadinessPanel';
 
 // Reuses the project gate. Approve as live, Send back to Clarify, or Archive. Surfaces the
 // build destination and selected integrations, with links to the plan and preview.
@@ -13,6 +14,11 @@ export function GateCard() {
   const [plan, setPlan] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<ReadinessSnapshot>({
+    assessed: false,
+    satisfied: false,
+    blocking: [],
+  });
 
   if (!selected || selected.route !== 'project' || !selected.project_id) {
     return (
@@ -81,8 +87,25 @@ export function GateCard() {
         ) : null}
       </div>
 
+      <div className="mb-4">
+        <ReadinessPanel itemId={selected.id} onChange={setReadiness} />
+      </div>
+
+      {!readiness.satisfied ? (
+        <p className="mb-2 text-xs text-muted">
+          {readiness.assessed
+            ? `Approve is held until readiness is satisfied. Blocking: ${readiness.blocking.join(', ')}`
+            : 'Run the readiness check before approving the build.'}
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
-        <Button variant="primary" onClick={() => void run('approve')} disabled={busy !== null}>
+        <Button
+          variant="primary"
+          onClick={() => void run('approve')}
+          disabled={busy !== null || !readiness.satisfied}
+          title={readiness.satisfied ? undefined : 'Resolve the blocking readiness items first'}
+        >
           {busy === 'approve' ? 'Approving' : 'Approve as live'}
         </Button>
         <Button variant="muted" onClick={() => void run('sendback')} disabled={busy !== null}>
