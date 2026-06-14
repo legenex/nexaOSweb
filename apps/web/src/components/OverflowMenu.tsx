@@ -7,10 +7,21 @@ export interface OverflowItem {
 }
 
 // A reusable overflow (kebab) menu. A small trigger opens a list of actions; it closes on
-// selection, outside click, or Escape. Colours come from brand variables only.
-export function OverflowMenu({ items, label = 'Actions' }: { items: OverflowItem[]; label?: string }) {
+// selection, outside click, or Escape. Colours come from brand variables only. When disabled,
+// or when there are no items, the trigger stays visible but inert so the surface reads honestly
+// (the affordance is shown, just unavailable) rather than vanishing.
+export function OverflowMenu({
+  items,
+  label = 'Actions',
+  disabled = false,
+}: {
+  items: OverflowItem[];
+  label?: string;
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const inert = disabled || items.length === 0;
 
   useEffect(() => {
     if (!open) return;
@@ -35,12 +46,13 @@ export function OverflowMenu({ items, label = 'Actions' }: { items: OverflowItem
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
+        disabled={inert}
         onClick={() => setOpen((value) => !value)}
-        className="rounded-md border border-line px-2 py-1 leading-none text-muted transition hover:border-accent hover:text-accent"
+        className="rounded-md border border-line px-2 py-1 leading-none text-muted transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-muted"
       >
         ⋯
       </button>
-      {open ? (
+      {open && !inert ? (
         <div
           role="menu"
           className="absolute right-0 top-full z-40 mt-1 w-44 overflow-hidden rounded-md border border-line bg-surface shadow-xl"
