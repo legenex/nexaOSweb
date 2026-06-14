@@ -449,29 +449,6 @@
       }
     },
     "/journal/entries": {
-      "get": {
-        "tags": [
-          "journal"
-        ],
-        "summary": "List Entries",
-        "operationId": "list_entries_journal_entries_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/JournalEntryRead"
-                  },
-                  "type": "array",
-                  "title": "Response List Entries Journal Entries Get"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": [
           "journal"
@@ -479,14 +456,14 @@
         "summary": "Create Entry",
         "operationId": "create_entry_journal_entries_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/JournalEntryCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -495,6 +472,59 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JournalEntryRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "List Entries",
+        "operationId": "list_entries_journal_entries_get",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "filter to entries under this topic",
+              "title": "Topic Id"
+            },
+            "description": "filter to entries under this topic"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JournalEntryRead"
+                  },
+                  "title": "Response List Entries Journal Entries Get"
                 }
               }
             }
@@ -637,6 +667,236 @@
         }
       }
     },
+    "/journal/topics": {
+      "get": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "List Topics",
+        "operationId": "list_topics_journal_topics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TopicRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Topics Journal Topics Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "Create Topic",
+        "operationId": "create_topic_journal_topics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/journal/topics/{topic_id}": {
+      "delete": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "Delete Topic",
+        "operationId": "delete_topic_journal_topics__topic_id__delete",
+        "parameters": [
+          {
+            "name": "topic_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Topic Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/journal/entries/{entry_id}/attachments": {
+      "post": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "Attach To Entry",
+        "operationId": "attach_to_entry_journal_entries__entry_id__attachments_post",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_attach_to_entry_journal_entries__entry_id__attachments_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "List Attachments",
+        "operationId": "list_attachments_journal_entries__entry_id__attachments_get",
+        "parameters": [
+          {
+            "name": "entry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entry Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentRead"
+                  },
+                  "title": "Response List Attachments Journal Entries  Entry Id  Attachments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/journal/attachments/{attachment_id}": {
+      "delete": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "Delete Attachment",
+        "operationId": "delete_attachment_journal_attachments__attachment_id__delete",
+        "parameters": [
+          {
+            "name": "attachment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Attachment Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/journal/transcribe": {
       "post": {
         "tags": [
@@ -661,6 +921,90 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TranscribeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/journal/capture": {
+      "post": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "Capture",
+        "description": "Transcribe a photo of a handwritten page via the vision model, returning the text.\n\nThe image is processed in memory and never written to disk, consistent with the journal image\nrule. The returned text becomes an entry body or an attachment note, at the client's choice.\nWhen no provider key backs the vision model the route returns 501, never a stub.",
+        "operationId": "capture_journal_capture_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_capture_journal_capture_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/journal/ingest": {
+      "post": {
+        "tags": [
+          "journal"
+        ],
+        "summary": "Ingest",
+        "description": "Accept a journal entry from an external source, authenticated by a per source token.\n\nThis route is machine to machine, not session authenticated: the per source token is the\ncredential. The token is validated against the server side token map, then discarded; it never\nenters the entry. A malformed payload is rejected by the schema; an unknown source or a wrong\ntoken is a 401. The created entry is tagged with its source so the origin stays traceable.",
+        "operationId": "ingest_journal_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntryRead"
                 }
               }
             }
@@ -4611,6 +4955,65 @@
         ],
         "title": "AttachRequest"
       },
+      "AttachmentRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "note_id": {
+            "type": "integer",
+            "title": "Note Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "original_name": {
+            "type": "string",
+            "title": "Original Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "note_id",
+          "kind",
+          "original_name",
+          "created_at"
+        ],
+        "title": "AttachmentRead"
+      },
+      "Body_attach_to_entry_journal_entries__entry_id__attachments_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_attach_to_entry_journal_entries__entry_id__attachments_post"
+      },
       "Body_capture_intake_capture_post": {
         "properties": {
           "name": {
@@ -4650,6 +5053,20 @@
           "name"
         ],
         "title": "Body_capture_intake_capture_post"
+      },
+      "Body_capture_journal_capture_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_capture_journal_capture_post"
       },
       "Body_reject_projects__project_id__reject_post": {
         "properties": {
@@ -4776,6 +5193,25 @@
           "created_at"
         ],
         "title": "BuildLogRead"
+      },
+      "CaptureResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "model"
+        ],
+        "title": "CaptureResponse",
+        "description": "The transcribed text of a handwritten page, plus the vision model that produced it."
       },
       "ClarifyRequest": {
         "properties": {
@@ -5848,6 +6284,53 @@
         ],
         "title": "InboxItemRead"
       },
+      "IngestRequest": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Source"
+          },
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Token"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Body"
+          },
+          "mood": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mood"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "token",
+          "body"
+        ],
+        "title": "IngestRequest",
+        "description": "An inbound journal entry from an external source, authenticated by a per source token.\n\nThe token authenticates the source and is never stored on the entry. The body becomes the\nentry text; the source is recorded as a tag so the origin is traceable."
+      },
       "InsightRead": {
         "properties": {
           "id": {
@@ -6232,6 +6715,17 @@
             },
             "type": "array",
             "title": "Tags"
+          },
+          "topic_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic Id"
           }
         },
         "type": "object",
@@ -6268,6 +6762,17 @@
             "type": "array",
             "title": "Tags"
           },
+          "topic_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -6292,6 +6797,7 @@
           "body",
           "mood",
           "tags",
+          "topic_id",
           "created_at",
           "updated_at"
         ],
@@ -6336,6 +6842,17 @@
               }
             ],
             "title": "Tags"
+          },
+          "topic_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic Id"
           }
         },
         "type": "object",
@@ -8974,6 +9491,45 @@
           "created_at"
         ],
         "title": "TaskRead"
+      },
+      "TopicCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TopicCreate"
+      },
+      "TopicRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "title": "TopicRead"
       },
       "TranscribeResponse": {
         "properties": {
