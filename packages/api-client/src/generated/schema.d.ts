@@ -1649,6 +1649,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks */
+        get: operations["list_tasks_tasks_get"];
+        put?: never;
+        /** Create Task */
+        post: operations["create_task_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task */
+        get: operations["get_task_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Task */
+        delete: operations["delete_task_tasks__task_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Task */
+        patch: operations["update_task_tasks__task_id__patch"];
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -3422,6 +3459,17 @@ export interface components {
             /** Project Id */
             project_id?: number | null;
         };
+        /** TaskCreate */
+        TaskCreate: {
+            /** Title */
+            title: string;
+            /** Detail */
+            detail?: string | null;
+            /** Project Id */
+            project_id?: number | null;
+            /** Status */
+            status?: string | null;
+        };
         /** TaskRead */
         TaskRead: {
             /** Id */
@@ -3432,13 +3480,32 @@ export interface components {
             project_id: number | null;
             /** Title */
             title: string;
+            /** Detail */
+            detail: string | null;
             /** Status */
             status: string;
+            /** Source */
+            source: string;
+            /** Run Id */
+            run_id: number | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Updated At */
+            updated_at: string | null;
+        };
+        /** TaskUpdate */
+        TaskUpdate: {
+            /** Title */
+            title?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Project Id */
+            project_id?: number | null;
         };
         /** TopicCreate */
         TopicCreate: {
@@ -6912,6 +6979,168 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SkillsResponse"];
+                };
+            };
+        };
+    };
+    list_tasks_tasks_get: {
+        parameters: {
+            query?: {
+                /** @description filter to tasks under this project */
+                project_id?: number | null;
+                /** @description filter to a single status */
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_task_tasks__task_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_task_tasks__task_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

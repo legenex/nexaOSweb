@@ -21,6 +21,7 @@ import { FlowProvider } from './features/flow/FlowProvider';
 import { ProjectsView } from './features/projects/ProjectsView';
 import { ResearchView } from './features/research/ResearchView';
 import { SettingsView } from './features/settings/SettingsView';
+import { TasksView } from './features/tasks/TasksView';
 
 // Surfaces that depend on a live Brain uplink show the status light; local or cached pages do not.
 const UPLINK_SURFACES = new Set(['research', 'projects', 'project-builder']);
@@ -66,12 +67,7 @@ function Surface({ active, label }: { active: string; label: string }) {
     case 'journal':
       return <JournalView />;
     case 'tasks':
-      return (
-        <ComingSoon
-          title="Tasks"
-          blurb="Track what to do, with reminders folded in, ranked by Focus."
-        />
-      );
+      return <TasksView />;
     case 'focus':
       return (
         <ComingSoon
