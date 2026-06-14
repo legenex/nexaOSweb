@@ -4362,6 +4362,46 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Create User",
+        "description": "Directly create an active user with a password set, ready to sign in.\n\nIf a soft removed user already holds the email, reactivate that row in place rather than\ncolliding on the unique email index, keeping their items and projects attached.",
+        "operationId": "create_user_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/users/invite": {
@@ -9544,6 +9584,49 @@
         ],
         "title": "TranscribeResponse"
       },
+      "UserCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member"
+            ],
+            "title": "Role",
+            "default": "member"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "UserCreate",
+        "description": "Directly provision an active, ready to log in user with a password set.\n\nThis is the owner path for adding people without an email invite round trip. The created\nuser is active immediately, so they can sign in with the supplied password."
+      },
       "UserInvite": {
         "properties": {
           "email": {
@@ -9669,11 +9752,24 @@
               }
             ],
             "title": "Status"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
           }
         },
         "type": "object",
         "title": "UserUpdate",
-        "description": "Change a user's role, display name, or status. Only supplied fields change."
+        "description": "Change a user's role, display name, status, or password. Only supplied fields change.\n\nSetting a password on an invited user makes the account usable, so the server also flips\nsuch a user to active when a password is provided."
       },
       "ValidationError": {
         "properties": {

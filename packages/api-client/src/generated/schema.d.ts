@@ -1514,7 +1514,14 @@ export interface paths {
         /** List Users */
         get: operations["list_users_users_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create User
+         * @description Directly create an active user with a password set, ready to sign in.
+         *
+         *     If a soft removed user already holds the email, reactivate that row in place rather than
+         *     colliding on the unique email index, keeping their items and projects attached.
+         */
+        post: operations["create_user_users_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3462,6 +3469,30 @@ export interface components {
             /** Transcript */
             transcript: string;
         };
+        /**
+         * UserCreate
+         * @description Directly provision an active, ready to log in user with a password set.
+         *
+         *     This is the owner path for adding people without an email invite round trip. The created
+         *     user is active immediately, so they can sign in with the supplied password.
+         */
+        UserCreate: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Password */
+            password: string;
+            /** Name */
+            name?: string | null;
+            /**
+             * Role
+             * @default member
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member";
+        };
         /** UserInvite */
         UserInvite: {
             /**
@@ -3498,7 +3529,10 @@ export interface components {
         };
         /**
          * UserUpdate
-         * @description Change a user's role, display name, or status. Only supplied fields change.
+         * @description Change a user's role, display name, status, or password. Only supplied fields change.
+         *
+         *     Setting a password on an invited user makes the account usable, so the server also flips
+         *     such a user to active when a password is provided.
          */
         UserUpdate: {
             /** Role */
@@ -3507,6 +3541,8 @@ export interface components {
             name?: string | null;
             /** Status */
             status?: ("active" | "invited" | "removed") | null;
+            /** Password */
+            password?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -6676,6 +6712,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserRead"][];
+                };
+            };
+        };
+    };
+    create_user_users_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
