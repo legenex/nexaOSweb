@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch } from '../app/api';
+import { api } from '../app/client';
 import { useNavigation } from '../app/navigation';
 import { useReducedMotion } from '../app/useReducedMotion';
 import { useFlow } from '../features/flow/FlowProvider';
@@ -17,6 +18,7 @@ import { MonoLabel } from './primitives';
 type Result =
   | { kind: 'answer'; text: string }
   | { kind: 'captured'; name: string; id: number }
+  | { kind: 'journaled' }
   | { kind: 'error'; text: string };
 
 type Busy = 'ask' | 'capture' | 'document' | 'image' | 'voice' | 'journal' | null;
@@ -227,17 +229,19 @@ export function CommandBar() {
     await startRecording();
   };
 
-  // Journal: no dedicated journal entry endpoint exists yet, so capture the current input as an
-  // item with source journal as the interim path.
-  // TODO: route to a real Journal surface and endpoint once Journal ships its own feature.
+  // Journal: save the current input (often a transcribed voice note) as a real Journal entry.
+  // This is the end of the voice path: record, transcribe into the input, then save here.
   const doJournal = async () => {
     const body = text.trim();
     if (!body || busy) return;
     setBusy('journal');
     setResult(null);
     try {
-      const item = await capture({ name: body.slice(0, 80), body, source: 'journal' });
-      setResult({ kind: 'captured', name: item.name, id: item.id });
+      const { error } = await api.POST('/journal/entries', {
+        body: { body, mood: null, tags: [], topic_id: null },
+      });
+      if (error) throw new Error('journal failed');
+      setResult({ kind: 'journaled' });
       setText('');
     } catch {
       setResult({ kind: 'error', text: 'Could not save that journal note.' });
@@ -431,7 +435,9 @@ export function CommandBar() {
                         ? 'nexa'
                         : result.kind === 'captured'
                           ? 'captured'
-                          : 'error'}
+                          : result.kind === 'journaled'
+                            ? 'journal'
+                            : 'error'}
                     </MonoLabel>
                     <button
                       type="button"
@@ -459,6 +465,20 @@ export function CommandBar() {
                         className="text-accent underline-offset-2 hover:underline"
                       >
                         Open in Project Builder
+                      </button>
+                    </p>
+                  ) : result.kind === 'journaled' ? (
+                    <p className="text-sm text-cream">
+                      Saved to your Journal.{' '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate('journal');
+                          close();
+                        }}
+                        className="text-accent underline-offset-2 hover:underline"
+                      >
+                        Open Journal
                       </button>
                     </p>
                   ) : (
