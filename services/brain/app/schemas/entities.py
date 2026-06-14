@@ -83,8 +83,12 @@ class TaskRead(ORMModel):
     user_id: int | None
     project_id: int | None
     title: str
+    detail: str | None
     status: str
+    source: str
+    run_id: int | None
     created_at: datetime
+    updated_at: datetime | None
 
 
 class JournalNoteRead(ORMModel):

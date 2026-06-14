@@ -17,7 +17,23 @@ class Task(Base, TimestampMixin):
         ForeignKey("projects.id"), index=True, nullable=True
     )
     title: Mapped[str] = mapped_column(String(300), nullable=False)
+    # Optional longer description; the title stays the one line summary.
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # One of open, in_progress, blocked, done, archived. Validated in the router.
     status: Mapped[str] = mapped_column(String(40), default="open", nullable=False)
+    # How the task was created: manual (the user), research (a research finding), or run (an
+    # agent run). Validated in the router; defaults to manual for hand created tasks.
+    source: Mapped[str] = mapped_column(String(40), default="manual", nullable=False)
+    # A seam to the agent run that produced this task, when one did. A plain nullable column with
+    # no database level foreign key (added to the existing table on the SQLite dev target); the
+    # relationship to agent_runs is enforced in the router, like JournalNote.topic_id.
+    run_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
+    # Soft delete marker: a deleted task keeps its row and stays recoverable, and is excluded
+    # from default lists and from the open task counts on the Dashboard and Insights.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=True
+    )
 
 
 class JournalNote(Base, TimestampMixin):

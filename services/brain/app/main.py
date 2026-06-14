@@ -24,6 +24,7 @@ from .routers import (
     runtime,
     skills,
     system,
+    tasks,
     users,
 )
 from .routers import settings as settings_router
@@ -58,6 +59,7 @@ app.include_router(settings_router.router)
 app.include_router(users.router)
 app.include_router(integrations.router)
 app.include_router(skills.router)
+app.include_router(tasks.router)
 
 register_scheduler(app)
 
