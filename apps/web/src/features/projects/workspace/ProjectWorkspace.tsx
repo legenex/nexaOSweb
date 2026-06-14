@@ -7,12 +7,14 @@ import { BuildLogTab } from './BuildLogTab';
 import { FilesTab } from './FilesTab';
 import { OverviewTab } from './OverviewTab';
 import { PreviewTab } from './PreviewTab';
+import { RuntimeTab } from './RuntimeTab';
 import { UpdateLogsTab } from './UpdateLogsTab';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'preview', label: 'Preview Window' },
   { key: 'files', label: 'Files' },
+  { key: 'runtime', label: 'Agent Timeline' },
   { key: 'build-log', label: 'Build Log' },
   { key: 'update-logs', label: 'Update Logs' },
   { key: 'ai-editor', label: 'AI Editor' },
@@ -71,6 +73,7 @@ export function ProjectWorkspace({ project, onBack }: { project: Project; onBack
         {tab === 'overview' ? <OverviewTab projectId={project.id} /> : null}
         {tab === 'preview' ? <PreviewTab projectId={project.id} /> : null}
         {tab === 'files' ? <FilesTab projectId={project.id} /> : null}
+        {tab === 'runtime' ? <RuntimeTab projectId={project.id} /> : null}
         {tab === 'build-log' ? <BuildLogTab key={buildLogVersion} projectId={project.id} /> : null}
         {tab === 'update-logs' ? <UpdateLogsTab projectId={project.id} /> : null}
         {tab === 'ai-editor' ? (

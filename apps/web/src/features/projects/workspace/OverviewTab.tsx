@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { GlassCard, MonoLabel, Pill, StatusDot } from '../../../components/primitives';
+import { AgentsPanel } from './AgentsPanel';
 import { getOverview } from './api';
 import type { Overview } from './api';
 
@@ -79,6 +80,8 @@ export function OverviewTab({ projectId }: { projectId: number }) {
           </p>
         </GlassCard>
       </div>
+
+      <AgentsPanel projectId={projectId} />
 
       <GlassCard>
         <MonoLabel tone="accent" className="mb-3 block">
