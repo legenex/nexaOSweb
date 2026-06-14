@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Schemas } from '@nexaosweb/api-client';
 
 import { api } from '../../app/client';
+import { ApprovalQueue } from '../runtime/ApprovalQueue';
 import { CommandRadar } from './CommandRadar';
 import { DreamDigest } from './DreamDigest';
 import { FocusStrip } from './FocusStrip';
@@ -35,6 +36,8 @@ export function DashboardView() {
   return (
     <div className="space-y-6">
       <MorningBrief />
+
+      <ApprovalQueue />
 
       {summary ? (
         <FocusStrip summary={summary} />
