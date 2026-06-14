@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { MonoLabel } from '../../../components/primitives';
 import { ApiConnectionsPanel } from './ApiConnectionsPanel';
 import { DreamingReview } from './DreamingReview';
 import { ScopeList } from './ScopeList';
@@ -22,6 +23,14 @@ export function KnowledgePanel() {
 
   return (
     <div>
+      <header className="mb-4">
+        <MonoLabel tone="accent">what Nexa knows about me</MonoLabel>
+        <p className="mt-1 max-w-prose text-sm text-muted">
+          The system's memory of you and how it should work. Review, edit, and archive any entry,
+          and approve Dreaming candidates. Nothing enters long term memory without your approval.
+        </p>
+      </header>
+
       <nav aria-label="Knowledge" className="mb-5 flex flex-wrap gap-1 border-b border-line pb-3">
         {KNOWLEDGE_TABS.map((t) => {
           const isActive = t.key === tab;

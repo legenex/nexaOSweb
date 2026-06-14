@@ -7,9 +7,35 @@ import { ConfidenceMeter, FieldShell, Provenance } from './parts';
 
 type KnowledgeEntry = Schemas['KnowledgeEntryRead'];
 type KnowledgeScope = 'general' | 'personal' | 'development';
-type KnowledgeKind = 'fact' | 'preference' | 'pattern' | 'skill' | 'rule';
+type KnowledgeKind =
+  | 'fact'
+  | 'preference'
+  | 'pattern'
+  | 'skill'
+  | 'rule'
+  | 'rejected_approach'
+  | 'recurring_correction';
 
-const KINDS: KnowledgeKind[] = ['fact', 'preference', 'pattern', 'skill', 'rule'];
+// rejected_approach and recurring_correction are first-class memory kinds: what the agent should
+// not do again, and a correction the user keeps having to make.
+const KINDS: KnowledgeKind[] = [
+  'fact',
+  'preference',
+  'pattern',
+  'skill',
+  'rule',
+  'rejected_approach',
+  'recurring_correction',
+];
+
+const KIND_LABEL: Record<string, string> = {
+  rejected_approach: 'rejected approach',
+  recurring_correction: 'recurring correction',
+};
+
+function kindLabel(kind: string): string {
+  return KIND_LABEL[kind] ?? kind;
+}
 
 const inputClass =
   'w-full rounded-md border border-line bg-canvas px-2 py-1 text-sm text-cream outline-none focus:border-accent';
@@ -29,7 +55,7 @@ function KindSelect({
     >
       {KINDS.map((kind) => (
         <option key={kind} value={kind}>
-          {kind}
+          {kindLabel(kind)}
         </option>
       ))}
     </select>
@@ -148,7 +174,7 @@ function EntryCard({
       ) : (
         <>
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Pill variant="accent">{entry.kind}</Pill>
+            <Pill variant="accent">{kindLabel(entry.kind)}</Pill>
             <Pill variant="grey">{entry.source}</Pill>
             {archived ? <Pill variant="grey">archived</Pill> : null}
             <span className="ml-auto">
