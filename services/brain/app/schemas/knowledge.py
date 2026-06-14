@@ -9,7 +9,17 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-KnowledgeKind = Literal["fact", "preference", "pattern", "skill", "rule"]
+KnowledgeKind = Literal[
+    "fact",
+    "preference",
+    "pattern",
+    "skill",
+    "rule",
+    # First-class memory of how the agent should behave, surfaced in the personal memory view:
+    # an approach the user rejected, and a correction the user has had to make more than once.
+    "rejected_approach",
+    "recurring_correction",
+]
 KnowledgeScope = Literal["general", "personal", "development", "work"]
 KnowledgeSource = Literal["manual", "dreaming", "connector"]
 KnowledgeStatus = Literal["active", "archived"]

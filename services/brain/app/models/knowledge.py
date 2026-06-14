@@ -17,7 +17,7 @@ class KnowledgeEntry(Base, TimestampMixin):
     __tablename__ = "knowledge_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # One of fact, preference, pattern, skill, rule.
+    # One of fact, preference, pattern, skill, rule, rejected_approach, recurring_correction.
     kind: Mapped[str] = mapped_column(String(40), index=True, nullable=False)
     # One of general, personal, development, work.
     scope: Mapped[str] = mapped_column(String(40), index=True, nullable=False)

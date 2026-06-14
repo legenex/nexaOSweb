@@ -2176,7 +2176,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "fact" | "preference" | "pattern" | "skill" | "rule";
+            kind: "fact" | "preference" | "pattern" | "skill" | "rule" | "rejected_approach" | "recurring_correction";
             /**
              * Scope
              * @enum {string}
@@ -2243,7 +2243,7 @@ export interface components {
          */
         KnowledgeEntryUpdate: {
             /** Kind */
-            kind?: ("fact" | "preference" | "pattern" | "skill" | "rule") | null;
+            kind?: ("fact" | "preference" | "pattern" | "skill" | "rule" | "rejected_approach" | "recurring_correction") | null;
             /** Scope */
             scope?: ("general" | "personal" | "development" | "work") | null;
             /** Source */
@@ -5224,7 +5224,7 @@ export interface operations {
         parameters: {
             query?: {
                 scope?: ("general" | "personal" | "development" | "work") | null;
-                kind?: ("fact" | "preference" | "pattern" | "skill" | "rule") | null;
+                kind?: ("fact" | "preference" | "pattern" | "skill" | "rule" | "rejected_approach" | "recurring_correction") | null;
                 status?: ("active" | "archived") | null;
                 source?: ("manual" | "dreaming" | "connector") | null;
             };

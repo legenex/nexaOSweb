@@ -2939,7 +2939,9 @@
                     "preference",
                     "pattern",
                     "skill",
-                    "rule"
+                    "rule",
+                    "rejected_approach",
+                    "recurring_correction"
                   ],
                   "type": "string"
                 },
@@ -5879,7 +5881,9 @@
               "preference",
               "pattern",
               "skill",
-              "rule"
+              "rule",
+              "rejected_approach",
+              "recurring_correction"
             ],
             "title": "Kind"
           },
@@ -6010,7 +6014,9 @@
                   "preference",
                   "pattern",
                   "skill",
-                  "rule"
+                  "rule",
+                  "rejected_approach",
+                  "recurring_correction"
                 ]
               },
               {
