@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # CORS, comma separated list of allowed origins
     cors_origins: str = "http://localhost:5173"
 
+    # Per source inbound journal ingestion tokens, server side only. A comma separated list of
+    # source:token pairs (for example "whatsapp:abc123,smart-inventory:def456"). An external
+    # source authenticates POST /journal/ingest with its own token; the token never enters an
+    # entry. Empty by default so ingestion is closed until a source is configured.
+    journal_ingest_tokens: str = ""
+
     # Provider keys, read only by the Brain
     anthropic_api_key: str = ""
     openai_api_key: str = ""
@@ -58,6 +64,20 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def journal_ingest_token_map(self) -> dict[str, str]:
+        """Parse the source:token pairs into a map. Malformed or empty pairs are ignored."""
+        out: dict[str, str] = {}
+        for pair in self.journal_ingest_tokens.split(","):
+            pair = pair.strip()
+            if ":" not in pair:
+                continue
+            source, token = pair.split(":", 1)
+            source, token = source.strip(), token.strip()
+            if source and token:
+                out[source] = token
+        return out
 
     @property
     def is_sqlite(self) -> bool:

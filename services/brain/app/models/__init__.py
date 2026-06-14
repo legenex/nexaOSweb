@@ -13,7 +13,13 @@ from .project import BuildLogEntry, Integration, PMRun, Project
 from .research import ProjectUpdate, ResearchFinding, ResearchRun
 from .runtime import AgentRun, AgentStep
 from .user import User
-from .workspace import AppSetting, JournalNote, Task
+from .workspace import (
+    AppSetting,
+    JournalAttachment,
+    JournalNote,
+    JournalTopic,
+    Task,
+)
 
 __all__ = [
     "Base",
@@ -27,6 +33,8 @@ __all__ = [
     "BuildLogEntry",
     "Task",
     "JournalNote",
+    "JournalTopic",
+    "JournalAttachment",
     "AppSetting",
     "KnowledgeEntry",
     "MemoryCandidate",
