@@ -1228,6 +1228,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/focus/operator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Operator View */
+        get: operations["get_operator_view_focus_operator_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/focus/ranked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Ranked Actions */
+        get: operations["get_ranked_actions_focus_ranked_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/knowledge": {
         parameters: {
             query?: never;
@@ -2247,6 +2281,29 @@ export interface components {
              */
             gate_state: string;
         };
+        /** FocusFactors */
+        FocusFactors: {
+            /** Age Days */
+            age_days: number;
+            /** Risk */
+            risk: string;
+            /** Blocked */
+            blocked: boolean;
+            /** Autonomy Eligible */
+            autonomy_eligible: boolean;
+        };
+        /** FocusItem */
+        FocusItem: {
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            source: components["schemas"]["SourceRef"];
+            /** Age Days */
+            age_days: number;
+        };
         /**
          * FulfilCredentialRequest
          * @description Provide a secret for a pending credential request, by waiting_approval step id.
@@ -2768,6 +2825,26 @@ export interface components {
             /** Agents */
             agents: components["schemas"]["AgentBinding"][];
         };
+        /** OperatorView */
+        OperatorView: {
+            /** Approvals Waiting */
+            approvals_waiting: components["schemas"]["FocusItem"][];
+            /** Stale Projects */
+            stale_projects: components["schemas"]["FocusItem"][];
+            /** Blocked Work */
+            blocked_work: components["schemas"]["FocusItem"][];
+            /** Tasks Safe To Complete */
+            tasks_safe_to_complete: components["schemas"]["FocusItem"][];
+            /** Recommended Next Actions */
+            recommended_next_actions: components["schemas"]["RankedAction"][];
+            /** Stale Threshold Days */
+            stale_threshold_days: number;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
         /** Opportunity */
         Opportunity: {
             /** Title */
@@ -2959,6 +3036,35 @@ export interface components {
             tool_call: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** RankedAction */
+        RankedAction: {
+            /** Rank */
+            rank: number;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            source: components["schemas"]["SourceRef"];
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
+            factors: components["schemas"]["FocusFactors"];
+        };
+        /** RankedActions */
+        RankedActions: {
+            /** Actions */
+            actions: components["schemas"]["RankedAction"][];
+            /** Stale Threshold Days */
+            stale_threshold_days: number;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /**
          * ReadinessAssessment
@@ -3380,6 +3486,13 @@ export interface components {
             skills: components["schemas"]["SkillEntry"][];
             /** Connectors */
             connectors: components["schemas"]["ConnectorHealth"][];
+        };
+        /** SourceRef */
+        SourceRef: {
+            /** Type */
+            type: string;
+            /** Id */
+            id?: number | null;
         };
         /** StepRead */
         StepRead: {
@@ -6192,6 +6305,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operator_view_focus_operator_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatorView"];
+                };
+            };
+        };
+    };
+    get_ranked_actions_focus_ranked_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RankedActions"];
                 };
             };
         };

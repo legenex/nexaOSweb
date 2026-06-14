@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './app/AuthProvider';
 import { isDesktop } from './app/config';
 import { DEFAULT_NAV_KEY, NAV_ITEMS, navBaseKey, settingsTabKey } from './app/nav';
 import { NavigationContext } from './app/navigation';
-import { ComingSoon } from './components/ComingSoon';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { HoloObject } from './components/HoloObject';
 import type { HoloVariant } from './components/HoloObject';
@@ -15,6 +14,7 @@ import { Sidebar } from './components/Sidebar';
 import { UplinkLight } from './components/UplinkLight';
 import { DashboardView } from './features/dashboard/DashboardView';
 import { FlowPanorama } from './features/flow/FlowPanorama';
+import { FocusView } from './features/focus/FocusView';
 import { InsightsView } from './features/insights/InsightsView';
 import { JournalView } from './features/journal/JournalView';
 import { FlowProvider } from './features/flow/FlowProvider';
@@ -69,12 +69,7 @@ function Surface({ active, label }: { active: string; label: string }) {
     case 'tasks':
       return <TasksView />;
     case 'focus':
-      return (
-        <ComingSoon
-          title="Focus"
-          blurb="Rank the day's work from the Knowledge base and hold you to what matters most."
-        />
-      );
+      return <FocusView />;
     default:
       return <Placeholder label={label} />;
   }

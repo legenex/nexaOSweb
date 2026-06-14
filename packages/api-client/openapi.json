@@ -3514,6 +3514,48 @@
         }
       }
     },
+    "/focus/operator": {
+      "get": {
+        "tags": [
+          "focus"
+        ],
+        "summary": "Get Operator View",
+        "operationId": "get_operator_view_focus_operator_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/focus/ranked": {
+      "get": {
+        "tags": [
+          "focus"
+        ],
+        "summary": "Get Ranked Actions",
+        "operationId": "get_ranked_actions_focus_ranked_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RankedActions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/knowledge": {
       "get": {
         "tags": [
@@ -6312,6 +6354,66 @@
         ],
         "title": "FlowItemDTO"
       },
+      "FocusFactors": {
+        "properties": {
+          "age_days": {
+            "type": "integer",
+            "title": "Age Days"
+          },
+          "risk": {
+            "type": "string",
+            "title": "Risk"
+          },
+          "blocked": {
+            "type": "boolean",
+            "title": "Blocked"
+          },
+          "autonomy_eligible": {
+            "type": "boolean",
+            "title": "Autonomy Eligible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "age_days",
+          "risk",
+          "blocked",
+          "autonomy_eligible"
+        ],
+        "title": "FocusFactors"
+      },
+      "FocusItem": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceRef"
+          },
+          "age_days": {
+            "type": "integer",
+            "title": "Age Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "title",
+          "detail",
+          "source",
+          "age_days"
+        ],
+        "title": "FocusItem"
+      },
       "FulfilCredentialRequest": {
         "properties": {
           "step_id": {
@@ -7808,6 +7910,65 @@
         ],
         "title": "ModelsConfig"
       },
+      "OperatorView": {
+        "properties": {
+          "approvals_waiting": {
+            "items": {
+              "$ref": "#/components/schemas/FocusItem"
+            },
+            "type": "array",
+            "title": "Approvals Waiting"
+          },
+          "stale_projects": {
+            "items": {
+              "$ref": "#/components/schemas/FocusItem"
+            },
+            "type": "array",
+            "title": "Stale Projects"
+          },
+          "blocked_work": {
+            "items": {
+              "$ref": "#/components/schemas/FocusItem"
+            },
+            "type": "array",
+            "title": "Blocked Work"
+          },
+          "tasks_safe_to_complete": {
+            "items": {
+              "$ref": "#/components/schemas/FocusItem"
+            },
+            "type": "array",
+            "title": "Tasks Safe To Complete"
+          },
+          "recommended_next_actions": {
+            "items": {
+              "$ref": "#/components/schemas/RankedAction"
+            },
+            "type": "array",
+            "title": "Recommended Next Actions"
+          },
+          "stale_threshold_days": {
+            "type": "integer",
+            "title": "Stale Threshold Days"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "approvals_waiting",
+          "stale_projects",
+          "blocked_work",
+          "tasks_safe_to_complete",
+          "recommended_next_actions",
+          "stale_threshold_days",
+          "generated_at"
+        ],
+        "title": "OperatorView"
+      },
       "Opportunity": {
         "properties": {
           "title": {
@@ -8340,6 +8501,79 @@
         ],
         "title": "ProofOfWork",
         "description": "The evidence behind one step, and whether that evidence earned a verified status."
+      },
+      "RankedAction": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceRef"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "factors": {
+            "$ref": "#/components/schemas/FocusFactors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "kind",
+          "title",
+          "detail",
+          "source",
+          "score",
+          "reason",
+          "factors"
+        ],
+        "title": "RankedAction"
+      },
+      "RankedActions": {
+        "properties": {
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/RankedAction"
+            },
+            "type": "array",
+            "title": "Actions"
+          },
+          "stale_threshold_days": {
+            "type": "integer",
+            "title": "Stale Threshold Days"
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actions",
+          "stale_threshold_days",
+          "generated_at"
+        ],
+        "title": "RankedActions"
       },
       "ReadinessAssessment": {
         "properties": {
@@ -9470,6 +9704,30 @@
           "connectors"
         ],
         "title": "SkillsResponse"
+      },
+      "SourceRef": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "SourceRef"
       },
       "StepRead": {
         "properties": {
