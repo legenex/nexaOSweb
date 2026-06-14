@@ -55,6 +55,12 @@ class AgentRun(Base, TimestampMixin):
     autonomy_level: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # The branch or workspace the executor will run on. A nullable seam with no logic here.
     branch_ref: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Executor-only seams (phase a). worktree_path is the isolated git worktree the executor run
+    # operates in, created under NEXA_RUNTIME_ROOT through the path safety gate. phase is the
+    # executor lifecycle marker (plan, ...). Both are nullable; only an executor-kind run sets them
+    # and every other run leaves them null.
+    worktree_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    phase: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # The resume cursor: the step the next resume would continue after. Enforced in the app and
     # router, not at the database level, to avoid a circular foreign key with agent_steps.
     cursor_step_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -91,7 +97,19 @@ class AgentStep(Base, TimestampMixin):
     """
 
     __tablename__ = "agent_steps"
-    __table_args__ = (Index("ix_agent_steps_run_id_seq", "run_id", "seq"),)
+    __table_args__ = (
+        Index("ix_agent_steps_run_id_seq", "run_id", "seq"),
+        # Executor-only: a proposed unit of work carries a stable key so re-proposing the same
+        # unit is idempotent. Unique per run, never globally. The index is over (run_id,
+        # idempotency_key); SQLite and Postgres both treat nulls as distinct, so the many steps
+        # that carry no key (every non-executor step) never collide.
+        Index(
+            "uq_agent_steps_run_idempotency_key",
+            "run_id",
+            "idempotency_key",
+            unique=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     run_id: Mapped[int] = mapped_column(
@@ -108,6 +126,10 @@ class AgentStep(Base, TimestampMixin):
     intent: Mapped[str] = mapped_column(Text, default="", nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     proposed_by: Mapped[str] = mapped_column(String(40), default="llm", nullable=False)
+    # Executor-only seam: a stable per-run key for the proposed unit of work, so proposing the same
+    # unit twice is idempotent. Nullable; non-executor steps carry none. Unique per run via the
+    # index in __table_args__.
+    idempotency_key: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     # --- outcome, authored by record_execution ---
     outcome: Mapped[str | None] = mapped_column(Text, nullable=True)

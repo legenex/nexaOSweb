@@ -206,6 +206,7 @@ def propose_step(
     intent: str = "",
     payload: dict | None = None,
     proposed_by: str = "llm",
+    idempotency_key: str | None = None,
 ) -> AgentStep:
     """Author a step's intent and place it at the entry gate.
 
@@ -215,6 +216,10 @@ def propose_step(
     can_auto_resolve passes: a higher autonomy level and an explicit safe classification in the
     payload. Autonomy 0, an unclassified step, a missing safe tag, or any unsafe tag all leave
     the step waiting_approval for a human.
+
+    idempotency_key is an intent-time identity the proposer may stamp on the unit of work so
+    re-proposing it is idempotent. It is unique per run (enforced by the AgentStep index); a null
+    key is the default and carries no uniqueness.
     """
     payload = payload or {}
     status = PLANNED if can_auto_resolve(payload, run.autonomy_level) else WAITING_APPROVAL
@@ -227,6 +232,7 @@ def propose_step(
         intent=intent,
         payload=payload or {},
         proposed_by=proposed_by,
+        idempotency_key=idempotency_key,
     )
     db.add(step)
     db.commit()
