@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     nexa_uploads_root: str = "./.data/uploads"
     # Where the runtime stores large tool output referenced from step evidence by content_ref.
     nexa_runtime_root: str = "./.data/runtime"
+    # The Brain secret store root. Provider secrets live here, server side only, and are never
+    # returned to a client. The runtime ledger holds only a reference into this store.
+    nexa_secrets_root: str = "./.data/secrets"
 
     # CORS, comma separated list of allowed origins
     cors_origins: str = "http://localhost:5173"

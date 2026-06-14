@@ -40,10 +40,15 @@ from app.models.workspace import AppSetting
 from app.runtime import (
     COMPLETED_UNVERIFIED,
     COMPLETED_VERIFIED,
+    WAITING_APPROVAL,
+    RuntimeWriteError,
     create_run,
     propose_step,
     record_execution,
+    resolve_approval,
 )
+from app.security.redaction import assert_no_secret
+from app.security.secret_store import store_secret
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +73,8 @@ SOURCE_INTEGRATIONS = "integrations"
 _CREDENTIAL_KINDS = ("credential", "connector")
 # An integration that counts as connected. available means offered but not yet wired.
 _CONNECTED_STATUSES = ("connected", "active", "linked")
+# The status a credential request parks an Integration at until the secret is fulfilled.
+PENDING_STATUS = "pending"
 
 # A resolved or non blocking item is classified safe so it auto resolves past the entry gate at a
 # non zero autonomy. A blocking gap is classified by what it needs, so the gate holds it.
@@ -290,6 +297,35 @@ def _resolve_item(
 # --- persistence: the run and its steps ---------------------------------------------------
 
 
+def _ensure_pending_integration(
+    db: Session, user_id: int, provider: str
+) -> Integration:
+    """Create or reference a pending Integration row for a credential request.
+
+    The row records only the provider and the pending status, never a secret. An already
+    connected row is left as is (its secret stays in the store); any other status is parked at
+    pending so the fulfilment endpoint can flip it to connected.
+    """
+    row = (
+        db.query(Integration)
+        .filter(Integration.user_id == user_id, Integration.provider == provider)
+        .order_by(Integration.id.asc())
+        .first()
+    )
+    if row is None:
+        row = Integration(
+            user_id=user_id, provider=provider, status=PENDING_STATUS, credentials_ref=None
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    elif row.status not in _CONNECTED_STATUSES:
+        row.status = PENDING_STATUS
+        db.commit()
+        db.refresh(row)
+    return row
+
+
 def _readiness_payload(item: dict, resolution: str, source: str | None) -> dict:
     base = {
         "key": item["key"],
@@ -309,12 +345,18 @@ def evaluate_readiness(
     *,
     plan: dict,
     project_id: int | None = None,
+    user_id: int | None = None,
 ) -> AgentRun:
     """Assess a plan and persist the result as a readiness AgentRun with one step per item.
 
     The run is opened at a non zero autonomy so a resolved or non blocking item passes the entry
     gate on its safe classification, while a blocking gap is classified by what it needs and is
     held at waiting_approval for the existing approval queue.
+
+    A needs_credential item opens the request path: when a user is known, a pending Integration
+    row is created or referenced (provider and pending status only, never a secret) and the step
+    records what is needed and which row will hold it, by reference. The fulfilment endpoint later
+    supplies the secret to the secret store and flips the row to connected.
     """
     plan = plan if isinstance(plan, dict) else {}
     project = db.get(Project, project_id) if project_id is not None else None
@@ -336,6 +378,11 @@ def evaluate_readiness(
 
         if resolution == KNOWN:
             payload["risk"] = dict(_SAFE_RISK)
+            # The evidence is knowledge sourced, never tool sourced, so the step lands
+            # completed_unverified: an answer the system already holds, not proven work.
+            evidence = [{"source": "knowledge", **(detail or {"origin": source})}]
+            assert_no_secret(payload, "readiness step payload")
+            assert_no_secret(evidence, "readiness step evidence")
             step = propose_step(
                 db,
                 run,
@@ -345,19 +392,23 @@ def evaluate_readiness(
                 payload=payload,
                 proposed_by="system",
             )
-            # The evidence is knowledge sourced, never tool sourced, so the step lands
-            # completed_unverified: an answer the system already holds, not proven work.
-            evidence = [{"source": "knowledge", **(detail or {"origin": source})}]
             record_execution(db, step, outcome="completed", evidence=evidence)
             continue
 
         if resolution == NEEDS_CREDENTIAL:
             payload["risk"] = dict(_NEEDS_CREDENTIAL_RISK)
+            # The request path: park a pending Integration and reference it from the step. The
+            # step says what is needed and why, by reference, and carries no value.
+            if user_id is not None and item.get("provider"):
+                integration = _ensure_pending_integration(db, user_id, item["provider"])
+                payload["readiness"]["integration_id"] = integration.id
+                payload["readiness"]["integration_status"] = integration.status
         elif resolution == NEEDS_USER:
             payload["risk"] = dict(_NEEDS_USER_RISK)
         else:  # UNKNOWN, non blocking: safe so it stays planned and is surfaced as a flag.
             payload["risk"] = dict(_SAFE_RISK)
 
+        assert_no_secret(payload, "readiness step payload")
         propose_step(
             db,
             run,
@@ -369,6 +420,80 @@ def evaluate_readiness(
         )
 
     return run
+
+
+# --- the fulfilment path ------------------------------------------------------------------
+
+
+class CredentialRequestError(Exception):
+    """Raised when a step is not an open credential request the caller may fulfil."""
+
+
+def is_credential_request(step: AgentStep) -> bool:
+    """True when the step is an open needs_credential readiness gate awaiting a secret."""
+    if step.kind != READINESS_KIND or step.status != WAITING_APPROVAL:
+        return False
+    rd = step.payload.get("readiness") if isinstance(step.payload, dict) else None
+    return isinstance(rd, dict) and rd.get("resolution") == NEEDS_CREDENTIAL
+
+
+def fulfil_credential_step(
+    db: Session, *, step: AgentStep, secret: str, user_id: int, resolved_by: str = "user"
+) -> Integration:
+    """Fulfil a credential request: store the secret server side and resolve the step.
+
+    The secret is written only to the Brain secret store and never returns from this function.
+    The Integration row is flipped to connected and carries only the store reference. The step is
+    approved and recorded completed with reference only evidence, so the ledger proves the
+    credential was provided without ever holding its value. The redaction guard is the final
+    backstop on what is written.
+    """
+    rd = step.payload.get("readiness") if isinstance(step.payload, dict) else None
+    if not is_credential_request(step) or not isinstance(rd, dict):
+        raise CredentialRequestError("step is not an open credential request")
+    provider = rd.get("provider")
+    if not provider:
+        raise CredentialRequestError("credential request has no provider")
+    if not isinstance(secret, str) or not secret.strip():
+        raise CredentialRequestError("a non empty secret is required")
+
+    # The value goes to the server side store only; we keep just the reference.
+    ref = store_secret(provider, secret)
+
+    integration = (
+        db.query(Integration)
+        .filter(Integration.user_id == user_id, Integration.provider == provider)
+        .order_by(Integration.id.asc())
+        .first()
+    )
+    if integration is None:
+        integration = Integration(user_id=user_id, provider=provider)
+        db.add(integration)
+    integration.status = "connected"
+    integration.credentials_ref = ref
+    db.commit()
+    db.refresh(integration)
+
+    # Record on the step by reference only. Guard both before they reach the ledger.
+    note = f"credential provided for {provider}; stored at {ref}"
+    evidence = [
+        {
+            "source": "knowledge",
+            "origin": SOURCE_INTEGRATIONS,
+            "provider": provider,
+            "credentials_ref": ref,
+        }
+    ]
+    assert_no_secret({"note": note}, "credential approval note")
+    assert_no_secret(evidence, "credential fulfilment evidence")
+
+    try:
+        resolve_approval(db, step, resolution="approved", resolved_by=resolved_by, note=note)
+        record_execution(db, step, outcome="completed", evidence=evidence)
+    except RuntimeWriteError as exc:  # pragma: no cover - guarded by is_credential_request
+        raise CredentialRequestError(str(exc)) from exc
+
+    return integration
 
 
 # --- reads: the structured assessment and the satisfied check ------------------------------
@@ -429,10 +554,13 @@ def readiness_assessment(db: Session, run: AgentRun) -> dict:
         for item, step in zip(items, readiness_steps(db, run), strict=False)
         if item["blocking"] and not _blocking_step_satisfied(step)
     ]
-    return {
+    assessment = {
         "run_id": run.id,
         "kind": run.kind,
         "satisfied": readiness_satisfied(db, run),
         "items": items,
         "blocking_open": [item["key"] for item in blocking_open],
     }
+    # The assessment is a projection of the ledger and must never carry a secret either.
+    assert_no_secret(assessment, "readiness assessment")
+    return assessment
