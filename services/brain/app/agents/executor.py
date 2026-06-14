@@ -34,10 +34,12 @@ from app.agents.readiness import readiness_satisfied
 from app.gates import SAFE_TAGS, recommend_for_payload
 from app.models.project import Project
 from app.models.runtime import AgentRun, AgentStep
-from app.project_modes import checks_for
+from app.project_modes import checks_for, destination_for
 from app.runtime import (
     COMPLETED_UNVERIFIED,
     COMPLETED_VERIFIED,
+    SKIPPED,
+    correct_step,
     create_run,
     propose_step,
     record_execution,
@@ -61,6 +63,11 @@ EDIT_STEP_KIND = "edit"
 CHECK_STEP_KIND = "check"
 DIFF_STEP_KIND = "diff"
 APPROVAL_STEP_KIND = "approval_request"
+# Phase d kinds: the merge that promotes the approved work, the rollback that reverts it, and the
+# deploy whose preview and gate exist now while its concrete adapters stay stubbed preview only.
+MERGE_STEP_KIND = "merge"
+ROLLBACK_STEP_KIND = "rollback"
+DEPLOY_STEP_KIND = "deploy"
 
 # How long a single check may run before it is killed and recorded as a timeout failure.
 CHECK_TIMEOUT_SECONDS = 300
@@ -96,8 +103,21 @@ _DIFF_RISK = {tag: True for tag in SAFE_TAGS}
 # carries an unsafe tag: releasing the work is user facing and is never auto resolved.
 _APPROVAL_RISK = {"user_facing": True}
 
-# The executor lifecycle marker after phase c has run the checks and parked at the gate.
+# A merge runs only after its human gate is already approved, and it is reversible (the before and
+# after refs back a revert), so it records its outcome without re gating. The same applies to the
+# rollback steps that revert it.
+_MERGE_RISK = {tag: True for tag in SAFE_TAGS}
+
+# A deploy is irreversible and external, so it always parks at the human gate. Even once approved,
+# the concrete adapters are stubbed and refuse to execute: the seam exists, the trigger does not
+# fire.
+_DEPLOY_RISK = {"deploy": True, "external": True, "irreversible": True, "user_facing": True}
+
+# The executor lifecycle markers. gate after phase c parks at the approval gate; merged after the
+# approved merge promotes the work; rolled_back after a rollback reverts it.
 PHASE_GATE = "gate"
+PHASE_MERGED = "merged"
+PHASE_ROLLED_BACK = "rolled_back"
 
 # Git identity used only for the baseline commit in a fresh project repo, so a commit exists to
 # branch a worktree from. It never touches the user's global config.
@@ -114,6 +134,14 @@ class ExecutorError(Exception):
 
 class ReadinessNotSatisfiedError(ExecutorError):
     """Raised when a run is asked to start while a blocking readiness gap is still open."""
+
+
+class GateNotApprovedError(ExecutorError):
+    """Raised when an irreversible or releasing action is attempted without an approved gate."""
+
+
+class DeployNotEnabledError(ExecutorError):
+    """Raised when the concrete deploy trigger is invoked. Deploy ships preview only."""
 
 
 # --- the plan, read from requirements.md --------------------------------------------------
@@ -749,3 +777,248 @@ def run_checks_and_gate(
         "approval_step": approval_step,
         "summary": summary,
     }
+
+
+# --- phase d: gated merge, rollback, and preview-only deploy -------------------------------
+
+
+def _source_repo(project: Project) -> Path:
+    """The served project folder, re-gated under the projects root, the merge target."""
+    settings = get_settings()
+    return ensure_within_root(settings.nexa_projects_root, project.slug)
+
+
+def _run_steps_of_kind(db: Session, run: AgentRun, kind: str) -> list[AgentStep]:
+    return (
+        db.query(AgentStep)
+        .filter(AgentStep.run_id == run.id, AgentStep.kind == kind)
+        .order_by(AgentStep.seq.asc(), AgentStep.id.asc())
+        .all()
+    )
+
+
+def _approved_gate(db: Session, run: AgentRun) -> AgentStep | None:
+    """The approval_request step a human has approved, if any. The merge precondition."""
+    for step in _run_steps_of_kind(db, run, APPROVAL_STEP_KIND):
+        approval = step.approval if isinstance(step.approval, dict) else None
+        if approval and approval.get("resolution") == "approved":
+            return step
+    return None
+
+
+def merge_on_approval(db: Session, run: AgentRun, *, proposed_by: str = "system") -> AgentStep:
+    """On an approved gate, merge the worktree branch and promote files into the served folder.
+
+    The approval_request gate must already be approved: without it the merge is refused and the
+    served folder is never touched. The approved worktree work is committed on its branch, then
+    merged into the project working branch with a merge commit (history advances, never a rewrite,
+    so the protected-branch rule holds). Each promoted file is validated through the path safety
+    gate. The merge-kind step records the before and after refs that back a rollback.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("a merge runs only on an executor run")
+    gate = _approved_gate(db, run)
+    if gate is None:
+        raise GateNotApprovedError("merge requires an approved gate; nothing leaves the worktree")
+
+    branch = run.branch_ref
+    if not branch or branch in PROTECTED_BRANCHES:
+        raise ExecutorError(f"refused to merge an invalid or protected source branch: {branch}")
+    worktree = _worktree_root(run)
+    if not worktree.is_dir():
+        raise ExecutorError(f"worktree does not exist: {worktree}")
+    project = db.get(Project, run.project_id) if run.project_id is not None else None
+    if project is None:
+        raise ExecutorError("an executor run requires a project to merge into")
+    source = _source_repo(project)
+    working_branch = _run_git(source, "rev-parse", "--abbrev-ref", "HEAD").strip()
+
+    # Commit the approved work on the worktree branch so there is a commit to merge.
+    commit_message = f"executor run {run.id}: approved edits"
+    _run_git(worktree, *_GIT_USER, "add", "-A")
+    _run_git(worktree, *_GIT_USER, "commit", "-m", commit_message, "--allow-empty")
+
+    before_ref = _run_git(source, "rev-parse", "HEAD").strip()
+    _run_git(source, *_GIT_USER, "merge", "--no-ff", "--no-edit", branch)
+    after_ref = _run_git(source, "rev-parse", "HEAD").strip()
+
+    # The promoted files, each validated through the path safety gate rooted at the served folder.
+    names = [
+        line.strip()
+        for line in _run_git(source, "diff", "--name-only", before_ref, after_ref).splitlines()
+        if line.strip()
+    ]
+    for name in names:
+        ensure_within_root(source, name)  # refuse any promoted path that escapes the served folder
+
+    step = propose_step(
+        db,
+        run,
+        kind=MERGE_STEP_KIND,
+        title=f"Merge {branch} into {working_branch}",
+        intent=f"Merge approved worktree branch {branch} into {working_branch} and promote files",
+        payload={
+            "merge": {
+                "branch": branch,
+                "working_branch": working_branch,
+                "before_ref": before_ref,
+                "after_ref": after_ref,
+                "files": names,
+                "gate_step_id": gate.id,
+            },
+            "risk": dict(_MERGE_RISK),
+        },
+        proposed_by=proposed_by,
+    )
+    record_execution(
+        db,
+        step,
+        outcome="completed",
+        evidence=[
+            {
+                "source": "tool",
+                "tool": "git_merge",
+                "working_branch": working_branch,
+                "before_ref": before_ref,
+                "after_ref": after_ref,
+                "files": names,
+            }
+        ],
+    )
+    run.phase = PHASE_MERGED
+    db.commit()
+    db.refresh(run)
+    return step
+
+
+def rollback_executor_run(
+    db: Session, run: AgentRun, *, proposed_by: str = "system"
+) -> AgentRun:
+    """Roll back the run's merges, replaying them in reverse, and mark the run rolled_back.
+
+    Each merge is reverted on the project working branch with a revert commit (history advances,
+    never a rewrite, so the protected-branch rule holds), which restores the prior content. A
+    rollback-kind step records each revert, the reverted merge step is marked reverted, and the run
+    is flagged rolled_back.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("a rollback runs only on an executor run")
+    project = db.get(Project, run.project_id) if run.project_id is not None else None
+    if project is None:
+        raise ExecutorError("an executor run requires a project to roll back")
+    source = _source_repo(project)
+
+    merges = [
+        step
+        for step in _run_steps_of_kind(db, run, MERGE_STEP_KIND)
+        if step.status in (COMPLETED_VERIFIED, COMPLETED_UNVERIFIED)
+    ]
+    rollbacks: list[AgentStep] = []
+    for step in reversed(merges):
+        info = step.payload.get("merge", {}) if isinstance(step.payload, dict) else {}
+        after_ref = str(info.get("after_ref", ""))
+        before_ref = str(info.get("before_ref", ""))
+        # Revert the merge: a new forward commit that restores prior content, never a force.
+        _run_git(source, *_GIT_USER, "revert", "--no-edit", "-m", "1", after_ref)
+        revert_head = _run_git(source, "rev-parse", "HEAD").strip()
+
+        rb = propose_step(
+            db,
+            run,
+            kind=ROLLBACK_STEP_KIND,
+            title=f"Revert merge of {info.get('branch', '')}",
+            intent=f"Revert merge {after_ref[:12]} restoring {before_ref[:12]}",
+            payload={
+                "rollback": {
+                    "reverted_step_id": step.id,
+                    "from_ref": after_ref,
+                    "to_ref": before_ref,
+                    "revert_head": revert_head,
+                },
+                "risk": dict(_MERGE_RISK),
+            },
+            proposed_by=proposed_by,
+        )
+        record_execution(
+            db,
+            rb,
+            outcome="completed",
+            evidence=[
+                {
+                    "source": "tool",
+                    "tool": "git_revert",
+                    "reverted_ref": after_ref,
+                    "restored_to": before_ref,
+                    "revert_head": revert_head,
+                }
+            ],
+        )
+        correct_step(
+            db,
+            step,
+            status=SKIPPED,
+            correction_note=f"merge reverted by rollback (revert {revert_head[:12]})",
+        )
+        rollbacks.append(rb)
+
+    run.phase = PHASE_ROLLED_BACK
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def preview_deploy(db: Session, run: AgentRun, *, proposed_by: str = "system") -> AgentStep:
+    """Render the mandatory deploy preview and park at the gate. This never executes.
+
+    The preview renders the full effect (target, files, destination). The deploy-kind step is
+    classified irreversible and external, so it always parks at waiting_approval, carrying the
+    recommended default from the gates. The concrete deploy is not performed here: execute_deploy
+    refuses, so the trigger does not fire.
+    """
+    if run.kind != EXECUTOR_KIND:
+        raise ExecutorError("a deploy runs only on an executor run")
+    project = db.get(Project, run.project_id) if run.project_id is not None else None
+    if project is None:
+        raise ExecutorError("an executor run requires a project to deploy")
+    source = _source_repo(project)
+    files = [line.strip() for line in _run_git(source, "ls-files").splitlines() if line.strip()]
+    destination = destination_for(project.mode)
+
+    preview = {
+        "target": project.slug,
+        "files": files,
+        "destination": destination,
+        "effect": (
+            f"Would deploy {len(files)} file(s) of '{project.name}' to {destination}. "
+            "Preview only: the concrete deploy is stubbed and does not run."
+        ),
+    }
+    payload = {
+        "deploy": {"preview": preview, "executed": False, "enabled": False, "adapter": "stub"},
+        "risk": dict(_DEPLOY_RISK),
+    }
+    payload["deploy"]["gate"] = recommend_for_payload(payload)
+    return propose_step(
+        db,
+        run,
+        kind=DEPLOY_STEP_KIND,
+        title=f"Deploy preview to {destination}",
+        intent=(
+            f"Preview-only deploy to {destination}. Requires separate explicit approval and an "
+            "enabled adapter; it does not execute."
+        ),
+        payload=payload,
+        proposed_by=proposed_by,
+    )
+
+
+def execute_deploy(db: Session, run: AgentRun, step: AgentStep | None = None) -> None:
+    """The deploy trigger seam. It does not fire: deploy ships preview only.
+
+    Even with an approved deploy gate, the concrete adapters are stubbed and refuse to execute, so
+    no irreversible deploy ever runs in this phase.
+    """
+    raise DeployNotEnabledError(
+        "deploy adapters are preview-only; the concrete deploy trigger does not fire and refuses "
+        "to execute until a real adapter is separately approved and enabled"
+    )

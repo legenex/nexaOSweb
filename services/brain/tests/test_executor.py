@@ -8,17 +8,28 @@ import pytest
 from app.agents.executor import (
     APPROVAL_STEP_KIND,
     CHECK_STEP_KIND,
+    DEPLOY_STEP_KIND,
     DIFF_STEP_KIND,
     EDIT_STEP_KIND,
     EXECUTOR_KIND,
+    MERGE_STEP_KIND,
     PHASE_GATE,
+    PHASE_MERGED,
     PHASE_PLAN,
+    PHASE_ROLLED_BACK,
     PLAN_STEP_KIND,
+    ROLLBACK_STEP_KIND,
+    DeployNotEnabledError,
     ExecutorError,
+    GateNotApprovedError,
     ReadinessNotSatisfiedError,
     compute_diff_step,
+    execute_deploy,
     execute_planned_edits,
+    merge_on_approval,
     plan_steps_from_requirements,
+    preview_deploy,
+    rollback_executor_run,
     run_checks,
     run_checks_and_gate,
     start_executor_run,
@@ -32,7 +43,9 @@ from app.runtime import (
     FAILED,
     PLANNED,
     RUN_WAITING_APPROVAL,
+    SKIPPED,
     WAITING_APPROVAL,
+    resolve_approval,
 )
 from app.safety import PathSafetyError
 from app.settings import get_settings
@@ -437,3 +450,102 @@ def test_checks_refused_on_protected_branch(db_session, monkeypatch, tmp_path):
     db_session.commit()
     with pytest.raises(ExecutorError):
         run_checks(db_session, run, checks=[{"name": "build", "command": ["sh", "-c", "exit 0"]}])
+
+
+# --- phase d: gated merge, rollback, and preview-only deploy -------------------------------
+
+
+def _edited_run_at_gate(db, monkeypatch, tmp_path, slug, content="X = 1\n"):
+    """A run that has made an edit and reached the approval gate, gate not yet resolved."""
+    project, run = _started_run(db, monkeypatch, tmp_path, slug)
+    execute_planned_edits(
+        db,
+        run,
+        [{"file_path": "app.py", "instruction": "add the entrypoint"}],
+        synthesize=_fixed_synth(content),
+    )
+    result = run_checks_and_gate(
+        db, run, checks=[{"name": "build", "command": ["sh", "-c", "exit 0"]}]
+    )
+    return project, run, result["approval_step"]
+
+
+def test_approved_merge_promotes_files_and_is_rollbackable(db_session, monkeypatch, tmp_path):
+    project, run, approval = _edited_run_at_gate(db_session, monkeypatch, tmp_path, "merge1")
+    source = Path(tmp_path) / "projects" / project.slug
+    assert not (source / "app.py").exists()  # nothing promoted before approval
+
+    resolve_approval(db_session, approval, resolution="approved", note="ship it")
+    merge = merge_on_approval(db_session, run)
+
+    # The file is promoted into the served project folder, and the run is marked merged.
+    assert merge.kind == MERGE_STEP_KIND
+    assert merge.status == COMPLETED_VERIFIED
+    assert (source / "app.py").read_text(encoding="utf-8") == "X = 1\n"
+    assert "app.py" in merge.payload["merge"]["files"]
+    assert merge.payload["merge"]["before_ref"] and merge.payload["merge"]["after_ref"]
+    db_session.refresh(run)
+    assert run.phase == PHASE_MERGED
+
+    # Rollback reverts the merge: the file is gone, the merge step is marked reverted, and the run
+    # is rolled_back. The revert is a forward commit, so the protected branch is never rewritten.
+    rollback_executor_run(db_session, run)
+    assert not (source / "app.py").exists()
+    db_session.refresh(merge)
+    assert merge.status == SKIPPED
+    assert "reverted" in (merge.correction_note or "")
+    rollbacks = (
+        db_session.query(AgentStep)
+        .filter(AgentStep.run_id == run.id, AgentStep.kind == ROLLBACK_STEP_KIND)
+        .all()
+    )
+    assert len(rollbacks) == 1
+    db_session.refresh(run)
+    assert run.phase == PHASE_ROLLED_BACK
+
+
+def test_merge_refused_without_approved_gate(db_session, monkeypatch, tmp_path):
+    project, run, _approval = _edited_run_at_gate(db_session, monkeypatch, tmp_path, "merge2")
+    source = Path(tmp_path) / "projects" / project.slug
+
+    # The gate exists but is still waiting: the merge is refused and nothing is promoted.
+    with pytest.raises(GateNotApprovedError):
+        merge_on_approval(db_session, run)
+    assert not (source / "app.py").exists()
+    assert _git(source, "status", "--porcelain").strip() == ""
+
+
+def test_deploy_always_previews_and_refuses_to_execute(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "deploy1")
+
+    step = preview_deploy(db_session, run)
+    assert step.kind == DEPLOY_STEP_KIND
+    # Mandatory gate: the deploy parks at waiting_approval and renders the full effect.
+    assert step.status == WAITING_APPROVAL
+    preview = step.payload["deploy"]["preview"]
+    assert set(("target", "files", "destination")).issubset(preview)
+    assert step.payload["deploy"]["executed"] is False
+    assert step.payload["deploy"]["gate"]["recommended_default"] in ("change", "proceed")
+
+    # The concrete trigger does not fire.
+    with pytest.raises(DeployNotEnabledError):
+        execute_deploy(db_session, run, step)
+
+
+def test_no_irreversible_action_runs_without_approved_gate(db_session, monkeypatch, tmp_path):
+    project, run, _approval = _edited_run_at_gate(db_session, monkeypatch, tmp_path, "irrev1")
+    source = Path(tmp_path) / "projects" / project.slug
+
+    # Merge is refused while the gate is unapproved.
+    with pytest.raises(GateNotApprovedError):
+        merge_on_approval(db_session, run)
+
+    # A deploy never executes, even once its own gate is approved: the adapter is preview only.
+    deploy_step = preview_deploy(db_session, run)
+    resolve_approval(db_session, deploy_step, resolution="approved", note="approved but stubbed")
+    with pytest.raises(DeployNotEnabledError):
+        execute_deploy(db_session, run, deploy_step)
+
+    # Through all of it, the served folder was never touched.
+    assert not (source / "app.py").exists()
+    assert _git(source, "status", "--porcelain").strip() == ""
