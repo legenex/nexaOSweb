@@ -7,13 +7,24 @@ from sqlalchemy.orm import Session
 from app.agents.builder import BuilderError, promote_project
 from app.agents.clarify import apply_clarify, get_clarify, read_preview_html
 from app.agents.process import ProcessError, process_item, read_plan_markdown
+from app.agents.readiness import (
+    evaluate_readiness,
+    latest_readiness_run,
+    readiness_assessment,
+)
 from app.aggregate import build_flow_item
 from app.db import get_db
 from app.models.inbox import InboxItem
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.entities import ProjectRead
-from app.schemas.flow import ClarifyRequest, ClarifyResponse, FlowItemDTO, PromoteResponse
+from app.schemas.flow import (
+    ClarifyRequest,
+    ClarifyResponse,
+    FlowItemDTO,
+    PromoteResponse,
+    ReadinessAssessment,
+)
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/flow", tags=["flow"])
@@ -158,3 +169,64 @@ def promote(
         pm_run_id=pm.id,
         requirements_path=requirements_path,
     )
+
+
+def _owned_project(item_id: int, user: User, db: Session) -> Project:
+    """The project for an item the user owns, or a 404 if either is missing."""
+    item = load_owned_item(item_id, user, db)
+    project = db.query(Project).filter(Project.item_id == item.id).first()
+    if project is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no project for this item")
+    return project
+
+
+def _readiness_plan(project: Project) -> dict:
+    """Build the plan the readiness service reads from what the project already holds.
+
+    The draft plan_json carries the answers and any declared requirements; the chosen
+    integrations (falling back to the plan's likely list) become the credential items.
+    """
+    plan = dict(project.plan_json or {})
+    integrations = [str(value) for value in (project.selected_integrations or [])]
+    if not integrations:
+        likely = plan.get("likely_integrations")
+        if isinstance(likely, list):
+            integrations = [str(value) for value in likely]
+    plan["selected_integrations"] = integrations
+    return plan
+
+
+@router.post("/items/{item_id}/readiness", response_model=ReadinessAssessment)
+def evaluate_item_readiness(
+    item_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Run the readiness assessment for this item's project at the Human Gate.
+
+    Answers every item it can from the knowledge sources before asking the user; blocking gaps land
+    in the existing approval queue and credential gaps in the secure provide path. A secret is never
+    written here. Returns the fresh assessment.
+    """
+    project = _owned_project(item_id, user, db)
+    plan = _readiness_plan(project)
+    run = evaluate_readiness(db, plan=plan, project_id=project.id, user_id=user.id)
+    return readiness_assessment(db, run)
+
+
+@router.get("/items/{item_id}/readiness", response_model=ReadinessAssessment)
+def get_item_readiness(
+    item_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """The latest readiness assessment for this item's project.
+
+    404 when the project has never been assessed, so the panel shows an honest not yet assessed
+    state rather than inventing data.
+    """
+    project = _owned_project(item_id, user, db)
+    run = latest_readiness_run(db, project.id)
+    if run is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no readiness assessment yet")
+    return readiness_assessment(db, run)

@@ -69,6 +69,34 @@ SOURCE_INSTRUCTIONS = "operating_instructions"
 SOURCE_PRIOR_RUNS = "prior_runs"
 SOURCE_INTEGRATIONS = "integrations"
 
+# The classes the assessment groups items by, so the gate can show them banded. Class is a
+# presentation grouping derived from the item kind and resolution, not a new stored field.
+CATEGORY_INTEGRATIONS = "integrations"
+CATEGORY_CREDENTIALS = "credentials"
+CATEGORY_DECISIONS = "decisions"
+CATEGORY_DATA_SOURCES = "data_sources"
+CATEGORY_UNKNOWNS = "unknowns"
+
+_DATA_KINDS = ("data_source", "data", "dataset", "data_sources")
+
+
+def item_category(item_kind: str | None, resolution: str | None) -> str:
+    """Group an item into one of the five classes the gate panel bands by.
+
+    An item the sources could not answer lands in unknowns regardless of kind; otherwise the kind
+    decides. A raw secret is a credential, a wired connection is an integration.
+    """
+    if resolution == UNKNOWN:
+        return CATEGORY_UNKNOWNS
+    kind = (item_kind or "").lower()
+    if kind == "credential":
+        return CATEGORY_CREDENTIALS
+    if kind in ("connector", "integration"):
+        return CATEGORY_INTEGRATIONS
+    if kind in _DATA_KINDS:
+        return CATEGORY_DATA_SOURCES
+    return CATEGORY_DECISIONS
+
 # A credential or connector item is satisfied by a connected provider, never by a stored value.
 _CREDENTIAL_KINDS = ("credential", "connector")
 # An integration that counts as connected. available means offered but not yet wired.
@@ -499,6 +527,16 @@ def fulfil_credential_step(
 # --- reads: the structured assessment and the satisfied check ------------------------------
 
 
+def latest_readiness_run(db: Session, project_id: int) -> AgentRun | None:
+    """The most recent readiness assessment for a project, or None if it was never assessed."""
+    return (
+        db.query(AgentRun)
+        .filter(AgentRun.project_id == project_id, AgentRun.kind == READINESS_KIND)
+        .order_by(AgentRun.created_at.desc(), AgentRun.id.desc())
+        .first()
+    )
+
+
 def readiness_steps(db: Session, run: AgentRun) -> list[AgentStep]:
     return (
         db.query(AgentStep)
@@ -533,29 +571,37 @@ def readiness_satisfied(db: Session, run: AgentRun) -> bool:
 
 def readiness_assessment(db: Session, run: AgentRun) -> dict:
     """The structured assessment: the run, its items, and whether it is satisfied."""
+    steps = readiness_steps(db, run)
     items = []
-    for step in readiness_steps(db, run):
+    for step in steps:
         rd = step.payload.get("readiness") if isinstance(step.payload, dict) else {}
         rd = rd if isinstance(rd, dict) else {}
+        resolution = rd.get("resolution")
         items.append(
             {
                 "step_id": step.id,
                 "key": rd.get("key"),
                 "question": rd.get("question"),
                 "item_kind": rd.get("item_kind"),
+                "category": item_category(rd.get("item_kind"), resolution),
                 "blocking": bool(rd.get("blocking")),
-                "resolution": rd.get("resolution"),
+                "resolution": resolution,
                 "source": rd.get("source"),
                 "status": step.status,
+                "satisfied": _blocking_step_satisfied(step),
+                # For a credential item, what the provide control needs. Reference only, no secret.
+                "provider": rd.get("provider"),
+                "integration_id": rd.get("integration_id"),
             }
         )
     blocking_open = [
         item
-        for item, step in zip(items, readiness_steps(db, run), strict=False)
-        if item["blocking"] and not _blocking_step_satisfied(step)
+        for item, step in zip(items, steps, strict=False)
+        if item["blocking"] and not item["satisfied"]
     ]
     assessment = {
         "run_id": run.id,
+        "project_id": run.project_id,
         "kind": run.kind,
         "satisfied": readiness_satisfied(db, run),
         "items": items,

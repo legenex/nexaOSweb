@@ -32,6 +32,38 @@ class PromoteResponse(BaseModel):
     requirements_path: str
 
 
+class ReadinessItem(BaseModel):
+    """One readiness item: a need the plan declared and how the assessment resolved it.
+
+    provider and integration_id are present only for a credential item, so the web can open the
+    provide control. Neither is or carries a secret value.
+    """
+
+    step_id: int
+    key: str | None = None
+    question: str | None = None
+    item_kind: str | None = None
+    category: str
+    blocking: bool = False
+    resolution: str | None = None
+    source: str | None = None
+    status: str
+    satisfied: bool = False
+    provider: str | None = None
+    integration_id: int | None = None
+
+
+class ReadinessAssessment(BaseModel):
+    """A project's build readiness: every item, whether it is satisfied, and what still blocks."""
+
+    run_id: int
+    project_id: int | None = None
+    kind: str
+    satisfied: bool
+    items: list[ReadinessItem] = []
+    blocking_open: list[str] = []
+
+
 class FlowItemDTO(BaseModel):
     id: int
     name: str
