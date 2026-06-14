@@ -6,11 +6,13 @@ nothing in .env. Discovery caches live models additively and auto enables the on
 keys reference. Managing providers is an owner or admin action.
 """
 
+import json
 import logging
 from types import SimpleNamespace
 
 from app.router import discovery, model_router
 from app.router.model_router import get_router
+from app.security.redaction import ALLOWED_REFERENCE_FIELDS, SECRET_FIELD_NAMES
 from app.security.secret_store import has_secret, read_secret, secret_ref
 from app.settings import get_settings
 
@@ -89,6 +91,62 @@ def test_connect_rejects_anonymous(client, seed_user):
         "/settings/providers/connect", json={"provider": "anthropic", "api_key": KEY}
     )
     assert res.status_code == 401
+
+
+def test_no_route_exposes_a_planted_key(client, seed_user, monkeypatch, tmp_path):
+    """A connected key never appears in the OpenAPI document or in any read response.
+
+    read_secret and resolve_provider_key return the raw key but are server side only: no route is
+    wired to them and no response model declares a secret bearing field. This greps the live OpenAPI
+    schema and every provider read body for the planted literal and asserts it is absent, the
+    structural proof that neither helper is reachable over HTTP.
+    """
+    _bearer(monkeypatch)
+    _isolate_secrets(monkeypatch, tmp_path)
+    _clear_provider_env(monkeypatch)
+
+    # Connect and discover, so a real key is stored and discovered rows exist to serialise.
+    client.post(
+        "/settings/providers/connect",
+        json={"provider": "anthropic", "api_key": KEY},
+        headers=BEARER,
+    )
+    _fake_lister(monkeypatch, ["claude-sonnet-4-6", "claude-3-opus-latest"])
+    client.post("/settings/providers/anthropic/refresh", headers=BEARER)
+
+    # The key resolves server side (proving it is stored), so the grep below is meaningful.
+    assert model_router.resolve_provider_key("anthropic") == KEY
+
+    # The OpenAPI document never carries the planted key, and no provider response schema declares a
+    # secret bearing field name (only a reference field is permitted).
+    schema = client.get("/openapi.json").json()
+    assert KEY not in json.dumps(schema)
+    components = schema.get("components", {}).get("schemas", {})
+    for name in ("ProviderStatus", "DiscoveredModelRead"):
+        props = components.get(name, {}).get("properties", {})
+        offending = {
+            field
+            for field in props
+            if field.lower() in SECRET_FIELD_NAMES
+            and field.lower() not in ALLOWED_REFERENCE_FIELDS
+        }
+        assert not offending, f"{name} exposes secret bearing field(s): {offending}"
+
+    # Every provider read endpoint, and the connect response, return the key nowhere.
+    reads = [
+        client.post(
+            "/settings/providers/connect",
+            json={"provider": "anthropic", "api_key": KEY},
+            headers=BEARER,
+        ),
+        client.get("/settings/providers", headers=BEARER),
+        client.get(
+            "/settings/providers/models", params={"provider": "anthropic"}, headers=BEARER
+        ),
+    ]
+    for res in reads:
+        assert res.status_code == 200
+        assert KEY not in res.text
 
 
 # --- store first resolution lets every feature run on the connected key ------------------------
