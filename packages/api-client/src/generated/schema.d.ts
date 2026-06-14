@@ -232,6 +232,76 @@ export interface paths {
         patch: operations["update_entry_journal_entries__entry_id__patch"];
         trace?: never;
     };
+    "/journal/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Topics */
+        get: operations["list_topics_journal_topics_get"];
+        put?: never;
+        /** Create Topic */
+        post: operations["create_topic_journal_topics_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal/topics/{topic_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Topic */
+        delete: operations["delete_topic_journal_topics__topic_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal/entries/{entry_id}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Attachments */
+        get: operations["list_attachments_journal_entries__entry_id__attachments_get"];
+        put?: never;
+        /** Attach To Entry */
+        post: operations["attach_to_entry_journal_entries__entry_id__attachments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal/attachments/{attachment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Attachment */
+        delete: operations["delete_attachment_journal_attachments__attachment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/journal/transcribe": {
         parameters: {
             query?: never;
@@ -243,6 +313,55 @@ export interface paths {
         put?: never;
         /** Transcribe */
         post: operations["transcribe_journal_transcribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal/capture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Capture
+         * @description Transcribe a photo of a handwritten page via the vision model, returning the text.
+         *
+         *     The image is processed in memory and never written to disk, consistent with the journal image
+         *     rule. The returned text becomes an entry body or an attachment note, at the client's choice.
+         *     When no provider key backs the vision model the route returns 501, never a stub.
+         */
+        post: operations["capture_journal_capture_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journal/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest
+         * @description Accept a journal entry from an external source, authenticated by a per source token.
+         *
+         *     This route is machine to machine, not session authenticated: the per source token is the
+         *     credential. The token is validated against the server side token map, then discarded; it never
+         *     enters the entry. A malformed payload is rejected by the schema; an unknown source or a wrong
+         *     token is a 401. The created entry is tagged with its source so the origin stays traceable.
+         */
+        post: operations["ingest_journal_ingest_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1649,6 +1768,29 @@ export interface components {
             /** Target Project Id */
             target_project_id: number;
         };
+        /** AttachmentRead */
+        AttachmentRead: {
+            /** Id */
+            id: number;
+            /** Note Id */
+            note_id: number;
+            /** Kind */
+            kind: string;
+            /** Original Name */
+            original_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** Body_attach_to_entry_journal_entries__entry_id__attachments_post */
+        Body_attach_to_entry_journal_entries__entry_id__attachments_post: {
+            /** File */
+            file: string;
+            /** Kind */
+            kind?: string | null;
+        };
         /** Body_capture_intake_capture_post */
         Body_capture_intake_capture_post: {
             /** Name */
@@ -1670,6 +1812,11 @@ export interface components {
             mode: string;
             /** File */
             file?: string | null;
+        };
+        /** Body_capture_journal_capture_post */
+        Body_capture_journal_capture_post: {
+            /** File */
+            file: string;
         };
         /** Body_reject_projects__project_id__reject_post */
         Body_reject_projects__project_id__reject_post: {
@@ -1720,6 +1867,16 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * CaptureResponse
+         * @description The transcribed text of a handwritten page, plus the vision model that produced it.
+         */
+        CaptureResponse: {
+            /** Text */
+            text: string;
+            /** Model */
+            model: string;
         };
         /** ClarifyRequest */
         ClarifyRequest: {
@@ -2147,6 +2304,25 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * IngestRequest
+         * @description An inbound journal entry from an external source, authenticated by a per source token.
+         *
+         *     The token authenticates the source and is never stored on the entry. The body becomes the
+         *     entry text; the source is recorded as a tag so the origin is traceable.
+         */
+        IngestRequest: {
+            /** Source */
+            source: string;
+            /** Token */
+            token: string;
+            /** Body */
+            body: string;
+            /** Mood */
+            mood?: string | null;
+            /** Tags */
+            tags?: string[];
+        };
         /** InsightRead */
         InsightRead: {
             /** Id */
@@ -2284,6 +2460,8 @@ export interface components {
             mood?: string | null;
             /** Tags */
             tags?: string[];
+            /** Topic Id */
+            topic_id?: number | null;
         };
         /** JournalEntryRead */
         JournalEntryRead: {
@@ -2295,6 +2473,8 @@ export interface components {
             mood: string | null;
             /** Tags */
             tags: string[];
+            /** Topic Id */
+            topic_id: number | null;
             /**
              * Created At
              * Format: date-time
@@ -2311,6 +2491,8 @@ export interface components {
             mood?: string | null;
             /** Tags */
             tags?: string[] | null;
+            /** Topic Id */
+            topic_id?: number | null;
         };
         /** KnowledgeEntryCreate */
         KnowledgeEntryCreate: {
@@ -3258,6 +3440,23 @@ export interface components {
              */
             created_at: string;
         };
+        /** TopicCreate */
+        TopicCreate: {
+            /** Name */
+            name: string;
+        };
+        /** TopicRead */
+        TopicRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** TranscribeResponse */
         TranscribeResponse: {
             /** Transcript */
@@ -3691,7 +3890,10 @@ export interface operations {
     };
     list_entries_journal_entries_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description filter to entries under this topic */
+                topic_id?: number | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3705,6 +3907,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JournalEntryRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3837,6 +4048,183 @@ export interface operations {
             };
         };
     };
+    list_topics_journal_topics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicRead"][];
+                };
+            };
+        };
+    };
+    create_topic_journal_topics_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TopicCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopicRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_topic_journal_topics__topic_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                topic_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_attachments_journal_entries__entry_id__attachments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attach_to_entry_journal_entries__entry_id__attachments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_attach_to_entry_journal_entries__entry_id__attachments_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttachmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_attachment_journal_attachments__attachment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attachment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     transcribe_journal_transcribe_post: {
         parameters: {
             query?: never;
@@ -3857,6 +4245,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TranscribeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capture_journal_capture_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_capture_journal_capture_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaptureResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_journal_ingest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JournalEntryRead"];
                 };
             };
             /** @description Validation Error */
