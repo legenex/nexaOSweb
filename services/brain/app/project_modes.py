@@ -126,6 +126,42 @@ PROJECT_MODES: dict[str, ProjectMode] = {
 }
 
 
+@dataclass(frozen=True)
+class ModeCheck:
+    """One executor check for a mode: a name and the argv to run inside the worktree.
+
+    The command is the toolchain a built project of that mode is expected to carry. The executor
+    runs it in the isolated worktree; when the tool is not present, the check is recorded as
+    unable to run rather than a pass, so a missing toolchain never reads as green.
+    """
+
+    name: str
+    command: tuple[str, ...]
+
+
+# Checks per mode, lint then build then test where applicable. Modes that produce no runnable
+# artifact (campaign, content_system, product_concept, funnel) carry no checks. Kept separate
+# from ProjectMode so adding checks is additive and does not rewrite the existing mode table.
+MODE_CHECKS: dict[str, list[ModeCheck]] = {
+    "app": [
+        ModeCheck("lint", ("npm", "run", "lint")),
+        ModeCheck("build", ("npm", "run", "build")),
+        ModeCheck("test", ("npm", "test")),
+    ],
+    "website": [
+        ModeCheck("lint", ("npm", "run", "lint")),
+        ModeCheck("build", ("npm", "run", "build")),
+    ],
+    "automation": [ModeCheck("test", ("npm", "test"))],
+    "data_pipeline": [ModeCheck("test", ("npm", "test"))],
+}
+
+
+def checks_for(key: str | None) -> list[ModeCheck]:
+    """The executor checks for a mode, empty for modes that produce no runnable artifact."""
+    return list(MODE_CHECKS.get(key or "", []))
+
+
 def mode_keys() -> list[str]:
     return list(PROJECT_MODES.keys())
 

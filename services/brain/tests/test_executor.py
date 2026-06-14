@@ -6,20 +6,34 @@ from pathlib import Path
 import pytest
 
 from app.agents.executor import (
+    APPROVAL_STEP_KIND,
+    CHECK_STEP_KIND,
+    DIFF_STEP_KIND,
     EDIT_STEP_KIND,
     EXECUTOR_KIND,
+    PHASE_GATE,
     PHASE_PLAN,
     PLAN_STEP_KIND,
     ExecutorError,
     ReadinessNotSatisfiedError,
+    compute_diff_step,
     execute_planned_edits,
     plan_steps_from_requirements,
+    run_checks,
+    run_checks_and_gate,
     start_executor_run,
 )
 from app.agents.readiness import evaluate_readiness, readiness_satisfied
 from app.models.project import BuildLogEntry, Project
 from app.models.runtime import AgentRun, AgentStep
-from app.runtime import COMPLETED_VERIFIED, PLANNED
+from app.runtime import (
+    BLOCKED,
+    COMPLETED_VERIFIED,
+    FAILED,
+    PLANNED,
+    RUN_WAITING_APPROVAL,
+    WAITING_APPROVAL,
+)
 from app.safety import PathSafetyError
 from app.settings import get_settings
 
@@ -287,3 +301,139 @@ def test_edit_path_escape_is_blocked(db_session, monkeypatch, tmp_path):
 
     # Nothing escaped: no file was written beside the worktree.
     assert not (Path(run.worktree_path).parent / "escape.txt").exists()
+
+
+# --- phase c: real checks, evidence, diff, and the gate -----------------------------------
+
+
+def _checks_by_name(steps):
+    return {s.payload["check"]["name"]: s for s in steps}
+
+
+def test_real_check_writes_tool_evidence_with_real_exit_code(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "checkA")
+    checks = [
+        {"name": "build", "command": ["sh", "-c", "echo built; exit 0"]},
+        {"name": "unit", "command": ["sh", "-c", "echo boom 1>&2; exit 7"]},
+    ]
+    steps = run_checks(db_session, run, checks=checks)
+    by = _checks_by_name(steps)
+
+    # A passing check verifies on its tool sourced evidence, with the real exit code captured.
+    ok = by["build"]
+    assert ok.kind == CHECK_STEP_KIND
+    assert ok.status == COMPLETED_VERIFIED
+    ev = ok.evidence[0]
+    assert ev["source"] == "tool"
+    assert ev["ran"] is True and ev["passed"] is True
+    assert ev["exit_code"] == 0
+
+    # Output is captured by reference under the runtime root, never inlined into the row.
+    runtime_root = Path(tmp_path) / "runtime"
+    assert "stdout" not in ev  # no full body inline, only a reference and a preview
+    assert (runtime_root / ev["stdout_ref"]).read_text(encoding="utf-8").strip() == "built"
+
+    # A failing check records the real nonzero exit code and does not pass.
+    bad = by["unit"]
+    assert bad.status == FAILED
+    assert bad.evidence[0]["exit_code"] == 7
+    assert bad.evidence[0]["passed"] is False
+
+
+def test_check_that_cannot_run_is_recorded_honestly_and_never_verifies(
+    db_session, monkeypatch, tmp_path
+):
+    _project, run = _started_run(db_session, monkeypatch, tmp_path, "checkB")
+    steps = run_checks(
+        db_session, run, checks=[{"name": "lint", "command": ["nexa-no-such-binary-zzz", "--v"]}]
+    )
+    step = steps[0]
+
+    # Honest: recorded as unable to run, never a pass, and never verified.
+    assert step.status == BLOCKED
+    assert step.status != COMPLETED_VERIFIED
+    ev = step.evidence[0]
+    assert ev["ran"] is False
+    assert ev["passed"] is False
+    assert ev["exit_code"] is None
+    assert "not found" in ev["reason"]
+
+
+def test_dangerous_check_is_refused_and_never_runs(db_session, monkeypatch, tmp_path):
+    _project, run = _started_run(db_session, monkeypatch, tmp_path, "checkC")
+    steps = run_checks(
+        db_session, run, checks=[{"name": "evil", "command": ["rm", "-rf", "/tmp/whatever"]}]
+    )
+    step = steps[0]
+    assert step.status == BLOCKED
+    ev = step.evidence[0]
+    assert ev["ran"] is False
+    assert "dangerous" in ev["reason"]
+
+
+def test_diff_step_summarises_worktree_changes(db_session, monkeypatch, tmp_path):
+    _project, run = _started_run(db_session, monkeypatch, tmp_path, "checkDiff")
+    execute_planned_edits(
+        db_session,
+        run,
+        [{"file_path": "app.py", "instruction": "add"}],
+        synthesize=_fixed_synth("X = 1\n"),
+    )
+
+    step = compute_diff_step(db_session, run)
+    assert step.kind == DIFF_STEP_KIND
+    assert step.status == COMPLETED_VERIFIED
+    assert step.payload["diff"]["shortstat"] != "no changes"
+
+    ev = step.evidence[0]
+    assert ev["source"] == "tool" and ev["tool"] == "git_diff"
+    # The full diff is by reference; the preview names the changed file.
+    runtime_root = Path(tmp_path) / "runtime"
+    assert (runtime_root / ev["diff_ref"]).exists()
+    assert "app.py" in ev["diff_preview"]
+
+
+def test_phase_c_parks_at_gate_and_nothing_leaves_worktree(db_session, monkeypatch, tmp_path):
+    project, run = _started_run(db_session, monkeypatch, tmp_path, "checkGate")
+    execute_planned_edits(
+        db_session,
+        run,
+        [{"file_path": "app.py", "instruction": "add the entrypoint"}],
+        synthesize=_fixed_synth("X = 1\n"),
+    )
+    source = Path(tmp_path) / "projects" / project.slug
+    head_before = _git(source, "rev-parse", "HEAD").strip()
+
+    result = run_checks_and_gate(
+        db_session, run, checks=[{"name": "build", "command": ["sh", "-c", "exit 0"]}]
+    )
+
+    # The run parks at the human gate, carrying the recommended default from the gates.
+    approval = result["approval_step"]
+    assert approval.kind == APPROVAL_STEP_KIND
+    assert approval.status == WAITING_APPROVAL
+    gate = approval.payload["approval_request"]["gate"]
+    assert gate["recommended_default"] in ("change", "proceed")
+    assert approval.payload["approval_request"]["checks"]["passed"] == ["build"]
+
+    # A diff step was recorded alongside the checks.
+    assert result["diff_step"].kind == DIFF_STEP_KIND
+
+    # The run as a whole is parked at waiting_approval, in the gate phase.
+    db_session.refresh(run)
+    assert run.status == RUN_WAITING_APPROVAL
+    assert run.phase == PHASE_GATE
+
+    # Nothing left the worktree: the live checkout is clean, unmoved, and never got the file.
+    assert _git(source, "status", "--porcelain").strip() == ""
+    assert _git(source, "rev-parse", "HEAD").strip() == head_before
+    assert not (source / "app.py").exists()
+    assert (Path(run.worktree_path) / "app.py").read_text(encoding="utf-8") == "X = 1\n"
+
+
+def test_checks_refused_on_protected_branch(db_session, monkeypatch, tmp_path):
+    _project, run = _started_run(db_session, monkeypatch, tmp_path, "checkProt")
+    run.branch_ref = "main"
+    db_session.commit()
+    with pytest.raises(ExecutorError):
+        run_checks(db_session, run, checks=[{"name": "build", "command": ["sh", "-c", "exit 0"]}])
