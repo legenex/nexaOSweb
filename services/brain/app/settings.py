@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     # On disk roots for project files and uploads
     nexa_projects_root: str = "./.data/projects"
     nexa_uploads_root: str = "./.data/uploads"
+    # Where the runtime stores large tool output referenced from step evidence by content_ref.
+    nexa_runtime_root: str = "./.data/runtime"
 
     # CORS, comma separated list of allowed origins
     cors_origins: str = "http://localhost:5173"

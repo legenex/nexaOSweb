@@ -11,6 +11,7 @@ from .insight import Insight, InsightRun
 from .knowledge import KnowledgeEntry
 from .project import BuildLogEntry, Integration, PMRun, Project
 from .research import ProjectUpdate, ResearchFinding, ResearchRun
+from .runtime import AgentRun, AgentStep
 from .user import User
 from .workspace import AppSetting, JournalNote, Task
 
@@ -35,4 +36,6 @@ __all__ = [
     "ResearchFinding",
     "Insight",
     "InsightRun",
+    "AgentRun",
+    "AgentStep",
 ]
