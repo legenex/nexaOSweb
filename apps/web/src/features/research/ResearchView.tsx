@@ -3,6 +3,8 @@ import type { Schemas } from '@nexaosweb/api-client';
 
 import { apiFetch } from '../../app/api';
 import { api } from '../../app/client';
+import { settingsRoute } from '../../app/nav';
+import { useNavigation } from '../../app/navigation';
 import { OverflowMenu } from '../../components/OverflowMenu';
 import { Button, GlassCard, MonoLabel, Pill } from '../../components/primitives';
 import { ConfirmDialog } from '../projects/workspace/ConfirmDialog';
@@ -14,6 +16,17 @@ type ResearchProject = Schemas['ResearchProjectRead'];
 type BuildProject = Schemas['ProjectRead'];
 type ResearchRun = Schemas['ResearchRunRead'];
 type ResearchFinding = Schemas['ResearchFindingRead'];
+type ModelsConfig = Schemas['ModelsConfig'];
+type ProviderStatus = Schemas['ProviderStatus'];
+
+// A run resolves the research_synthesis semantic key to a concrete model; that model's provider
+// must have a key connected or the run fails. Naming the key in one place keeps it honest.
+const RESEARCH_MODEL_KEY = 'research_synthesis';
+
+function providerLabel(slug: string | null): string {
+  if (!slug) return 'a model';
+  return slug.charAt(0).toUpperCase() + slug.slice(1);
+}
 
 function downloadMarkdown(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'text/markdown' });
@@ -90,8 +103,13 @@ function RunCard({ run }: { run: ResearchRun }) {
 }
 
 export function ResearchView() {
+  const navigate = useNavigation();
   const [projects, setProjects] = useState<ResearchProject[]>([]);
   const [buildProjects, setBuildProjects] = useState<BuildProject[]>([]);
+  // The provider behind the research_synthesis key, and whether it has a key connected. Null while
+  // unknown (before load); false means a run cannot succeed until a provider is connected.
+  const [synthProvider, setSynthProvider] = useState<string | null>(null);
+  const [synthConnected, setSynthConnected] = useState<boolean | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [runs, setRuns] = useState<ResearchRun[]>([]);
   const [findings, setFindings] = useState<ResearchFinding[]>([]);
@@ -116,12 +134,28 @@ export function ResearchView() {
   );
 
   const loadProjects = useCallback(async () => {
-    const [research, builds] = await Promise.all([
+    const [research, builds, models, providers] = await Promise.all([
       api.GET('/research/projects'),
       api.GET('/projects'),
+      api.GET('/settings/models'),
+      api.GET('/settings/providers'),
     ]);
     setProjects((research.data as ResearchProject[]) ?? []);
     setBuildProjects((builds.data as BuildProject[]) ?? []);
+
+    // Resolve the research_synthesis provider and whether it is connected, so the surface can flag
+    // the missing key before a run rather than only on a failed click.
+    const keys = (models.data as ModelsConfig | undefined)?.keys ?? [];
+    const synthKey = keys.find((entry) => entry.key === RESEARCH_MODEL_KEY);
+    const slug = synthKey ? (synthKey.model.split('/')[0] ?? null) : null;
+    setSynthProvider(slug);
+    if (slug === null) {
+      setSynthConnected(null);
+      return;
+    }
+    const statuses = (providers.data as ProviderStatus[] | undefined) ?? [];
+    const status = statuses.find((entry) => entry.provider === slug);
+    setSynthConnected(status?.connected ?? false);
   }, []);
 
   const loadDetail = useCallback(async (id: number) => {
@@ -411,6 +445,23 @@ export function ResearchView() {
                 <Pill variant="grey">{selected.lookback}d lookback</Pill>
                 <Pill variant="grey">schedule {selected.schedule}</Pill>
               </div>
+
+              {synthConnected === false ? (
+                <div className="mt-3 rounded-md border border-line bg-surface/60 p-3">
+                  <MonoLabel tone="faint">model provider needed</MonoLabel>
+                  <p className="mt-1 text-sm text-muted">
+                    Running research uses the {providerLabel(synthProvider)} model provider, which
+                    has no key connected yet. Connect one to run.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-2"
+                    onClick={() => navigate(settingsRoute('models-agents'))}
+                  >
+                    Connect a provider
+                  </Button>
+                </div>
+              ) : null}
 
               {runError ? <p className="mt-3 text-sm text-danger">{runError}</p> : null}
 
