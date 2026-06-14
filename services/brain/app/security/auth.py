@@ -34,14 +34,24 @@ class Principal:
     user_id: int | None
 
 
-def _cookie_secure() -> bool:
-    return get_settings().nexa_public_https
+def _cookie_secure(request: Request | None) -> bool:
+    """Mark cookies Secure when production forces HTTPS or the live request is HTTPS.
+
+    The NEXA_PUBLIC_HTTPS flag forces Secure for production, where TLS terminates at Nginx and
+    the app may see a plain scheme. Falling back to the live request scheme means a plain HTTP
+    localhost dev session gets non Secure cookies, so the browser actually stores them. Without
+    this, a Secure cookie set over plain HTTP is silently dropped by the browser, the session
+    never sticks, and sign in appears to do nothing.
+    """
+    if get_settings().nexa_public_https:
+        return True
+    return request is not None and request.url.scheme == "https"
 
 
-def issue_session(response: Response, user_id: int) -> str:
+def issue_session(response: Response, user_id: int, request: Request | None = None) -> str:
     """Set the session cookie and a fresh CSRF cookie. Returns the CSRF token."""
     token = make_session_token(user_id)
-    secure = _cookie_secure()
+    secure = _cookie_secure(request)
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -50,10 +60,10 @@ def issue_session(response: Response, user_id: int) -> str:
         secure=secure,
         path="/",
     )
-    return issue_csrf(response)
+    return issue_csrf(response, request)
 
 
-def issue_csrf(response: Response) -> str:
+def issue_csrf(response: Response, request: Request | None = None) -> str:
     """Set a readable CSRF cookie for the double submit pattern. Returns the token."""
     csrf = secrets.token_urlsafe(32)
     response.set_cookie(
@@ -61,7 +71,7 @@ def issue_csrf(response: Response) -> str:
         csrf,
         httponly=False,
         samesite="lax",
-        secure=_cookie_secure(),
+        secure=_cookie_secure(request),
         path="/",
     )
     return csrf

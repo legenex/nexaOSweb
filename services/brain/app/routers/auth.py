@@ -40,7 +40,7 @@ def login(
         # Same message for unknown user and wrong password to avoid enumeration.
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid credentials")
 
-    csrf = issue_session(response, user.id)
+    csrf = issue_session(response, user.id, request)
     return LoginResponse(user_id=user.id, email=user.email, csrf_token=csrf)
 
 
@@ -92,5 +92,5 @@ def update_me(
 
 
 @router.get("/csrf", response_model=CsrfResponse)
-def csrf(response: Response) -> CsrfResponse:
-    return CsrfResponse(csrf_token=issue_csrf(response))
+def csrf(request: Request, response: Response) -> CsrfResponse:
+    return CsrfResponse(csrf_token=issue_csrf(response, request))
