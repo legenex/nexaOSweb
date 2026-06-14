@@ -29,6 +29,12 @@ jobs:
         run: pnpm install --frozen-lockfile=false
 
       - name: Build the web companion
+        # The homepage download buttons link straight at the published desktop installers.
+        # These are public release URLs, not secrets, so they come from repository variables;
+        # when unset the homepage degrades to an honest coming soon instead of a dead link.
+        env:
+          VITE_DOWNLOAD_MACOS: ${{ vars.VITE_DOWNLOAD_MACOS }}
+          VITE_DOWNLOAD_WINDOWS: ${{ vars.VITE_DOWNLOAD_WINDOWS }}
         run: pnpm --filter web build
 
       - name: Ship the web build to the site root

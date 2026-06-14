@@ -132,15 +132,24 @@ Open `https://nexaos.example.com`, sign in with the user created in step 3, and 
 
 ## Desktop signing secrets (D2)
 
-The `desktop-build` workflow signs the Mac dmg and Windows msi and publishes them, with updater artifacts, to a draft GitHub release. It reads these repository secrets:
+The `desktop-build` workflow builds the Mac dmg as a universal binary (Apple Silicon and Intel) on macOS and the Windows msi on Windows, signs each, and publishes them, with the signed updater artifacts and `latest.json`, to a draft GitHub release. Review and publish the draft so the assets become public. It reads these repository secrets:
 
 Updater (both platforms):
-- `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Generate with `pnpm --filter desktop tauri signer generate`. Put the public key in `apps/desktop/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+- `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Generate with `pnpm --filter desktop tauri signer generate`. Put the public key in `apps/desktop/src-tauri/tauri.conf.json` under `plugins.updater.pubkey` (it is public, so it is committed, not a secret). The private key signs each release; installed apps verify updates against the committed public key.
 
 macOS code signing and notarization:
 - `APPLE_CERTIFICATE` (base64 of the .p12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app specific password), `APPLE_TEAM_ID`.
 
 Windows code signing:
-- `WINDOWS_CERTIFICATE` (base64 of the .pfx) and `WINDOWS_CERTIFICATE_PASSWORD`.
+- `WINDOWS_CERTIFICATE` (base64 of the .pfx) and `WINDOWS_CERTIFICATE_PASSWORD`. The workflow imports the pfx into the runner certificate store, reads its thumbprint, and passes that to Tauri (which signs by thumbprint, not by env var). With the secret unset the msi builds unsigned rather than failing the run.
 
 The updater endpoint in `tauri.conf.json` points at `https://nexaos.example.com/updates/...`; replace the host and serve the generated `latest.json` and installers there so installed apps can pull new versions.
+
+## Homepage download links
+
+The marketing homepage download buttons link straight at the published desktop installers. The static web build cannot query GitHub for the latest release, so the concrete URLs come from repository variables (Settings, Secrets and variables, Actions, Variables) read by the `deploy` workflow at web build time. They are public URLs, not secrets:
+
+- `VITE_DOWNLOAD_MACOS`: direct link to the published `.dmg` asset.
+- `VITE_DOWNLOAD_WINDOWS`: direct link to the published `.msi` asset.
+
+After publishing a desktop release, set or update these variables to the new asset URLs (for example `https://github.com/<owner>/<repo>/releases/download/v0.1.0/nexaOSweb_0.1.0_universal.dmg`), then redeploy the web. Until a platform's variable is set, that download shows an honest coming soon instead of a dead link.

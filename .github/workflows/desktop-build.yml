@@ -1,8 +1,9 @@
 name: desktop-build
 
-# Builds the Mac dmg on macOS and the Windows msi on Windows, signs each, and publishes
-# the installers (plus updater artifacts) to a draft GitHub release. Runs on a version tag
-# or on manual dispatch.
+# Builds the Mac dmg (universal, Apple Silicon and Intel) on macOS and the Windows msi on
+# Windows, signs each with repository secrets, wires the Tauri updater (signed update
+# artifacts plus latest.json), and publishes everything to a draft GitHub release. Runs on a
+# version tag or on manual dispatch.
 on:
   push:
     tags: ['v*']
@@ -16,8 +17,10 @@ jobs:
         include:
           - platform: macos-latest
             label: mac dmg
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           - platform: windows-latest
             label: windows msi
+            rust-targets: ''
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +38,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -47,25 +52,52 @@ jobs:
       - name: Build the web frontend
         run: pnpm --filter web build
 
+      # The Mac build is a universal binary so one dmg covers Apple Silicon and Intel.
+      - name: Configure macOS build args
+        if: runner.os == 'macOS'
+        run: echo "TAURI_ARGS=--target universal-apple-darwin" >> "$GITHUB_ENV"
+
+      # Tauri signs the Windows installer by certificate thumbprint from the machine store,
+      # not from an env var. Import the pfx secret, read its thumbprint, and pass it through
+      # a config override. With no secret set we build unsigned rather than fail.
+      - name: Import Windows signing certificate
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE)) {
+            Write-Host "No WINDOWS_CERTIFICATE secret set, building unsigned."
+            "TAURI_ARGS=" | Out-File -FilePath $env:GITHUB_ENV -Append
+            exit 0
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "code-sign.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $pwd = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pwd
+          Remove-Item $pfx -Force
+          $config = '{"bundle":{"windows":{"certificateThumbprint":"' + $cert.Thumbprint + '"}}}'
+          "TAURI_ARGS=--config $config" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build, sign, and release the desktop app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Updater signing
+          # Updater signing (both platforms): produces the signed update artifacts and
+          # latest.json the updater plugin verifies against tauri.conf.json pubkey.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS code signing and notarization
+          # macOS code signing and notarization.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows code signing
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         with:
           projectPath: apps/desktop
+          args: ${{ env.TAURI_ARGS }}
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.run_number) }}
           releaseName: 'nexaOSweb ${{ github.ref_name }}'
           releaseDraft: true
