@@ -1,9 +1,11 @@
 """Workspace models present from the data layer so later tabs can grow."""
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base, TimestampMixin
+from .base import Base, TimestampMixin, utcnow
 
 
 class Task(Base, TimestampMixin):
@@ -24,6 +26,15 @@ class JournalNote(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     body: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # Optional mood label and freeform tags for an entry.
+    mood: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    tags: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    # Soft delete marker: a deleted entry keeps its row and stays recoverable, and is excluded
+    # from default lists and from the Dreaming input.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
 
 
 class AppSetting(Base, TimestampMixin):

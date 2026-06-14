@@ -51,7 +51,10 @@ def _gather_signals(db: Session, *, since: datetime, limit: int) -> list[Signal]
     """Collect the day's signals from journal notes, captured ideas, and project activity."""
     signals: list[tuple[datetime, Signal]] = []
 
-    for note in db.query(JournalNote).filter(JournalNote.created_at >= since).all():
+    journal_query = db.query(JournalNote).filter(
+        JournalNote.created_at >= since, JournalNote.deleted_at.is_(None)
+    )
+    for note in journal_query.all():
         body = note.body or ""
         title = body.strip().splitlines()[0][:60] if body.strip() else f"journal {note.id}"
         signals.append(
