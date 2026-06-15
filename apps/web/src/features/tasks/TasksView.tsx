@@ -9,21 +9,29 @@ import { ConfirmDialog } from '../projects/workspace/ConfirmDialog';
 type Task = Schemas['TaskRead'];
 type Project = Schemas['ProjectRead'];
 
-// The canonical status set, in board order. Matches the Brain (open, in_progress, blocked, done,
-// archived); the board moves a task between these and nothing else.
-type Status = 'open' | 'in_progress' | 'blocked' | 'done' | 'archived';
+// The Hermes board columns, in order. The Brain validates this set. agent_working is also
+// surfaced automatically for a task whose run is live; a legacy blocked task folds into Doing.
+type Status = 'todo' | 'doing' | 'agent_working' | 'review' | 'done';
 
 const COLUMNS: { key: Status; label: string }[] = [
-  { key: 'open', label: 'To do' },
-  { key: 'in_progress', label: 'In progress' },
-  { key: 'blocked', label: 'Blocked' },
+  { key: 'todo', label: 'To do' },
+  { key: 'doing', label: 'Doing' },
+  { key: 'agent_working', label: 'Agent working' },
+  { key: 'review', label: 'Review' },
   { key: 'done', label: 'Done' },
-  { key: 'archived', label: 'Archived' },
 ];
 
 const STATUS_LABEL: Record<Status, string> = Object.fromEntries(
   COLUMNS.map((c) => [c.key, c.label]),
 ) as Record<Status, string>;
+
+// The board column a task belongs in. A live run wins (Agent working); a legacy blocked task
+// folds into Doing; anything off board (e.g. archived) returns null and is not shown.
+function columnFor(task: Task): Status | null {
+  if (task.agent_active) return 'agent_working';
+  if (task.status === 'blocked') return 'doing';
+  return (COLUMNS.find((c) => c.key === task.status)?.key as Status) ?? null;
+}
 
 // Friendly names for how a task was created. Manual tasks carry no provenance pill.
 const SOURCE_LABEL: Record<string, string> = {
@@ -167,43 +175,61 @@ function TaskCard({
   onMove,
   onEdit,
   onDelete,
+  onOpenRun,
 }: {
   task: Task;
   projectName: string | null;
   onMove: (status: Status) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onOpenRun: (runId: number) => void;
 }) {
-  const status = task.status as Status;
-  // Status moves offered in the menu: every status except the current one.
+  const status = columnFor(task) ?? 'todo';
+  // Status moves offered in the menu: every column except the current one.
   const moveItems = COLUMNS.filter((c) => c.key !== status).map((c) => ({
     label: `Move to ${c.label}`,
     onClick: () => onMove(c.key),
   }));
 
   return (
-    <GlassCard className="border-electric">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-cream">{task.title}</p>
-        <OverflowMenu
-          label={`Actions for ${task.title}`}
-          items={[
-            { label: 'Edit', onClick: onEdit },
-            ...moveItems,
-            { label: 'Delete', danger: true, onClick: onDelete },
-          ]}
-        />
-      </div>
-      {task.detail ? (
-        <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{task.detail}</p>
-      ) : null}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {projectName ? <Pill variant="grey">{projectName}</Pill> : null}
-        {SOURCE_LABEL[task.source] ? (
-          <Pill variant="green">{SOURCE_LABEL[task.source]}</Pill>
+    <GlassCard
+      className={`border-electric ${task.agent_active ? 'border-electric-on border border-line' : ''}`}
+    >
+      <div
+        draggable
+        onDragStart={(event) => event.dataTransfer.setData('text/task-id', String(task.id))}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm text-cream">{task.title}</p>
+          <OverflowMenu
+            label={`Actions for ${task.title}`}
+            items={[
+              { label: 'Edit', onClick: onEdit },
+              ...moveItems,
+              { label: 'Delete', danger: true, onClick: onDelete },
+            ]}
+          />
+        </div>
+        {task.detail ? (
+          <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{task.detail}</p>
         ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {projectName ? <Pill variant="grey">{projectName}</Pill> : null}
+          {SOURCE_LABEL[task.source] ? (
+            <Pill variant="green">{SOURCE_LABEL[task.source]}</Pill>
+          ) : null}
+        </div>
       </div>
-      {status !== 'done' && status !== 'archived' ? (
+      {task.agent_active && task.run_id ? (
+        <button
+          type="button"
+          onClick={() => onOpenRun(task.run_id!)}
+          className="mono-label mt-3 rounded-md border border-accent px-3 py-1 text-accent hover:bg-accent/10"
+        >
+          live · run #{task.run_id} timeline
+        </button>
+      ) : status !== 'done' ? (
         <button
           type="button"
           onClick={() => onMove('done')}
@@ -211,16 +237,15 @@ function TaskCard({
         >
           ✓ complete
         </button>
-      ) : null}
-      {status === 'done' ? (
+      ) : (
         <button
           type="button"
-          onClick={() => onMove('open')}
+          onClick={() => onMove('todo')}
           className="mono-label mt-3 rounded-md border border-line px-3 py-1 hover:text-accent"
         >
           reopen
         </button>
-      ) : null}
+      )}
     </GlassCard>
   );
 }
@@ -228,22 +253,44 @@ function TaskCard({
 // --- board ----------------------------------------------------------------------------------
 
 function Column({
+  columnKey,
   label,
   tasks,
   projectNameFor,
   onMove,
   onEdit,
   onDelete,
+  onOpenRun,
+  onDropTask,
 }: {
+  columnKey: Status;
   label: string;
   tasks: Task[];
   projectNameFor: (id: number | null) => string | null;
   onMove: (task: Task, status: Status) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
+  onOpenRun: (runId: number) => void;
+  onDropTask: (taskId: number, status: Status) => void;
 }) {
+  const [over, setOver] = useState(false);
   return (
-    <div className="flex w-72 shrink-0 flex-col gap-3">
+    <div
+      onDragOver={(event) => {
+        event.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setOver(false);
+        const id = Number(event.dataTransfer.getData('text/task-id'));
+        if (id) onDropTask(id, columnKey);
+      }}
+      className={`flex w-72 shrink-0 flex-col gap-3 rounded-glass p-1 transition ${
+        over ? 'bg-accent/5 ring-1 ring-accent/40' : ''
+      }`}
+    >
       <div className="flex items-center justify-between border-b border-line pb-2">
         <MonoLabel tone="faint">{label}</MonoLabel>
         <span className="mono-meta text-faint">{tasks.length}</span>
@@ -259,10 +306,56 @@ function Column({
             onMove={(status) => onMove(task, status)}
             onEdit={() => onEdit(task)}
             onDelete={() => onDelete(task)}
+            onOpenRun={onOpenRun}
           />
         ))
       )}
     </div>
+  );
+}
+
+// A compact, read only run timeline opened from a run linked task in Agent working.
+function RunTimelineModal({ runId, onClose }: { runId: number | null; onClose: () => void }) {
+  const [steps, setSteps] = useState<Schemas['StepRead'][] | null>(null);
+  const [runStatus, setRunStatus] = useState<string>('');
+
+  useEffect(() => {
+    if (runId === null) return;
+    setSteps(null);
+    void (async () => {
+      const run = await api.GET('/runtime/runs/{run_id}', { params: { path: { run_id: runId } } });
+      if (run.data) setRunStatus((run.data as Schemas['RunRead']).status);
+      const res = await api.GET('/runtime/runs/{run_id}/steps', {
+        params: { path: { run_id: runId } },
+      });
+      if (res.data) setSteps(res.data as Schemas['StepRead'][]);
+    })();
+  }, [runId]);
+
+  return (
+    <Modal open={runId !== null} title={`run #${runId ?? ''} timeline`} onClose={onClose}>
+      {runStatus ? (
+        <p className="mb-3">
+          <Pill variant="accent">{runStatus}</Pill>
+        </p>
+      ) : null}
+      {steps === null ? (
+        <p className="text-sm text-muted">Loading the run timeline…</p>
+      ) : steps.length === 0 ? (
+        <p className="text-sm text-muted">No steps recorded yet.</p>
+      ) : (
+        <ol className="space-y-2">
+          {steps.map((step) => (
+            <li key={step.id} className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-cream">
+                <span className="mono-meta text-faint">{step.kind}</span> {step.title}
+              </span>
+              <Pill variant="grey">{step.status}</Pill>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Modal>
   );
 }
 
@@ -277,6 +370,7 @@ export function TasksView() {
   const [editing, setEditing] = useState<Task | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [openRunId, setOpenRunId] = useState<number | null>(null);
 
   const loadTasks = useCallback(async (scope: ProjectFilter) => {
     const { data, error } =
@@ -335,18 +429,24 @@ export function TasksView() {
 
   const byStatus = useMemo(() => {
     const map: Record<Status, Task[]> = {
-      open: [],
-      in_progress: [],
-      blocked: [],
+      todo: [],
+      doing: [],
+      agent_working: [],
+      review: [],
       done: [],
-      archived: [],
     };
     for (const task of tasks ?? []) {
-      const status = task.status as Status;
-      if (map[status]) map[status].push(task);
+      const column = columnFor(task);
+      if (column) map[column].push(task);
     }
     return map;
   }, [tasks]);
+
+  // A drop onto a column moves the dragged task to that status.
+  const moveById = (taskId: number, status: Status) => {
+    const task = (tasks ?? []).find((entry) => entry.id === taskId);
+    if (task) void move(task, status);
+  };
 
   const composerProjectId = typeof filter === 'number' ? filter : null;
   const total = tasks?.length ?? 0;
@@ -400,12 +500,15 @@ export function TasksView() {
               {COLUMNS.map((column) => (
                 <Column
                   key={column.key}
+                  columnKey={column.key}
                   label={STATUS_LABEL[column.key]}
                   tasks={byStatus[column.key]}
                   projectNameFor={projectNameFor}
                   onMove={(task, status) => void move(task, status)}
                   onEdit={(task) => setEditing(task)}
                   onDelete={(task) => setPendingDelete(task)}
+                  onOpenRun={(runId) => setOpenRunId(runId)}
+                  onDropTask={moveById}
                 />
               ))}
             </div>
@@ -440,6 +543,8 @@ export function TasksView() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setPendingDelete(null)}
       />
+
+      <RunTimelineModal runId={openRunId} onClose={() => setOpenRunId(null)} />
     </div>
   );
 }
