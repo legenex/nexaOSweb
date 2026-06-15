@@ -8,7 +8,7 @@ pure projection or aggregation of the stored truth.
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ResolveApprovalRequest(BaseModel):
@@ -65,6 +65,12 @@ class RunRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     finished_at: datetime | None
+
+    @field_validator("kind", mode="before")
+    @classmethod
+    def _default_kind(cls, value: str | None) -> str:
+        # A legacy row may carry a null kind. Never let it 500 the runtime list.
+        return value or "general"
 
 
 class ApprovalRequest(StepRead):

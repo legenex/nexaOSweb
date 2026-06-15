@@ -222,11 +222,19 @@ def get_item_readiness(
 ) -> dict:
     """The latest readiness assessment for this item's project.
 
-    404 when the project has never been assessed, so the panel shows an honest not yet assessed
-    state rather than inventing data.
+    When the project has never been assessed, return an unassessed result (run_id 0, not
+    satisfied, no items) rather than a 404. The gate stays closed because satisfied is false, and
+    the panel shows an honest not yet assessed state without a console error.
     """
     project = _owned_project(item_id, user, db)
     run = latest_readiness_run(db, project.id)
     if run is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "no readiness assessment yet")
+        return {
+            "run_id": 0,
+            "project_id": project.id,
+            "kind": "readiness",
+            "satisfied": False,
+            "items": [],
+            "blocking_open": [],
+        }
     return readiness_assessment(db, run)

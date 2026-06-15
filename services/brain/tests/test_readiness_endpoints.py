@@ -40,11 +40,17 @@ def _project(db_session):
     return item, project
 
 
-def test_get_before_evaluate_is_404(client, db_session, monkeypatch):
+def test_get_before_evaluate_is_unassessed(client, db_session, monkeypatch):
     _bearer(monkeypatch)
     item, _ = _project(db_session)
     res = client.get(f"/flow/items/{item.id}/readiness", headers=BEARER)
-    assert res.status_code == 404
+    # A never assessed project returns an unassessed result (run_id 0, not satisfied) rather
+    # than a 404, so the gate panel reads it without a console error and stays closed.
+    assert res.status_code == 200
+    body = res.json()
+    assert body["run_id"] == 0
+    assert body["satisfied"] is False
+    assert body["items"] == []
 
 
 def test_evaluate_groups_by_class_and_gates(client, db_session, monkeypatch):
