@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Schemas } from '@nexaosweb/api-client';
 
 import { api } from '../../app/client';
-import { Button, GlassCard, Modal, MonoLabel, Pill } from '../../components/primitives';
+import { Button, Modal, MonoLabel, Pill } from '../../components/primitives';
 import { OverflowMenu } from '../../components/OverflowMenu';
 import { ConfirmDialog } from '../projects/workspace/ConfirmDialog';
 
@@ -55,7 +55,7 @@ const labelClass = 'mono-label mb-1 block text-faint';
 type ProjectFilter = number | 'all';
 type ViewMode = 'board' | 'list';
 
-// --- task form (shared by the New Task dialog and the editor) --------------------------------
+// --- task form (shared by the New Task dialog and the card detail editor) --------------------
 
 interface TaskFormValues {
   title: string;
@@ -71,14 +71,12 @@ interface TaskFormValues {
 function TaskForm({
   initial,
   projects,
-  showStatus,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   initial: Partial<TaskFormValues>;
   projects: Project[];
-  showStatus: boolean;
   submitLabel: string;
   onSubmit: (values: TaskFormValues) => Promise<void>;
   onCancel: () => void;
@@ -151,7 +149,7 @@ function TaskForm({
 
       <div>
         <label className={labelClass} htmlFor="task-notes">
-          notes
+          description
         </label>
         <textarea
           id="task-notes"
@@ -230,27 +228,23 @@ function TaskForm({
             ))}
           </select>
         </div>
-        {showStatus ? (
-          <div>
-            <label className={labelClass} htmlFor="task-status">
-              status
-            </label>
-            <select
-              id="task-status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as Status)}
-              className={inputClass}
-            >
-              {COLUMNS.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div />
-        )}
+        <div>
+          <label className={labelClass} htmlFor="task-status">
+            status
+          </label>
+          <select
+            id="task-status"
+            value={status}
+            onChange={(event) => setStatus(event.target.value as Status)}
+            className={inputClass}
+          >
+            {COLUMNS.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div>
@@ -378,8 +372,12 @@ function ResearchPicker({
             ))}
           </ul>
           <div className="mt-4 flex items-center gap-2">
-            <Button variant="primary" onClick={() => void pull()} disabled={busy || selected.size === 0}>
-              {busy ? 'pulling' : `Add ${selected.size || ''} as tasks`.trim()}
+            <Button
+              variant="primary"
+              onClick={() => void pull()}
+              disabled={busy || selected.size === 0}
+            >
+              {busy ? 'pulling' : `Add ${selected.size || ''} as tasks`.replace('  ', ' ').trim()}
             </Button>
             <button
               type="button"
@@ -395,96 +393,174 @@ function ResearchPicker({
   );
 }
 
-// --- task card ------------------------------------------------------------------------------
+// --- card -----------------------------------------------------------------------------------
 
 function PriorityPill({ priority }: { priority: string }) {
   // Med is the default and carries no pill, so the board stays calm; low and high are flagged.
-  if (priority === 'high') return <Pill variant="solid">high priority</Pill>;
-  if (priority === 'low') return <Pill variant="grey">low priority</Pill>;
+  if (priority === 'high') return <Pill variant="solid">high</Pill>;
+  if (priority === 'low') return <Pill variant="grey">low</Pill>;
   return null;
 }
 
 function TaskCard({
   task,
   projectName,
+  onOpen,
   onMove,
-  onEdit,
   onDelete,
   onOpenRun,
+  onDragStart,
 }: {
   task: Task;
   projectName: string | null;
+  onOpen: () => void;
   onMove: (status: Status) => void;
-  onEdit: () => void;
   onDelete: () => void;
   onOpenRun: (runId: number) => void;
+  onDragStart: () => void;
 }) {
   const status = columnFor(task) ?? 'todo';
-  // Status moves offered in the menu: every column except the current one.
   const moveItems = COLUMNS.filter((c) => c.key !== status).map((c) => ({
     label: `Move to ${c.label}`,
     onClick: () => onMove(c.key),
   }));
 
   return (
-    <GlassCard
-      className={`border-electric ${task.agent_active ? 'border-electric-on border border-line' : ''}`}
+    <div
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData('text/task-id', String(task.id));
+        onDragStart();
+      }}
+      onClick={onOpen}
+      className={[
+        'group cursor-pointer rounded-lg border border-l-2 border-line border-l-accent bg-surface/80 p-3',
+        'transition hover:border-accent hover:bg-surface',
+        task.agent_active ? 'border-electric border-electric-on' : '',
+      ].join(' ')}
     >
-      <div
-        draggable
-        onDragStart={(event) => event.dataTransfer.setData('text/task-id', String(task.id))}
-        className="cursor-grab active:cursor-grabbing"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm text-cream">{task.title}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm leading-snug text-cream">{task.title}</p>
+        <span onClick={(event) => event.stopPropagation()}>
           <OverflowMenu
             label={`Actions for ${task.title}`}
             items={[
-              { label: 'Edit', onClick: onEdit },
+              { label: 'Open', onClick: onOpen },
               ...moveItems,
               { label: 'Delete', danger: true, onClick: onDelete },
             ]}
           />
-        </div>
-        {task.detail ? (
-          <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{task.detail}</p>
-        ) : null}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <PriorityPill priority={task.priority} />
-          {task.due_date ? <Pill variant="grey">due {task.due_date}</Pill> : null}
-          {task.timeline ? <Pill variant="grey">{task.timeline}</Pill> : null}
-          {projectName ? <Pill variant="grey">{projectName}</Pill> : null}
-          {SOURCE_LABEL[task.source] ? (
-            <Pill variant="green">{SOURCE_LABEL[task.source]}</Pill>
-          ) : null}
-        </div>
+        </span>
       </div>
+
+      {task.detail ? (
+        <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-muted">{task.detail}</p>
+      ) : null}
+
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <PriorityPill priority={task.priority} />
+        {task.due_date ? <Pill variant="grey">due {task.due_date}</Pill> : null}
+        {task.timeline ? <Pill variant="grey">{task.timeline}</Pill> : null}
+        {projectName ? <Pill variant="grey">{projectName}</Pill> : null}
+        {SOURCE_LABEL[task.source] ? <Pill variant="green">{SOURCE_LABEL[task.source]}</Pill> : null}
+      </div>
+
       {task.agent_active && task.run_id ? (
         <button
           type="button"
-          onClick={() => onOpenRun(task.run_id!)}
-          className="mono-label mt-3 rounded-md border border-accent px-3 py-1 text-accent hover:bg-accent/10"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenRun(task.run_id!);
+          }}
+          className="mono-label mt-2 rounded-md border border-accent px-2 py-1 text-accent hover:bg-accent/10"
         >
           live · run #{task.run_id} timeline
         </button>
-      ) : status !== 'done' ? (
+      ) : null}
+    </div>
+  );
+}
+
+// Trello-style inline composer at the foot of each column. Stays open after an add so several
+// cards can be entered in a row; Escape or the close control dismisses it.
+function AddCard({
+  status,
+  projectId,
+  onAdded,
+}: {
+  status: Status;
+  projectId: number | null;
+  onAdded: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    const value = title.trim();
+    if (!value) return;
+    setBusy(true);
+    try {
+      const { error } = await api.POST('/tasks', {
+        body: { title: value, status, project_id: projectId },
+      });
+      if (!error) {
+        setTitle('');
+        onAdded();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mono-label w-full rounded-md px-2 py-2 text-left text-faint hover:bg-white/5 hover:text-accent"
+      >
+        + Add a card
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-line bg-surface/80 p-2">
+      <textarea
+        autoFocus
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            void submit();
+          }
+          if (event.key === 'Escape') {
+            setOpen(false);
+            setTitle('');
+          }
+        }}
+        rows={2}
+        placeholder="Enter a title, then press return"
+        className={`resize-none ${inputClass}`}
+      />
+      <div className="mt-2 flex items-center gap-2">
+        <Button variant="primary" onClick={() => void submit()} disabled={busy || !title.trim()}>
+          Add card
+        </Button>
         <button
           type="button"
-          onClick={() => onMove('done')}
-          className="mono-label mt-3 rounded-md border border-line px-3 py-1 hover:text-accent"
+          onClick={() => {
+            setOpen(false);
+            setTitle('');
+          }}
+          className="mono-label rounded-md px-2 py-1 text-faint hover:text-cream"
         >
-          ✓ complete
+          ✕
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => onMove('todo')}
-          className="mono-label mt-3 rounded-md border border-line px-3 py-1 hover:text-accent"
-        >
-          reopen
-        </button>
-      )}
-    </GlassCard>
+      </div>
+    </div>
   );
 }
 
@@ -494,22 +570,28 @@ function Column({
   columnKey,
   label,
   tasks,
+  projectId,
   projectNameFor,
+  onOpen,
   onMove,
-  onEdit,
   onDelete,
   onOpenRun,
   onDropTask,
+  onDragStart,
+  onAdded,
 }: {
   columnKey: Status;
   label: string;
   tasks: Task[];
+  projectId: number | null;
   projectNameFor: (id: number | null) => string | null;
+  onOpen: (task: Task) => void;
   onMove: (task: Task, status: Status) => void;
-  onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onOpenRun: (runId: number) => void;
   onDropTask: (taskId: number, status: Status) => void;
+  onDragStart: () => void;
+  onAdded: () => void;
 }) {
   const [over, setOver] = useState(false);
   return (
@@ -525,29 +607,33 @@ function Column({
         const id = Number(event.dataTransfer.getData('text/task-id'));
         if (id) onDropTask(id, columnKey);
       }}
-      className={`flex w-72 shrink-0 flex-col gap-3 rounded-glass p-1 transition ${
-        over ? 'bg-accent/5 ring-1 ring-accent/40' : ''
+      className={`flex w-72 shrink-0 flex-col rounded-glass border bg-canvas/40 transition ${
+        over ? 'border-accent/50 bg-accent/5' : 'border-line'
       }`}
     >
-      <div className="flex items-center justify-between border-b border-line pb-2">
-        <MonoLabel tone="faint">{label}</MonoLabel>
+      <div className="flex items-center justify-between border-b border-line px-3 py-2">
+        <MonoLabel tone="cream">{label}</MonoLabel>
         <span className="mono-meta text-faint">{tasks.length}</span>
       </div>
-      {tasks.length === 0 ? (
-        <p className="mono-meta text-faint">Nothing here.</p>
-      ) : (
-        tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            projectName={projectNameFor(task.project_id)}
-            onMove={(status) => onMove(task, status)}
-            onEdit={() => onEdit(task)}
-            onDelete={() => onDelete(task)}
-            onOpenRun={onOpenRun}
-          />
-        ))
-      )}
+      <div className="flex flex-col gap-2 p-2">
+        {tasks.length === 0 ? (
+          <p className="mono-meta px-1 py-3 text-center text-faint">no tasks</p>
+        ) : (
+          tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              projectName={projectNameFor(task.project_id)}
+              onOpen={() => onOpen(task)}
+              onMove={(status) => onMove(task, status)}
+              onDelete={() => onDelete(task)}
+              onOpenRun={onOpenRun}
+              onDragStart={onDragStart}
+            />
+          ))
+        )}
+        <AddCard status={columnKey} projectId={projectId} onAdded={onAdded} />
+      </div>
     </div>
   );
 }
@@ -602,12 +688,15 @@ function RunTimelineModal({ runId, onClose }: { runId: number | null; onClose: (
 function ListView({
   tasks,
   projectNameFor,
-  onEdit,
+  onOpen,
 }: {
   tasks: Task[];
   projectNameFor: (id: number | null) => string | null;
-  onEdit: (task: Task) => void;
+  onOpen: (task: Task) => void;
 }) {
+  if (tasks.length === 0) {
+    return <p className="text-sm text-muted">No tasks in view. Add one from the board.</p>;
+  }
   return (
     <div className="space-y-2">
       {tasks.map((task) => {
@@ -616,7 +705,7 @@ function ListView({
           <button
             key={task.id}
             type="button"
-            onClick={() => onEdit(task)}
+            onClick={() => onOpen(task)}
             className="flex w-full items-center justify-between gap-3 rounded-md border border-line px-3 py-2 text-left hover:border-accent"
           >
             <span className="min-w-0">
@@ -652,7 +741,7 @@ export function TasksView() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [openRunId, setOpenRunId] = useState<number | null>(null);
   const [pulling, setPulling] = useState(false);
-  const [quickTitle, setQuickTitle] = useState('');
+  const [dragging, setDragging] = useState(false);
 
   const loadTasks = useCallback(async (scope: ProjectFilter) => {
     const { data, error } =
@@ -712,25 +801,27 @@ export function TasksView() {
 
   // A drop onto a column moves the dragged task to that status and appends it to the end.
   const moveById = (taskId: number, status: Status) => {
+    setDragging(false);
     const task = (tasks ?? []).find((entry) => entry.id === taskId);
     if (!task) return;
+    if (columnFor(task) === status) return;
     const endPosition = (byStatus[status]?.length ?? 0) + 1;
     void move(task, status, endPosition);
   };
 
+  const buildBody = (values: TaskFormValues) => ({
+    title: values.title,
+    detail: values.detail || null,
+    goal_for_agent: values.goal_for_agent || null,
+    timeline: values.timeline || null,
+    project_id: values.project_id,
+    status: values.status,
+    priority: values.priority,
+    due_date: values.due_date,
+  });
+
   const createTask = async (values: TaskFormValues) => {
-    const { error } = await api.POST('/tasks', {
-      body: {
-        title: values.title,
-        detail: values.detail || null,
-        goal_for_agent: values.goal_for_agent || null,
-        timeline: values.timeline || null,
-        project_id: values.project_id,
-        status: values.status,
-        priority: values.priority,
-        due_date: values.due_date,
-      },
-    });
+    const { error } = await api.POST('/tasks', { body: buildBody(values) });
     if (!error) {
       setCreating(false);
       void loadTasks(filter);
@@ -740,35 +831,10 @@ export function TasksView() {
   const saveTask = async (task: Task, values: TaskFormValues) => {
     const { error } = await api.PATCH('/tasks/{task_id}', {
       params: { path: { task_id: task.id } },
-      body: {
-        title: values.title,
-        detail: values.detail || null,
-        goal_for_agent: values.goal_for_agent || null,
-        timeline: values.timeline || null,
-        project_id: values.project_id,
-        status: values.status,
-        priority: values.priority,
-        due_date: values.due_date,
-      },
+      body: buildBody(values),
     });
     if (!error) {
       setEditing(null);
-      void loadTasks(filter);
-    }
-  };
-
-  const quickAdd = async () => {
-    const title = quickTitle.trim();
-    if (!title) return;
-    const { error } = await api.POST('/tasks', {
-      body: {
-        title,
-        project_id: typeof filter === 'number' ? filter : null,
-        status: 'todo',
-      },
-    });
-    if (!error) {
-      setQuickTitle('');
       void loadTasks(filter);
     }
   };
@@ -787,7 +853,7 @@ export function TasksView() {
     }
   };
 
-  const composerProjectId = typeof filter === 'number' ? filter : null;
+  const filterProjectId = typeof filter === 'number' ? filter : null;
   const total = tasks?.length ?? 0;
 
   return (
@@ -842,70 +908,48 @@ export function TasksView() {
         </div>
       </div>
 
-      {/* Fast inline add: a title plus return creates a To do task in the current project. */}
-      <div className="flex items-center gap-2">
-        <input
-          value={quickTitle}
-          onChange={(event) => setQuickTitle(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && quickTitle.trim()) void quickAdd();
-          }}
-          placeholder="Quick add a task, then press return"
-          className={inputClass}
-        />
-        <Button variant="muted" onClick={() => void quickAdd()} disabled={!quickTitle.trim()}>
-          add
-        </Button>
-      </div>
-
       {tasksError ? (
         <p className="text-sm text-muted">Tasks are unavailable. Check the Brain connection.</p>
       ) : tasks === null ? (
         <p className="text-sm text-muted">Loading tasks…</p>
-      ) : total === 0 ? (
-        <GlassCard className="border-electric">
-          <MonoLabel tone="faint">no tasks yet</MonoLabel>
-          <p className="mt-2 text-sm text-muted">
-            {typeof filter === 'number'
-              ? 'Nothing under this project yet. Quick add one above, or create one with New task.'
-              : 'Add your first task above or with New task. Tasks also arrive from Research findings and from agent runs, and Reminders fold in here.'}
-          </p>
-        </GlassCard>
       ) : view === 'board' ? (
-        <div className="flex gap-5 overflow-x-auto pb-2">
+        // The board: every column is always visible with its own Add a card, like Trello.
+        <div className={`flex gap-4 overflow-x-auto pb-2 ${dragging ? 'select-none' : ''}`}>
           {COLUMNS.map((column) => (
             <Column
               key={column.key}
               columnKey={column.key}
               label={STATUS_LABEL[column.key]}
               tasks={byStatus[column.key]}
+              projectId={filterProjectId}
               projectNameFor={projectNameFor}
+              onOpen={(task) => setEditing(task)}
               onMove={(task, status) => void move(task, status)}
-              onEdit={(task) => setEditing(task)}
               onDelete={(task) => setPendingDelete(task)}
               onOpenRun={(runId) => setOpenRunId(runId)}
               onDropTask={moveById}
+              onDragStart={() => setDragging(true)}
+              onAdded={() => void loadTasks(filter)}
             />
           ))}
         </div>
       ) : (
-        <ListView tasks={tasks} projectNameFor={projectNameFor} onEdit={(task) => setEditing(task)} />
+        <ListView tasks={tasks} projectNameFor={projectNameFor} onOpen={(task) => setEditing(task)} />
       )}
 
-      {/* New Task dialog. */}
-      <Modal open={creating} title="new task" onClose={() => setCreating(false)}>
+      {/* New Task dialog (full fields plus Generate with AI). */}
+      <Modal open={creating} title="New Task" onClose={() => setCreating(false)}>
         <TaskForm
-          initial={{ project_id: composerProjectId, status: 'todo', priority: 'med' }}
+          initial={{ project_id: filterProjectId, status: 'todo', priority: 'med' }}
           projects={projects}
-          showStatus
           submitLabel="Add task"
           onSubmit={createTask}
           onCancel={() => setCreating(false)}
         />
       </Modal>
 
-      {/* Edit happens in a modal so the board stays in place behind it. */}
-      <Modal open={editing !== null} title="edit task" onClose={() => setEditing(null)}>
+      {/* Card detail: opening a card edits it in place, the board stays behind. */}
+      <Modal open={editing !== null} title="Task" onClose={() => setEditing(null)}>
         {editing ? (
           <TaskForm
             initial={{
@@ -919,7 +963,6 @@ export function TasksView() {
               due_date: editing.due_date ?? null,
             }}
             projects={projects}
-            showStatus
             submitLabel="Save"
             onSubmit={(values) => saveTask(editing, values)}
             onCancel={() => setEditing(null)}
