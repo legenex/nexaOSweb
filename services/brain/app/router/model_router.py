@@ -177,7 +177,19 @@ class ModelRouter:
         if api_key:
             params["api_key"] = api_key
         completion = _get_completion()
-        return completion(model=model_id, messages=messages, **params)
+        try:
+            return completion(model=model_id, messages=messages, **params)
+        except Exception as exc:  # noqa: BLE001
+            # Some models deprecate a sampling parameter (for example claude-opus-4-8 and
+            # temperature). Drop the offending parameter named in the error and retry once,
+            # rather than failing the whole call and falling back to offline.
+            message = str(exc).lower()
+            dropped = [p for p in ("temperature", "top_p") if p in message and p in params]
+            if not dropped:
+                raise
+            for param in dropped:
+                params.pop(param, None)
+            return completion(model=model_id, messages=messages, **params)
 
 
 def load_config() -> dict[str, Any]:

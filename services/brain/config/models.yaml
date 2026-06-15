@@ -14,7 +14,7 @@ models:
 
   agentic_code:
     model: anthropic/claude-opus-4-8
-    temperature: 0.2
+    # claude-opus-4-8 deprecates temperature, so it is omitted here. The model uses its default.
     max_tokens: 4096
 
   research_synthesis:
