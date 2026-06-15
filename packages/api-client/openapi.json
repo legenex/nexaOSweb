@@ -2906,6 +2906,54 @@
         }
       }
     },
+    "/research/findings/new": {
+      "get": {
+        "tags": [
+          "research"
+        ],
+        "summary": "List New Findings",
+        "description": "Recent findings still in the new state, for the Tasks Pull from Research picker.\n\nA finding that has already been turned into a task is moved to the tasked state by the\nto-task action, so this list only ever offers findings not yet pulled. The source research\nproject name is joined in so the picker can show provenance.",
+        "operationId": "list_new_findings_research_findings_new_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NewFindingRead"
+                  },
+                  "title": "Response List New Findings Research Findings New Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/research/{research_id}/findings": {
       "get": {
         "tags": [
@@ -5332,6 +5380,48 @@
                     "$ref": "#/components/schemas/TaskRead"
                   },
                   "title": "Response List Tasks Tasks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/generate": {
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Generate Task Draft",
+        "description": "Expand a rough title or description into a structured draft for the New Task dialog.\n\nThis returns a draft only, it never creates the task, so the human stays in the gate: the\ndialog fills its fields from the draft and the user reviews before adding. The model is chosen\nby the general semantic key through the router, never a hardcoded model id.",
+        "operationId": "generate_task_draft_tasks_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDraft"
                 }
               }
             }
@@ -8482,6 +8572,40 @@
         ],
         "title": "ModelsConfig"
       },
+      "NewFindingRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "research_project_id": {
+            "type": "integer",
+            "title": "Research Project Id"
+          },
+          "research_project_name": {
+            "type": "string",
+            "title": "Research Project Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "detail",
+          "research_project_id",
+          "research_project_name"
+        ],
+        "title": "NewFindingRead",
+        "description": "A selectable finding for the Tasks Pull from Research picker: new, not yet tasked."
+      },
       "OperatorView": {
         "properties": {
           "approvals_waiting": {
@@ -10708,6 +10832,29 @@
             ],
             "title": "Detail"
           },
+          "goal_for_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal For Agent"
+          },
+          "timeline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline"
+          },
           "project_id": {
             "anyOf": [
               {
@@ -10730,6 +10877,30 @@
               }
             ],
             "title": "Status"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
           }
         },
         "type": "object",
@@ -10737,6 +10908,54 @@
           "title"
         ],
         "title": "TaskCreate"
+      },
+      "TaskDraft": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes"
+          },
+          "goal_for_agent": {
+            "type": "string",
+            "title": "Goal For Agent"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "timeline": {
+            "type": "string",
+            "title": "Timeline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "notes",
+          "goal_for_agent",
+          "priority",
+          "timeline"
+        ],
+        "title": "TaskDraft"
+      },
+      "TaskDraftRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Prompt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "TaskDraftRequest"
       },
       "TaskRead": {
         "properties": {
@@ -10781,9 +11000,51 @@
             ],
             "title": "Detail"
           },
+          "goal_for_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal For Agent"
+          },
+          "timeline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline"
+          },
           "status": {
             "type": "string",
             "title": "Status"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
           },
           "source": {
             "type": "string",
@@ -10830,7 +11091,12 @@
           "project_id",
           "title",
           "detail",
+          "goal_for_agent",
+          "timeline",
           "status",
+          "priority",
+          "due_date",
+          "position",
           "source",
           "run_id",
           "created_at",
@@ -10864,6 +11130,29 @@
             ],
             "title": "Detail"
           },
+          "goal_for_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal For Agent"
+          },
+          "timeline": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline"
+          },
           "status": {
             "anyOf": [
               {
@@ -10876,6 +11165,18 @@
             ],
             "title": "Status"
           },
+          "priority": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
           "project_id": {
             "anyOf": [
               {
@@ -10886,6 +11187,29 @@
               }
             ],
             "title": "Project Id"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
           }
         },
         "type": "object",

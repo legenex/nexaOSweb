@@ -1016,6 +1016,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/research/findings/new": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List New Findings
+         * @description Recent findings still in the new state, for the Tasks Pull from Research picker.
+         *
+         *     A finding that has already been turned into a task is moved to the tasked state by the
+         *     to-task action, so this list only ever offers findings not yet pulled. The source research
+         *     project name is joined in so the picker can show provenance.
+         */
+        get: operations["list_new_findings_research_findings_new_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/research/{research_id}/findings": {
         parameters: {
             query?: never;
@@ -1939,6 +1963,30 @@ export interface paths {
         put?: never;
         /** Create Task */
         post: operations["create_task_tasks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Task Draft
+         * @description Expand a rough title or description into a structured draft for the New Task dialog.
+         *
+         *     This returns a draft only, it never creates the task, so the human stays in the gate: the
+         *     dialog fills its fields from the draft and the user reviews before adding. The model is chosen
+         *     by the general semantic key through the router, never a hardcoded model id.
+         */
+        post: operations["generate_task_draft_tasks_generate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3095,6 +3143,22 @@ export interface components {
             /** Agents */
             agents: components["schemas"]["AgentBinding"][];
         };
+        /**
+         * NewFindingRead
+         * @description A selectable finding for the Tasks Pull from Research picker: new, not yet tasked.
+         */
+        NewFindingRead: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /** Research Project Id */
+            research_project_id: number;
+            /** Research Project Name */
+            research_project_name: string;
+        };
         /** OperatorView */
         OperatorView: {
             /** Approvals Waiting */
@@ -3900,10 +3964,36 @@ export interface components {
             title: string;
             /** Detail */
             detail?: string | null;
+            /** Goal For Agent */
+            goal_for_agent?: string | null;
+            /** Timeline */
+            timeline?: string | null;
             /** Project Id */
             project_id?: number | null;
             /** Status */
             status?: string | null;
+            /** Priority */
+            priority?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+        };
+        /** TaskDraft */
+        TaskDraft: {
+            /** Title */
+            title: string;
+            /** Notes */
+            notes: string;
+            /** Goal For Agent */
+            goal_for_agent: string;
+            /** Priority */
+            priority: string;
+            /** Timeline */
+            timeline: string;
+        };
+        /** TaskDraftRequest */
+        TaskDraftRequest: {
+            /** Prompt */
+            prompt: string;
         };
         /** TaskRead */
         TaskRead: {
@@ -3917,8 +4007,18 @@ export interface components {
             title: string;
             /** Detail */
             detail: string | null;
+            /** Goal For Agent */
+            goal_for_agent: string | null;
+            /** Timeline */
+            timeline: string | null;
             /** Status */
             status: string;
+            /** Priority */
+            priority: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Position */
+            position: number;
             /** Source */
             source: string;
             /** Run Id */
@@ -3942,10 +4042,20 @@ export interface components {
             title?: string | null;
             /** Detail */
             detail?: string | null;
+            /** Goal For Agent */
+            goal_for_agent?: string | null;
+            /** Timeline */
+            timeline?: string | null;
             /** Status */
             status?: string | null;
+            /** Priority */
+            priority?: string | null;
             /** Project Id */
             project_id?: number | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** Position */
+            position?: number | null;
         };
         /** ToggleModelRequest */
         ToggleModelRequest: {
@@ -6220,6 +6330,37 @@ export interface operations {
             };
         };
     };
+    list_new_findings_research_findings_new_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewFindingRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_findings_research__research_id__findings_get: {
         parameters: {
             query?: never;
@@ -7928,6 +8069,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_task_draft_tasks_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDraft"];
                 };
             };
             /** @description Validation Error */
