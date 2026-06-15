@@ -11,6 +11,9 @@ Build Engine". It holds no agent calls yet, only the sandbox the engine will lat
   - worker: the boundary that dispatches a run as a job, so the engine is decoupled from the
     request serving Brain. An in process synchronous worker is the dev default behind an interface
     a real queue or separate worker process can replace.
+  - backends: the AgentBackend interface and its adapters, wrapping each external coding CLI behind
+    one shape (health, run) so the orchestrator drives any backend the same way. Claude Code is the
+    default and first adapter; it runs headless inside a workspace and returns the proposed diff.
 """
 
 from app.engine.runner import (
@@ -32,6 +35,17 @@ from app.engine.worker import (
     JobResult,
     get_worker,
 )
+from app.engine.backends import (
+    DEFAULT_AGENT_TIMEOUT_SECONDS,
+    DEFAULT_BACKEND,
+    AgentBackend,
+    AgentResult,
+    BackendError,
+    BackendHealth,
+    ClaudeCodeBackend,
+    available_backends,
+    get_backend,
+)
 
 __all__ = [
     "Workspace",
@@ -47,4 +61,13 @@ __all__ = [
     "Job",
     "JobResult",
     "get_worker",
+    "AgentBackend",
+    "AgentResult",
+    "BackendError",
+    "BackendHealth",
+    "ClaudeCodeBackend",
+    "DEFAULT_AGENT_TIMEOUT_SECONDS",
+    "DEFAULT_BACKEND",
+    "available_backends",
+    "get_backend",
 ]
