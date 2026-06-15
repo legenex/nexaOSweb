@@ -1,9 +1,15 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { MonoLabel } from './MonoLabel';
 
 // A centered glass modal. Closes on backdrop click and Escape.
+//
+// Rendered through a portal to document.body so its position: fixed overlay covers the whole
+// viewport. Without the portal, an ancestor that creates a containing block (a transform, a
+// filter, or a backdrop-filter, which the GlassCard uses) would trap the fixed overlay inside
+// that ancestor, so the modal would appear as a small box inside the card instead of centered.
 export function Modal({
   open,
   title,
@@ -24,9 +30,9 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -51,6 +57,7 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
