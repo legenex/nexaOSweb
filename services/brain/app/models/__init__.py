@@ -21,6 +21,7 @@ from .workspace import (
     JournalNote,
     JournalTopic,
     Task,
+    TaskComment,
 )
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "ProviderCredential",
     "DiscoveredModel",
     "Task",
+    "TaskComment",
     "JournalNote",
     "JournalTopic",
     "JournalAttachment",

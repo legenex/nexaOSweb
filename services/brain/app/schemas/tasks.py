@@ -6,9 +6,11 @@ router against the canonical sets so a single source of truth governs both. deta
 Notes field shown in the task dialog; there is no separate notes field.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
+
+from app.schemas.entities import ChecklistItem, TaskLabel
 
 
 class TaskCreate(BaseModel):
@@ -25,6 +27,8 @@ class TaskCreate(BaseModel):
     # low, med, or high. Defaults to med in the router when omitted; validated there.
     priority: str | None = Field(default=None, max_length=10)
     due_date: date | None = None
+    checklist: list[ChecklistItem] | None = None
+    labels: list[TaskLabel] | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -40,6 +44,21 @@ class TaskUpdate(BaseModel):
     due_date: date | None = None
     # Ordering within a column; a drag and drop sets status plus position together.
     position: int | None = None
+    checklist: list[ChecklistItem] | None = None
+    labels: list[TaskLabel] | None = None
+
+
+class TaskCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class TaskCommentRead(BaseModel):
+    id: int
+    task_id: int
+    user_id: int | None
+    author: str
+    body: str
+    created_at: datetime
 
 
 class TaskDraftRequest(BaseModel):

@@ -31,6 +31,11 @@ class Task(Base, TimestampMixin):
     due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Ordering within a board column. A drag sets status plus position; lists order by position.
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Card checklist: a JSON array of {id, text, done}. The board card shows the done count.
+    checklist: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    # Card labels: a JSON array of {name, color}, color from the brand palette (validated in the
+    # router). Shown as pills on the card face.
+    labels: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     # Hermes board: todo, doing, agent_working, review, done (plus archived). Validated in the
     # router. agent_working is also surfaced for a task whose run is live.
     status: Mapped[str] = mapped_column(String(40), default="todo", nullable=False)
@@ -47,6 +52,19 @@ class Task(Base, TimestampMixin):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=True
     )
+
+
+class TaskComment(Base, TimestampMixin):
+    """A comment on a task's activity thread. Soft deleted like the rest of the workspace."""
+
+    __tablename__ = "task_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), index=True, nullable=False)
+    # The author, nullable so a comment survives if the user row is ever detached.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class JournalNote(Base, TimestampMixin):

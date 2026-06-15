@@ -78,6 +78,18 @@ class PMRunRead(ORMModel):
     created_at: datetime
 
 
+class ChecklistItem(BaseModel):
+    id: str
+    text: str
+    done: bool = False
+
+
+class TaskLabel(BaseModel):
+    name: str
+    # One of the brand palette colors, validated in the router: orange, green, gold, red, grey.
+    color: str
+
+
 class TaskRead(ORMModel):
     id: int
     user_id: int | None
@@ -90,6 +102,8 @@ class TaskRead(ORMModel):
     priority: str
     due_date: date | None
     position: int
+    checklist: list[ChecklistItem] = []
+    labels: list[TaskLabel] = []
     source: str
     run_id: int | None
     # True when run_id points to a live agent run; the board surfaces these in Agent working.

@@ -19,11 +19,18 @@ from app.json_extract import synthesize_json
 from app.models.base import utcnow
 from app.models.runtime import AgentRun
 from app.models.user import User
-from app.models.workspace import Task
+from app.models.workspace import Task, TaskComment
 from app.routers.projects import _load_owned_project
 from app.runtime import ACTIVE_RUN_STATUSES
 from app.schemas.entities import TaskRead
-from app.schemas.tasks import TaskCreate, TaskDraft, TaskDraftRequest, TaskUpdate
+from app.schemas.tasks import (
+    TaskCommentCreate,
+    TaskCommentRead,
+    TaskCreate,
+    TaskDraft,
+    TaskDraftRequest,
+    TaskUpdate,
+)
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -40,6 +47,9 @@ SOURCES = ("manual", "research", "run")
 # Task priority. Defaults to med when the creator omits it.
 PRIORITIES = ("low", "med", "high")
 DEFAULT_PRIORITY = "med"
+# Label colors come from the brand palette only (CSS variables on the web side), never an
+# arbitrary hex, so labels stay on system.
+LABEL_COLORS = ("orange", "green", "gold", "red", "grey")
 
 
 def _validate_status(value: str) -> None:
@@ -56,6 +66,28 @@ def _validate_priority(value: str) -> None:
             status.HTTP_400_BAD_REQUEST,
             f"priority must be one of {', '.join(PRIORITIES)}",
         )
+
+
+def _validate_labels(labels: list[dict]) -> None:
+    for label in labels:
+        if label.get("color") not in LABEL_COLORS:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"label color must be one of {', '.join(LABEL_COLORS)}",
+            )
+
+
+def _comment_read(comment: TaskComment, db: Session) -> TaskCommentRead:
+    author = db.get(User, comment.user_id) if comment.user_id else None
+    name = (author.name or author.email) if author else "unknown"
+    return TaskCommentRead(
+        id=comment.id,
+        task_id=comment.task_id,
+        user_id=comment.user_id,
+        author=name,
+        body=comment.body,
+        created_at=comment.created_at,
+    )
 
 
 def _next_position(user: User, status_value: str, db: Session) -> int:
@@ -91,6 +123,9 @@ def create_task(
     _validate_status(initial_status)
     priority = payload.priority or DEFAULT_PRIORITY
     _validate_priority(priority)
+    labels = [label.model_dump() for label in payload.labels] if payload.labels else []
+    _validate_labels(labels)
+    checklist = [item.model_dump() for item in payload.checklist] if payload.checklist else []
     if payload.project_id is not None:
         # The link is enforced here, not by a FK: the project must exist and be the user's.
         _load_owned_project(payload.project_id, user, db)
@@ -105,6 +140,8 @@ def create_task(
         priority=priority,
         due_date=payload.due_date,
         position=_next_position(user, initial_status, db),
+        checklist=checklist,
+        labels=labels,
         source="manual",
     )
     db.add(task)
@@ -216,14 +253,16 @@ def update_task(
         _validate_status(changes["status"])
     if "priority" in changes and changes["priority"] is not None:
         _validate_priority(changes["priority"])
+    if changes.get("labels"):
+        _validate_labels(changes["labels"])
     if "project_id" in changes and changes["project_id"] is not None:
         _load_owned_project(changes["project_id"], user, db)
     if "title" in changes and changes["title"] is not None:
         changes["title"] = changes["title"].strip()
     for field, value in changes.items():
-        # status, priority, and position are not null columns: a null is a no op. Every other
-        # provided field is applied (a null clears it).
-        if field in ("status", "priority", "position") and value is None:
+        # status, priority, position, checklist, and labels are not null columns: a null is a no
+        # op. Every other provided field is applied (a null clears it).
+        if field in ("status", "priority", "position", "checklist", "labels") and value is None:
             continue
         setattr(task, field, value)
     db.commit()
@@ -240,4 +279,59 @@ def delete_task(
     # Soft delete: flag the row, keep it recoverable, and drop it from default lists and counts.
     task = _load_task(task_id, user, db)
     task.deleted_at = utcnow()
+    db.commit()
+
+
+@router.get("/{task_id}/comments", response_model=list[TaskCommentRead])
+def list_comments(
+    task_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[TaskCommentRead]:
+    _load_task(task_id, user, db)
+    comments = (
+        db.query(TaskComment)
+        .filter(TaskComment.task_id == task_id, TaskComment.deleted_at.is_(None))
+        .order_by(TaskComment.created_at.asc(), TaskComment.id.asc())
+        .all()
+    )
+    return [_comment_read(comment, db) for comment in comments]
+
+
+@router.post(
+    "/{task_id}/comments",
+    response_model=TaskCommentRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_comment(
+    task_id: int,
+    payload: TaskCommentCreate,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> TaskCommentRead:
+    _load_task(task_id, user, db)
+    comment = TaskComment(task_id=task_id, user_id=user.id, body=payload.body.strip())
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return _comment_read(comment, db)
+
+
+@router.delete(
+    "/{task_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_comment(
+    task_id: int,
+    comment_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    _load_task(task_id, user, db)
+    comment = db.get(TaskComment, comment_id)
+    if comment is None or comment.task_id != task_id or comment.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "comment not found")
+    # Only the author may remove their own comment. Soft delete keeps the row recoverable.
+    if comment.user_id is not None and comment.user_id != user.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "not your comment")
+    comment.deleted_at = utcnow()
     db.commit()
