@@ -249,6 +249,7 @@
                 {
                   "enum": [
                     "morning",
+                    "afternoon",
                     "evening"
                   ],
                   "type": "string"
@@ -6340,6 +6341,7 @@
             "type": "string",
             "enum": [
               "morning",
+              "afternoon",
               "evening"
             ],
             "title": "Mode"

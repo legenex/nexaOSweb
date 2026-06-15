@@ -9,7 +9,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-BriefMode = Literal["morning", "evening"]
+BriefMode = Literal["morning", "afternoon", "evening"]
 
 
 class ProjectBrief(BaseModel):

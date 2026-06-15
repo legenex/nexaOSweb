@@ -5,7 +5,9 @@ import { api } from '../../app/client';
 import { GlassCard, MonoLabel, Pill } from '../../components/primitives';
 
 type DashboardBrief = Schemas['DashboardBrief'];
-type BriefMode = 'morning' | 'evening';
+type BriefMode = 'morning' | 'afternoon' | 'evening';
+
+const BRIEF_MODES: BriefMode[] = ['morning', 'afternoon', 'evening'];
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -55,32 +57,24 @@ export function MorningBrief() {
     <GlassCard className="border-electric">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <MonoLabel tone="accent">{mode === 'evening' ? 'evening brief' : 'morning brief'}</MonoLabel>
+          <MonoLabel tone="accent">{`${mode ?? 'morning'} brief`}</MonoLabel>
           {brief ? <Pill variant="grey">{brief.date}</Pill> : null}
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => switchMode('morning')}
-            aria-pressed={mode === 'morning'}
-            className={[
-              'mono-label rounded-md px-2 py-1 transition',
-              mode === 'morning' ? 'bg-accent text-canvas' : 'border border-line hover:text-accent',
-            ].join(' ')}
-          >
-            morning
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode('evening')}
-            aria-pressed={mode === 'evening'}
-            className={[
-              'mono-label rounded-md px-2 py-1 transition',
-              mode === 'evening' ? 'bg-accent text-canvas' : 'border border-line hover:text-accent',
-            ].join(' ')}
-          >
-            evening
-          </button>
+          {BRIEF_MODES.map((which) => (
+            <button
+              key={which}
+              type="button"
+              onClick={() => switchMode(which)}
+              aria-pressed={mode === which}
+              className={[
+                'mono-label rounded-md px-2 py-1 transition',
+                mode === which ? 'bg-accent text-canvas' : 'border border-line hover:text-accent',
+              ].join(' ')}
+            >
+              {which}
+            </button>
+          ))}
           <button
             type="button"
             onClick={() => void fetchBrief(mode ?? undefined, true)}

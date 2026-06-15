@@ -2329,7 +2329,7 @@ export interface components {
              * Mode
              * @enum {string}
              */
-            mode: "morning" | "evening";
+            mode: "morning" | "afternoon" | "evening";
             /** Date */
             date: string;
             /**
@@ -4302,7 +4302,7 @@ export interface operations {
     get_brief_dashboard_brief_get: {
         parameters: {
             query?: {
-                mode?: ("morning" | "evening") | null;
+                mode?: ("morning" | "afternoon" | "evening") | null;
                 refresh?: boolean;
             };
             header?: never;

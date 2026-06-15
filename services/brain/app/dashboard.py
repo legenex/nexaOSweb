@@ -286,11 +286,17 @@ def _presummarise(facts: dict) -> str:
 
 
 def _brief_prompt(mode: BriefMode, digest: str) -> str:
-    intent = (
-        "Set the day: lead with the single most important focus, then list what to move."
-        if mode == "morning"
-        else "Review the day, note what progressed, then set up tomorrow's focus."
-    )
+    intents = {
+        "morning": (
+            "Set the day: lead with the single most important focus, then list what to move."
+        ),
+        "afternoon": (
+            "Take stock of the day so far: note what has progressed, then sharpen the focus for "
+            "the rest of the day."
+        ),
+        "evening": "Review the day, note what progressed, then set up tomorrow's focus.",
+    }
+    intent = intents.get(mode, intents["morning"])
     return (
         f"Write a short {mode} brief for a personal operating system dashboard. {intent} "
         "Two or three sentences, direct and calm, no headings, no markdown.\n\n"
@@ -320,6 +326,15 @@ def _offline_brief(mode: BriefMode, facts: dict, today: str) -> str:
             f"{'build' if awaiting == 1 else 'builds'} awaiting approval, {findings} research "
             f"{'finding' if findings == 1 else 'findings'} ready to convert, and {tasks} open "
             f"{'task' if tasks == 1 else 'tasks'}. Start with: {opp}. {dream}"
+        )
+    if mode == "afternoon":
+        return (
+            f"Good afternoon. So far on {today}: {active} active "
+            f"{'project' if active == 1 else 'projects'}, {awaiting} "
+            f"{'build' if awaiting == 1 else 'builds'} awaiting approval, {findings} research "
+            f"{'finding' if findings == 1 else 'findings'} ready to convert, and {tasks} open "
+            f"{'task' if tasks == 1 else 'tasks'}. For the rest of the day, focus on: {opp}. "
+            f"{dream}"
         )
     return (
         f"Good evening. Reviewing {today}: {active} active "

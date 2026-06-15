@@ -21,12 +21,18 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 BRIEF_CACHE_KEY = "dashboard_brief"
 
-# Before this hour the brief sets the day; from it on, it reviews and sets tomorrow.
+# Time of day boundaries for the default brief. Morning sets the day, afternoon takes stock
+# midday, evening reviews and sets up tomorrow.
+AFTERNOON_HOUR = 12
 EVENING_HOUR = 17
 
 
 def _default_mode(now: datetime) -> BriefMode:
-    return "evening" if now.hour >= EVENING_HOUR else "morning"
+    if now.hour >= EVENING_HOUR:
+        return "evening"
+    if now.hour >= AFTERNOON_HOUR:
+        return "afternoon"
+    return "morning"
 
 
 def _cache_row(db: Session, user: User) -> AppSetting | None:
