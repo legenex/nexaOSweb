@@ -22,6 +22,7 @@ from app.models.user import User
 from app.schemas.users import UserCreate, UserInvite, UserRead, UserUpdate
 from app.security.auth import Principal, current_user, get_principal
 from app.security.passwords import hash_password
+from app.services.users import assert_can_delete_user
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -174,6 +175,9 @@ def remove_user(
     user = _load(user_id, db)
     if user.id == actor.id:
         raise HTTPException(http_status.HTTP_409_CONFLICT, "you cannot remove your own account")
+    # The owner row is protected at the service layer: an admin can never delete the owner, and the
+    # owner can only be removed by the owner (and self removal is blocked above, so it stays).
+    assert_can_delete_user(actor, user)
     # Soft delete: keep the row so its items and projects keep their owner reference.
     user.status = "removed"
     db.commit()
