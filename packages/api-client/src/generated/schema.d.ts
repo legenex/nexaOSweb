@@ -21,6 +21,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Password Reset
+         * @description Start a reset: email a single use link to a known active account.
+         *
+         *     Always returns 204 regardless of whether the email matches an account, so the endpoint cannot be
+         *     used to enumerate users. When the email does match, a token row is stored (only its hash) and a
+         *     link is sent. With SMTP unconfigured the mailer logs the link instead, so dev still works.
+         */
+        post: operations["request_password_reset_auth_password_reset_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Password Reset
+         * @description Finish a reset: spend the token and set the new password.
+         *
+         *     The token is matched by hash. A missing, already used, or expired token returns the same 400 so
+         *     a caller cannot tell which. On success the password is updated, an invited account is flipped to
+         *     active, and the token is marked used so the link cannot be replayed.
+         */
+        post: operations["confirm_password_reset_auth_password_reset_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/logout": {
         parameters: {
             query?: never;
@@ -488,6 +536,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/flow/items/{item_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Project Archive
+         * @description Stream the project's on disk folder as a zip the browser can download.
+         *
+         *     Zips every file under NEXA_PROJECTS_ROOT/<slug> through the path safety gate, so the user
+         *     gets the real project directory (project_plan.md and the rest, unzipping under a <slug>
+         *     folder). Returns 404 when the project has not been processed yet and the folder is absent.
+         */
+        get: operations["download_project_archive_flow_items__item_id__archive_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/flow/items/{item_id}/readiness": {
         parameters: {
             query?: never;
@@ -499,8 +571,9 @@ export interface paths {
          * Get Item Readiness
          * @description The latest readiness assessment for this item's project.
          *
-         *     404 when the project has never been assessed, so the panel shows an honest not yet assessed
-         *     state rather than inventing data.
+         *     When the project has never been assessed, return an unassessed result (run_id 0, not
+         *     satisfied, no items) rather than a 404. The gate stays closed because satisfied is false, and
+         *     the panel shows an honest not yet assessed state without a console error.
          */
         get: operations["get_item_readiness_flow_items__item_id__readiness_get"];
         put?: never;
@@ -3051,6 +3124,21 @@ export interface components {
             /** Score */
             score?: number | null;
         };
+        /** PasswordResetConfirm */
+        PasswordResetConfirm: {
+            /** Token */
+            token: string;
+            /** New Password */
+            new_password: string;
+        };
+        /** PasswordResetRequest */
+        PasswordResetRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
         /** ProcessHealth */
         ProcessHealth: {
             /** Pid */
@@ -4026,6 +4114,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["LoginResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_password_reset_auth_password_reset_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_password_reset_auth_password_reset_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5017,6 +5167,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PromoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_project_archive_flow_items__item_id__archive_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

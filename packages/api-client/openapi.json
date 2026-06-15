@@ -46,6 +46,76 @@
         }
       }
     },
+    "/auth/password-reset/request": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Request Password Reset",
+        "description": "Start a reset: email a single use link to a known active account.\n\nAlways returns 204 regardless of whether the email matches an account, so the endpoint cannot be\nused to enumerate users. When the email does match, a token row is stored (only its hash) and a\nlink is sent. With SMTP unconfigured the mailer logs the link instead, so dev still works.",
+        "operationId": "request_password_reset_auth_password_reset_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password-reset/confirm": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Confirm Password Reset",
+        "description": "Finish a reset: spend the token and set the new password.\n\nThe token is matched by hash. A missing, already used, or expired token returns the same 400 so\na caller cannot tell which. On success the password is updated, an invited account is flipped to\nactive, and the token is marked used so the link cannot be replayed.",
+        "operationId": "confirm_password_reset_auth_password_reset_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/logout": {
       "post": {
         "tags": [
@@ -1384,6 +1454,47 @@
         }
       }
     },
+    "/flow/items/{item_id}/archive": {
+      "get": {
+        "tags": [
+          "flow"
+        ],
+        "summary": "Download Project Archive",
+        "description": "Stream the project's on disk folder as a zip the browser can download.\n\nZips every file under NEXA_PROJECTS_ROOT/<slug> through the path safety gate, so the user\ngets the real project directory (project_plan.md and the rest, unzipping under a <slug>\nfolder). Returns 404 when the project has not been processed yet and the folder is absent.",
+        "operationId": "download_project_archive_flow_items__item_id__archive_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/flow/items/{item_id}/readiness": {
       "post": {
         "tags": [
@@ -1431,7 +1542,7 @@
           "flow"
         ],
         "summary": "Get Item Readiness",
-        "description": "The latest readiness assessment for this item's project.\n\n404 when the project has never been assessed, so the panel shows an honest not yet assessed\nstate rather than inventing data.",
+        "description": "The latest readiness assessment for this item's project.\n\nWhen the project has never been assessed, return an unassessed result (run_id 0, not\nsatisfied, no items) rather than a 404. The gate stays closed because satisfied is false, and\nthe panel shows an honest not yet assessed state without a console error.",
         "operationId": "get_item_readiness_flow_items__item_id__readiness_get",
         "parameters": [
           {
@@ -8456,6 +8567,40 @@
           "detail"
         ],
         "title": "Opportunity"
+      },
+      "PasswordResetConfirm": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "new_password"
+        ],
+        "title": "PasswordResetConfirm"
+      },
+      "PasswordResetRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetRequest"
       },
       "ProcessHealth": {
         "properties": {
