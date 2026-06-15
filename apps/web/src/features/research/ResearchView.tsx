@@ -256,6 +256,16 @@ export function ResearchView() {
     await loadProjects();
   }, [selectedId, loadProjects]);
 
+  // Create a build project from this research and attach it in one step.
+  const createProjectFromResearch = useCallback(async () => {
+    if (selectedId === null) return;
+    await api.POST('/research/{research_id}/create-project', {
+      params: { path: { research_id: selectedId } },
+      body: {},
+    });
+    await loadProjects();
+  }, [selectedId, loadProjects]);
+
   const onAct = useCallback(
     async (action: FindingActionKey, finding: ResearchFinding): Promise<string> => {
       if (action === 'builder') {
@@ -495,6 +505,9 @@ export function ResearchView() {
                     </select>
                     <Button onClick={() => void attach()} disabled={attachTarget === ''}>
                       Attach
+                    </Button>
+                    <Button variant="outline" onClick={() => void createProjectFromResearch()}>
+                      Create Project
                     </Button>
                   </div>
                 )}

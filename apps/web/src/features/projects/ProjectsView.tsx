@@ -27,7 +27,12 @@ function trackFor(stage: string): TrackNode[] {
 }
 
 export function ProjectsView() {
-  const { projects, renameProject, duplicateProject, deleteProject } = useFlow();
+  const { projects, renameProject, duplicateProject, deleteProject, editProject } = useFlow();
+  // The project being edited in the builder style editor, plus its draft fields.
+  const [editTarget, setEditTarget] = useState<Project | null>(null);
+  const [editDest, setEditDest] = useState('');
+  const [editIntegrations, setEditIntegrations] = useState('');
+  const [editScope, setEditScope] = useState('');
   const [openId, setOpenId] = useState<number | null>(null);
   // The project pending a rename (modal) or a delete (confirm), plus the rename draft.
   const [renameTarget, setRenameTarget] = useState<Project | null>(null);
@@ -45,6 +50,40 @@ export function ProjectsView() {
     setError(null);
     setRenameValue(project.name);
     setRenameTarget(project);
+  };
+
+  const startEdit = (project: Project) => {
+    setError(null);
+    setEditDest(project.build_destination ?? '');
+    setEditIntegrations((project.selected_integrations ?? []).join(', '));
+    setEditScope('');
+    setEditTarget(project);
+  };
+
+  const submitEdit = async () => {
+    if (!editTarget) return;
+    const changes: { build_destination?: string; selected_integrations?: string[]; scope_note?: string } = {};
+    if (editDest.trim()) changes.build_destination = editDest.trim();
+    const integrations = editIntegrations
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (integrations.length) changes.selected_integrations = integrations;
+    if (editScope.trim()) changes.scope_note = editScope.trim();
+    if (Object.keys(changes).length === 0) {
+      setError('Change at least one field.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await editProject(editTarget.id, changes);
+      setEditTarget(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const submitRename = async () => {
@@ -116,6 +155,7 @@ export function ProjectsView() {
                 <OverflowMenu
                   label={`Actions for ${project.name}`}
                   items={[
+                    { label: 'Edit', onClick: () => startEdit(project) },
                     { label: 'Rename', onClick: () => startRename(project) },
                     { label: 'Duplicate', onClick: () => void runDuplicate(project) },
                     {
@@ -178,6 +218,56 @@ export function ProjectsView() {
           </Button>
           <Button variant="primary" onClick={() => void submitRename()} disabled={busy}>
             {busy ? 'Working' : 'Save'}
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={editTarget !== null}
+        title={editTarget ? `Edit ${editTarget.name}` : 'Edit project'}
+        onClose={() => (busy ? undefined : setEditTarget(null))}
+      >
+        <p className="mb-3 text-xs text-muted">
+          A builder style edit. The plan is rewritten through the path safety gate and the change
+          is recorded as an agent run, recoverable.
+        </p>
+        <label className="mono-label mb-1 block text-faint" htmlFor="edit-dest">
+          build destination
+        </label>
+        <input
+          id="edit-dest"
+          value={editDest}
+          onChange={(event) => setEditDest(event.target.value)}
+          placeholder="e.g. vercel, github, base44"
+          className="mb-3 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-cream outline-none focus:border-accent"
+        />
+        <label className="mono-label mb-1 block text-faint" htmlFor="edit-integrations">
+          integrations (comma separated)
+        </label>
+        <input
+          id="edit-integrations"
+          value={editIntegrations}
+          onChange={(event) => setEditIntegrations(event.target.value)}
+          placeholder="github, stripe, clickup"
+          className="mb-3 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-cream outline-none focus:border-accent"
+        />
+        <label className="mono-label mb-1 block text-faint" htmlFor="edit-scope">
+          scope note
+        </label>
+        <textarea
+          id="edit-scope"
+          value={editScope}
+          onChange={(event) => setEditScope(event.target.value)}
+          rows={2}
+          placeholder="a change of direction or constraint"
+          className="mb-4 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-cream outline-none focus:border-accent"
+        />
+        <div className="flex justify-end gap-2">
+          <Button variant="muted" onClick={() => setEditTarget(null)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => void submitEdit()} disabled={busy}>
+            {busy ? 'Saving' : 'Save edit'}
           </Button>
         </div>
       </Modal>

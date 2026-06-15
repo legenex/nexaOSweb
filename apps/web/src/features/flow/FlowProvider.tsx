@@ -52,6 +52,10 @@ interface FlowState {
   renameProject: (projectId: number, name: string) => Promise<void>;
   duplicateProject: (projectId: number) => Promise<void>;
   deleteProject: (projectId: number) => Promise<void>;
+  editProject: (
+    projectId: number,
+    changes: { build_destination?: string; selected_integrations?: string[]; scope_note?: string },
+  ) => Promise<void>;
 }
 
 const FlowContext = createContext<FlowState | null>(null);
@@ -234,6 +238,25 @@ export function FlowProvider({ children }: { children: ReactNode }) {
     [refreshProjects],
   );
 
+  const editProject = useCallback(
+    async (
+      projectId: number,
+      changes: {
+        build_destination?: string;
+        selected_integrations?: string[];
+        scope_note?: string;
+      },
+    ) => {
+      const { error } = await api.POST('/projects/{project_id}/edit', {
+        params: { path: { project_id: projectId } },
+        body: changes,
+      });
+      if (error) throw new Error('edit failed');
+      await refreshProjects();
+    },
+    [refreshProjects],
+  );
+
   useEffect(() => {
     void refresh();
     void refreshProjects();
@@ -263,6 +286,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       renameProject,
       duplicateProject,
       deleteProject,
+      editProject,
     }),
     [
       items,
@@ -286,6 +310,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       renameProject,
       duplicateProject,
       deleteProject,
+      editProject,
     ],
   );
 
