@@ -9,6 +9,7 @@ import { HoloObject } from './components/HoloObject';
 import type { HoloVariant } from './components/HoloObject';
 import { HolographicBackdrop } from './components/HolographicBackdrop';
 import { Login } from './components/Login';
+import { ResetPassword } from './components/ResetPassword';
 import { MarketingHome } from './features/marketing/MarketingHome';
 import { Sidebar } from './components/Sidebar';
 import { UplinkLight } from './components/UplinkLight';
@@ -155,6 +156,22 @@ function PublicSite() {
   const go = (next: string) => {
     window.location.hash = next;
   };
+
+  // The emailed reset link lands at #reset?token=... The token rides in the hash query so it never
+  // hits the server logs as a path. Anything starting with #reset shows the reset screen.
+  if (hash.startsWith('#reset')) {
+    const queryStart = hash.indexOf('?');
+    const token =
+      queryStart === -1
+        ? ''
+        : new URLSearchParams(hash.slice(queryStart + 1)).get('token') ?? '';
+    return (
+      <div className="relative h-full">
+        <HolographicBackdrop />
+        <ResetPassword token={token} onDone={() => go('signin')} onBack={() => go('')} />
+      </div>
+    );
+  }
 
   if (hash === '#signin') {
     return (
