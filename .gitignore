@@ -29,6 +29,14 @@ __pycache__/
 .env.*
 !.env.example
 
+# Deploy secrets (filled locally from scripts/deploy.env.example, never committed)
+scripts/deploy.env
+*.deploy.env
+# SSH private keys, as a safety net if one is ever placed in the repo tree
+id_ed25519
+id_rsa
+*.pem
+
 # Tauri build output
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
