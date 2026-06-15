@@ -1,7 +1,11 @@
 """Flow stage endpoints: process and plan (extended by later prompts)."""
 
+import io
+import zipfile
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 from sqlalchemy.orm import Session
 
 from app.agents.builder import BuilderError, promote_project
@@ -17,6 +21,7 @@ from app.db import get_db
 from app.models.inbox import InboxItem
 from app.models.project import Project
 from app.models.user import User
+from app.safety import ensure_within_root
 from app.schemas.entities import ProjectRead
 from app.schemas.flow import (
     ClarifyRequest,
@@ -26,6 +31,7 @@ from app.schemas.flow import (
     ReadinessAssessment,
 )
 from app.security.auth import current_user
+from app.settings import get_settings
 
 router = APIRouter(prefix="/flow", tags=["flow"])
 
@@ -178,6 +184,40 @@ def _owned_project(item_id: int, user: User, db: Session) -> Project:
     if project is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no project for this item")
     return project
+
+
+@router.get("/items/{item_id}/archive")
+def download_project_archive(
+    item_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Stream the project's on disk folder as a zip the browser can download.
+
+    Zips every file under NEXA_PROJECTS_ROOT/<slug> through the path safety gate, so the user
+    gets the real project directory (project_plan.md and the rest, unzipping under a <slug>
+    folder). Returns 404 when the project has not been processed yet and the folder is absent.
+    """
+    project = _owned_project(item_id, user, db)
+    settings = get_settings()
+    folder = ensure_within_root(settings.nexa_projects_root, project.slug)
+    if not folder.is_dir():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no project folder yet")
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(folder.rglob("*")):
+            if path.is_file():
+                arcname = (Path(project.slug) / path.relative_to(folder)).as_posix()
+                archive.write(path, arcname=arcname)
+    buffer.seek(0)
+
+    filename = f"nexa-{project.slug}.zip"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _readiness_plan(project: Project) -> dict:

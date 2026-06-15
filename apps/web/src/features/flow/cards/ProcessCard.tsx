@@ -8,10 +8,11 @@ import { renderMarkdown } from '../markdown';
 // Shows the project folder and build destination, with an Open plan modal that renders the
 // markdown. If the project has not been processed yet, offers to run Process.
 export function ProcessCard() {
-  const { selected, process, getPlan } = useFlow();
+  const { selected, process, getPlan, downloadArchive } = useFlow();
   const [open, setOpen] = useState(false);
   const [plan, setPlan] = useState('');
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isProject = selected?.route === 'project';
@@ -34,6 +35,19 @@ export function ProcessCard() {
     if (!selected) return;
     setPlan(await getPlan(selected.id));
     setOpen(true);
+  }
+
+  async function download() {
+    if (!selected) return;
+    setDownloading(true);
+    setError(null);
+    try {
+      await downloadArchive(selected.id);
+    } catch {
+      setError('Download failed. Run Process first, then try again.');
+    } finally {
+      setDownloading(false);
+    }
   }
 
   if (!isProject) {
@@ -69,9 +83,14 @@ export function ProcessCard() {
 
       <div className="flex flex-wrap gap-2">
         {planReady ? (
-          <Button variant="outline" onClick={() => void openPlan()}>
-            Open project_plan.md
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => void openPlan()}>
+              Open project_plan.md
+            </Button>
+            <Button variant="outline" onClick={() => void download()} disabled={downloading}>
+              {downloading ? 'Preparing' : 'Download folder (.zip)'}
+            </Button>
+          </>
         ) : (
           <Button variant="primary" onClick={() => void runProcess()} disabled={busy}>
             {busy ? 'Processing' : 'Run process'}

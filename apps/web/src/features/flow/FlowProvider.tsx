@@ -41,6 +41,7 @@ interface FlowState {
   expand: (name: string, body: string) => Promise<string>;
   process: (id: number) => Promise<void>;
   getPlan: (id: number) => Promise<string>;
+  downloadArchive: (id: number) => Promise<void>;
   getClarify: (id: number) => Promise<ClarifyResponse>;
   submitClarify: (id: number, payload: ClarifyRequest) => Promise<void>;
   getPreview: (id: number) => Promise<string>;
@@ -133,6 +134,25 @@ export function FlowProvider({ children }: { children: ReactNode }) {
   const getPlan = useCallback(async (id: number) => {
     const response = await apiFetch(`/flow/items/${id}/plan`);
     return response.ok ? response.text() : '';
+  }, []);
+
+  // Download the project's on disk folder as a zip. The Brain streams the real directory; the
+  // browser saves it from the blob, naming the file from the Content-Disposition header.
+  const downloadArchive = useCallback(async (id: number) => {
+    const response = await apiFetch(`/flow/items/${id}/archive`);
+    if (!response.ok) throw new Error('archive download failed');
+    const blob = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match?.[1] ?? `project-${id}.zip`;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }, []);
 
   const getClarify = useCallback(async (id: number) => {
@@ -275,6 +295,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       expand,
       process,
       getPlan,
+      downloadArchive,
       getClarify,
       submitClarify,
       getPreview,
@@ -299,6 +320,7 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       expand,
       process,
       getPlan,
+      downloadArchive,
       getClarify,
       submitClarify,
       getPreview,
