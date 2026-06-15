@@ -24,7 +24,7 @@ export function KnowledgePanel() {
   return (
     <div>
       <header className="mb-4">
-        <MonoLabel tone="accent">what Nexa knows about me</MonoLabel>
+        <MonoLabel tone="accent">what Nexa know about me</MonoLabel>
         <p className="mt-1 max-w-prose text-sm text-muted">
           The system's memory of you and how it should work. Review, edit, and archive any entry,
           and approve Dreaming candidates. Nothing enters long term memory without your approval.
