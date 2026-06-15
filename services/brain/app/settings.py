@@ -3,16 +3,31 @@
 Every value is read from the environment. Provider keys are read only here, on the
 server side, and are never returned to a client. DATABASE_URL defaults to a local
 SQLite file so a fresh checkout runs without configuration.
+
+Storage paths should be absolute in any real deployment. A relative path resolves against the
+working directory, so starting the Brain from a different folder points it at a different database
+and an empty secret store. log_storage_paths makes the resolved locations visible on boot.
 """
 
+import logging
+import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger("nexaos.settings")
+
+# The .env lives next to the Brain project root (services/brain/.env). Pin it by absolute path so
+# the same configuration loads no matter which working directory the process starts from. A
+# relative env_file would silently go unread when the Brain is launched from elsewhere, falling
+# back to the relative storage defaults that caused data to scatter across directories.
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(_ENV_FILE),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
@@ -61,6 +76,19 @@ class Settings(BaseSettings):
     dreaming_lookback_hours: int = 24
     dreaming_max_items: int = 50
 
+    # Durable account seed, read on boot. Disabled by default so a fresh checkout and the tests do
+    # not create accounts. The local .env enables it and supplies the real emails and passwords;
+    # committed code never carries a password. The owner is the highest privilege account; the
+    # admin has the same privileges except it can never delete the owner.
+    nexa_seed_on_boot: bool = False
+    nexa_owner_email: str = "nick@legenex.com"
+    nexa_owner_password: str = ""
+    nexa_admin_email: str = "team@legenex.com"
+    nexa_admin_password: str = ""
+    # When true, the boot seed resets the owner and admin passwords to the configured values so a
+    # recovery run has a known good login. Leave off in steady state.
+    nexa_seed_force_password: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
@@ -87,3 +115,28 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def resolved_database_path(settings: Settings | None = None) -> str:
+    """The DATABASE_URL shown as a resolved absolute on disk path for sqlite, or the raw URL."""
+    settings = settings or get_settings()
+    url = settings.database_url
+    if not url.startswith("sqlite"):
+        return url
+    # sqlite:///relative or sqlite:////absolute. Strip the scheme, then resolve to absolute.
+    raw = url.split(":///", 1)[-1] if ":///" in url else url
+    return raw if raw.startswith("/") else os.path.abspath(os.path.expanduser(raw))
+
+
+def log_storage_paths(settings: Settings | None = None) -> None:
+    """Log the resolved absolute database and secret store locations on boot.
+
+    A wrong or working directory dependent path is then visible immediately in the logs rather than
+    discovered later as missing data. This is the canary for the relative path failure mode.
+    """
+    settings = settings or get_settings()
+    logger.info(
+        "storage resolved: database=%s secrets_root=%s",
+        resolved_database_path(settings),
+        os.path.abspath(os.path.expanduser(settings.nexa_secrets_root)),
+    )

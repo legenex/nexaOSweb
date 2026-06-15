@@ -23,6 +23,10 @@ __pycache__/
 *.sqlite3
 *.db
 .data/
+# Canonical Brain data dir: the pinned absolute db, secret store, uploads, and project files.
+# Data and secrets must never be committed.
+services/brain/data/
+*.secret
 
 # Environment and secrets
 .env

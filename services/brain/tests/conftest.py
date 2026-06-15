@@ -16,6 +16,24 @@ from app.main import app
 from app.models.base import Base
 from app.models.user import User
 from app.security.passwords import hash_password
+from app.settings import get_settings
+
+
+@pytest.fixture(autouse=True)
+def isolate_secret_store(tmp_path, monkeypatch):
+    """Point the secret store at a throwaway dir and blank the provider env keys for every test.
+
+    The model router and secret store resolve get_settings() fresh on each call, so clearing the
+    cache after setting the environment guarantees the suite never reads the real connected provider
+    keys on disk. Tests that assert the offline (no model configured) path then behave the same no
+    matter what is connected locally.
+    """
+    monkeypatch.setenv("NEXA_SECRETS_ROOT", str(tmp_path / "secrets"))
+    for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "TAVILY_API_KEY"):
+        monkeypatch.setenv(key, "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture()
