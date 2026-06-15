@@ -26,6 +26,7 @@ from app.schemas.research import (
     CreateProjectFromResearchRequest,
     GenerateConfigRequest,
     GenerateConfigResponse,
+    NewFindingRead,
     ProjectUpdateRead,
     ResearchFindingRead,
     ResearchProjectCreate,
@@ -340,6 +341,39 @@ def list_runs(
             .all()
         )
     return runs
+
+
+@router.get("/findings/new", response_model=list[NewFindingRead])
+def list_new_findings(
+    limit: int = 50,
+    _user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[NewFindingRead]:
+    """Recent findings still in the new state, for the Tasks Pull from Research picker.
+
+    A finding that has already been turned into a task is moved to the tasked state by the
+    to-task action, so this list only ever offers findings not yet pulled. The source research
+    project name is joined in so the picker can show provenance.
+    """
+    capped = max(1, min(limit, 200))
+    rows = (
+        db.query(ResearchFinding, Project.name)
+        .join(Project, Project.id == ResearchFinding.project_id)
+        .filter(ResearchFinding.status == "new")
+        .order_by(ResearchFinding.created_at.desc(), ResearchFinding.id.desc())
+        .limit(capped)
+        .all()
+    )
+    return [
+        NewFindingRead(
+            id=finding.id,
+            title=finding.title,
+            detail=finding.detail,
+            research_project_id=finding.project_id,
+            research_project_name=project_name,
+        )
+        for finding, project_name in rows
+    ]
 
 
 @router.get("/{research_id}/findings", response_model=list[ResearchFindingRead])

@@ -96,6 +96,16 @@ class ResearchFindingRead(BaseModel):
     created_at: datetime
 
 
+class NewFindingRead(BaseModel):
+    """A selectable finding for the Tasks Pull from Research picker: new, not yet tasked."""
+
+    id: int
+    title: str
+    detail: str
+    research_project_id: int
+    research_project_name: str
+
+
 class ResearchRunRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
