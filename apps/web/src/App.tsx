@@ -75,14 +75,26 @@ function Surface({ active, label }: { active: string; label: string }) {
   }
 }
 
-// Each built out surface gets its own distinct holographic object. Keys not listed render none,
-// so Project Builder (its own panorama) and the coming soon pages show no extra object.
+// Every surface gets a holographic object, rendered once and fixed in the corner by the shell.
+// Each surface maps to a distinct variant; unlisted keys fall back to the dashboard form.
 const HOLO_VARIANT: Record<string, HoloVariant> = {
   dashboard: 'dashboard',
   insights: 'insights',
   research: 'research',
   projects: 'projects',
+  'project-builder': 'projects',
+  journal: 'insights',
+  tasks: 'projects',
+  focus: 'research',
+  settings: 'dashboard',
 };
+
+const holoVariantFor = (key: string): HoloVariant => HOLO_VARIANT[key] ?? 'dashboard';
+
+// The page title. Flow Builder reads Project Flow Builder in the header while the sidebar and
+// route key stay Flow Builder and project-builder.
+const pageTitleFor = (key: string, label: string): string =>
+  key === 'project-builder' ? 'Project Flow Builder' : label;
 
 function Shell() {
   const [active, setActive] = useState(DEFAULT_NAV_KEY);
@@ -92,27 +104,24 @@ function Shell() {
   return (
     <FlowProvider>
       <NavigationContext.Provider value={setActive}>
-        <div className="flex h-screen w-screen flex-col overflow-hidden">
+        <div className="relative flex h-screen w-screen flex-col overflow-hidden">
           <DesktopTitleBar />
-          <div className="flex flex-1 overflow-hidden">
+          {/* One holographic object, fixed in the bottom right of the viewport behind all
+              content so it never clips on scroll and is present on every surface. It is
+              pointer-events-none and sits on z-0, the content sits on z-10. */}
+          <div
+            aria-hidden
+            className="pointer-events-none fixed bottom-0 right-0 z-0 h-[42vmin] w-[42vmin] overflow-hidden"
+          >
+            <HoloObject variant={holoVariantFor(baseKey)} />
+          </div>
+          <div className="relative z-10 flex flex-1 overflow-hidden">
             <Sidebar active={active} onSelect={setActive} />
             <main className="relative flex-1 overflow-auto p-8">
               <HolographicBackdrop />
-              {HOLO_VARIANT[baseKey] ? (
-                // A full bleed clipping layer behind the content. It is absolutely positioned and
-                // overflow hidden, so the large object can bleed past the edges without ever adding
-                // a scrollbar or shifting layout, and pointer-events-none keeps it from blocking the
-                // content above it (which sits on z-10).
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
-                >
-                  <HoloObject variant={HOLO_VARIANT[baseKey]!} />
-                </div>
-              ) : null}
               <div className="relative z-10 mb-4">
                 <PageHeader
-                  title={current.label}
+                  title={pageTitleFor(baseKey, current.label)}
                   label={`${current.key} ${current.description}`}
                   uplink={UPLINK_SURFACES.has(baseKey)}
                 />

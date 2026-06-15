@@ -35,7 +35,8 @@ interface StageProgress {
 
 // Reactive index of the stage the run is currently crossing, derived from the flow item.
 export function currentStageIndex(item: StageProgress | null): number {
-  if (!item) return ACTIVE_INDEX;
+  // With no run selected the current animates on stage 01 (Capture), the start of the pipeline.
+  if (!item) return 0;
   if (!item.classification) return 1; // classify
   if (!item.route) return 2; // route
   if (item.route !== 'project') return 2; // terminal workflow ends at route

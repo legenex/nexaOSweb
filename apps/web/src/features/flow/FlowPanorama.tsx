@@ -98,8 +98,10 @@ export function FlowPanorama() {
         <div
           data-deck
           role="list"
-          aria-label="Project Builder pipeline stages"
-          className="scroll-themed relative z-10 flex gap-7 overflow-x-auto pb-6"
+          aria-label="Flow Builder pipeline stages"
+          // Right and vertical padding so the last stage (Execute) and the active stage glow are
+          // never clipped, and horizontal scroll reaches the final card.
+          className="scroll-themed relative z-10 flex gap-7 overflow-x-auto px-1 pb-6 pr-10 pt-2"
         >
           {STAGES.map((stage, index) => {
             const isActive = index === activeIndex;
@@ -122,7 +124,8 @@ export function FlowPanorama() {
                 className={[
                   'w-[280px] shrink-0 rounded-glass transition',
                   dimmed ? 'opacity-40' : '',
-                  isActive ? 'pulse-glow' : '',
+                  // The electric current animates only on the active stage.
+                  isActive ? 'border-electric border-electric-on border border-line' : '',
                 ].join(' ')}
               >
                 <div className="mb-3 flex items-center gap-2">

@@ -17,7 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: 'focus', label: 'Focus', glyph: '◎', description: 'Ranked work' },
   {
     key: 'project-builder',
-    label: 'Project Builder',
+    label: 'Flow Builder',
     glyph: '◇',
     description: 'The seven stage pipeline',
   },
