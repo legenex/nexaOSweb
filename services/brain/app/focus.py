@@ -250,7 +250,7 @@ def _candidates(db: Session, user: User) -> list[_Candidate]:
                     autonomy_eligible=False,
                 )
             )
-        elif t.status in ("open", "in_progress"):
+        elif t.status in ("todo", "doing", "agent_working", "review"):
             out.append(
                 _Candidate(
                     kind="complete_task",

@@ -87,6 +87,8 @@ class TaskRead(ORMModel):
     status: str
     source: str
     run_id: int | None
+    # True when run_id points to a live agent run; the board surfaces these in Agent working.
+    agent_active: bool = False
     created_at: datetime
     updated_at: datetime | None
 

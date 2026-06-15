@@ -3768,6 +3768,11 @@ export interface components {
             /** Run Id */
             run_id: number | null;
             /**
+             * Agent Active
+             * @default false
+             */
+            agent_active: boolean;
+            /**
              * Created At
              * Format: date-time
              */

@@ -19,8 +19,9 @@ class Task(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     # Optional longer description; the title stays the one line summary.
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # One of open, in_progress, blocked, done, archived. Validated in the router.
-    status: Mapped[str] = mapped_column(String(40), default="open", nullable=False)
+    # Hermes board: todo, doing, agent_working, review, done (plus archived). Validated in the
+    # router. agent_working is also surfaced for a task whose run is live.
+    status: Mapped[str] = mapped_column(String(40), default="todo", nullable=False)
     # How the task was created: manual (the user), research (a research finding), or run (an
     # agent run). Validated in the router; defaults to manual for hand created tasks.
     source: Mapped[str] = mapped_column(String(40), default="manual", nullable=False)

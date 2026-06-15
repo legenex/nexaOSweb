@@ -8,7 +8,6 @@ on a fresh checkout.
 """
 
 from collections import Counter
-from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -170,7 +169,7 @@ def build_summary(db: Session, user: User, *, version: str) -> DashboardSummary:
 
     open_tasks = (
         db.query(Task)
-        .filter(Task.user_id == user.id, Task.status == "open", Task.deleted_at.is_(None))
+        .filter(Task.user_id == user.id, Task.status == "todo", Task.deleted_at.is_(None))
         .order_by(Task.created_at.desc(), Task.id.desc())
         .all()
     )
@@ -232,7 +231,7 @@ def _gather_facts(db: Session, user: User) -> dict:
     findings = _research_findings(db, user, projects)
     open_tasks = (
         db.query(Task)
-        .filter(Task.user_id == user.id, Task.status == "open", Task.deleted_at.is_(None))
+        .filter(Task.user_id == user.id, Task.status == "todo", Task.deleted_at.is_(None))
         .order_by(Task.created_at.desc())
         .all()
     )
@@ -308,7 +307,8 @@ def _offline_brief(mode: BriefMode, facts: dict, today: str) -> str:
     last_dream: DreamRun | None = facts["last_dream"]
     opp = opportunity.title if opportunity else "keep the pipeline moving"
     dream = (
-        f"The last dreaming run surfaced {last_dream.candidates_created} memory candidates to review."
+        f"The last dreaming run surfaced {last_dream.candidates_created} memory candidates "
+        "to review."
         if last_dream
         else "No dreaming run has surfaced candidates yet."
     )

@@ -41,7 +41,7 @@ def _seed(db, user):
     )
     db.add_all(
         [
-            Task(user_id=user.id, title="Wire the UI", status="open"),
+            Task(user_id=user.id, title="Wire the UI", status="todo"),
             Task(user_id=user.id, title="Old thing", status="done"),
         ]
     )

@@ -122,7 +122,7 @@ def route_item(db: Session, item: InboxItem) -> RouteResult:
 
     elif route == "tasks":
         project = get_or_create_inbox_tasks_project(db)
-        task = Task(user_id=item.user_id, project_id=project.id, title=item.name, status="open")
+        task = Task(user_id=item.user_id, project_id=project.id, title=item.name, status="todo")
         db.add(task)
         db.flush()
         created_kind, created_id, project_id = "task", task.id, project.id

@@ -15,17 +15,24 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.base import utcnow
+from app.models.runtime import AgentRun
 from app.models.user import User
 from app.models.workspace import Task
 from app.routers.projects import _load_owned_project
+from app.runtime import ACTIVE_RUN_STATUSES
 from app.schemas.entities import TaskRead
 from app.schemas.tasks import TaskCreate, TaskUpdate
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
-# The canonical status set. A status board moves a task between these; nothing else is accepted.
-STATUSES = ("open", "in_progress", "blocked", "done", "archived")
+# The Hermes board columns, in order. New tasks default to todo and move between these.
+BOARD_STATUSES = ("todo", "doing", "agent_working", "review", "done")
+# The full accepted set. archived is the soft hidden state (not a board column). blocked is a
+# secondary state that Focus still recognizes as a blocker; the board folds it into Doing. New
+# tasks never enter blocked, it survives only for legacy rows and the Focus blocker bucket.
+STATUSES = (*BOARD_STATUSES, "archived", "blocked")
+DEFAULT_STATUS = "todo"
 # How a task came to exist. Set by the creator, not editable after the fact.
 SOURCES = ("manual", "research", "run")
 
@@ -53,7 +60,7 @@ def create_task(
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ) -> Task:
-    initial_status = payload.status or "open"
+    initial_status = payload.status or DEFAULT_STATUS
     _validate_status(initial_status)
     if payload.project_id is not None:
         # The link is enforced here, not by a FK: the project must exist and be the user's.
@@ -80,7 +87,7 @@ def list_tasks(
     ),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
-) -> list[Task]:
+) -> list[TaskRead]:
     query = db.query(Task).filter(
         Task.deleted_at.is_(None),
         (Task.user_id == user.id) | (Task.user_id.is_(None)),
@@ -90,7 +97,19 @@ def list_tasks(
     if status_filter is not None:
         _validate_status(status_filter)
         query = query.filter(Task.status == status_filter)
-    return query.order_by(Task.created_at.desc(), Task.id.desc()).all()
+    tasks = query.order_by(Task.created_at.desc(), Task.id.desc()).all()
+
+    # A task whose run_id points to a live AgentRun is surfaced in the Agent working column.
+    active_run_ids = {
+        row[0]
+        for row in db.query(AgentRun.id).filter(AgentRun.status.in_(ACTIVE_RUN_STATUSES)).all()
+    }
+    reads: list[TaskRead] = []
+    for task in tasks:
+        read = TaskRead.model_validate(task)
+        read.agent_active = task.run_id is not None and task.run_id in active_run_ids
+        reads.append(read)
+    return reads
 
 
 @router.get("/{task_id}", response_model=TaskRead)

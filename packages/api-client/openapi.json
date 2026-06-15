@@ -10454,6 +10454,11 @@
             ],
             "title": "Run Id"
           },
+          "agent_active": {
+            "type": "boolean",
+            "title": "Agent Active",
+            "default": false
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",

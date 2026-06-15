@@ -348,7 +348,7 @@ def finding_to_task(
         user_id=user.id,
         project_id=research.research_target_id or finding.project_id,
         title=finding.title,
-        status="open",
+        status="todo",
         source="research",
     )
     db.add(task)

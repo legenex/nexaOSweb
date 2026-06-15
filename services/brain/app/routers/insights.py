@@ -161,7 +161,7 @@ def create_task(
     db: Session = Depends(get_db),
 ) -> CreateTaskResponse:
     insight = _load_active_insight(insight_id, user, db)
-    task = Task(user_id=user.id, project_id=None, title=insight.title[:300], status="open")
+    task = Task(user_id=user.id, project_id=None, title=insight.title[:300], status="todo")
     db.add(task)
     db.flush()
     insight.status = "tasked"

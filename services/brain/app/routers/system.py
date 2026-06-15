@@ -11,9 +11,9 @@ import platform
 import sys
 import threading
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
@@ -42,7 +42,7 @@ MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 
 # Captured at import so uptime is measured from process start.
 _STARTED_AT = time.time()
-_STARTED_AT_ISO = datetime.fromtimestamp(_STARTED_AT, tz=timezone.utc).isoformat()
+_STARTED_AT_ISO = datetime.fromtimestamp(_STARTED_AT, tz=UTC).isoformat()
 
 # A short grace so the HTTP response is flushed before the process is replaced. Tests
 # shorten this and replace the hook so pytest is never actually re-executed.

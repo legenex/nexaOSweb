@@ -107,8 +107,8 @@ def test_blocked_and_safe_tasks_split_into_buckets(client, seed_user, db_session
     db_session.add_all(
         [
             Task(user_id=seed_user.id, title="stuck", status="blocked"),
-            Task(user_id=seed_user.id, title="do me", status="open"),
-            Task(user_id=seed_user.id, title="gone", status="open", deleted_at=utcnow()),
+            Task(user_id=seed_user.id, title="do me", status="todo"),
+            Task(user_id=seed_user.id, title="gone", status="todo", deleted_at=utcnow()),
             Task(user_id=seed_user.id, title="finished", status="done"),
         ]
     )
@@ -177,7 +177,7 @@ def test_blocked_outranks_safe_task(client, seed_user, db_session, monkeypatch):
     db_session.add_all(
         [
             Task(user_id=seed_user.id, title="stuck", status="blocked"),
-            Task(user_id=seed_user.id, title="easy", status="open"),
+            Task(user_id=seed_user.id, title="easy", status="todo"),
         ]
     )
     db_session.commit()

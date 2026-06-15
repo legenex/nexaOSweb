@@ -21,19 +21,20 @@ def test_task_round_trip(client, seed_user, monkeypatch):
     task = created.json()
     assert task["title"] == "Draft the brief"
     assert task["detail"] == "Outline the key points."
-    assert task["status"] == "open"
+    assert task["status"] == "todo"
     assert task["source"] == "manual"
     assert task["run_id"] is None
+    assert task["agent_active"] is False
 
     fetched = client.get(f"/tasks/{task['id']}", headers=BEARER).json()
     assert fetched["title"] == "Draft the brief"
 
-    # Move it across the board, then complete it.
+    # Move it across the Hermes board, then complete it.
     moved = client.patch(
-        f"/tasks/{task['id']}", json={"status": "in_progress"}, headers=BEARER
+        f"/tasks/{task['id']}", json={"status": "doing"}, headers=BEARER
     )
     assert moved.status_code == 200
-    assert moved.json()["status"] == "in_progress"
+    assert moved.json()["status"] == "doing"
 
     done = client.patch(f"/tasks/{task['id']}", json={"status": "done"}, headers=BEARER)
     assert done.json()["status"] == "done"
@@ -71,8 +72,26 @@ def test_project_filter(client, seed_user, db_session, monkeypatch):
     ).json()
     assert [t["title"] for t in scoped] == ["linked"]
 
-    open_only = client.get("/tasks", params={"status": "open"}, headers=BEARER).json()
+    open_only = client.get("/tasks", params={"status": "todo"}, headers=BEARER).json()
     assert {t["title"] for t in open_only} == {"linked", "loose"}
+
+
+def test_agent_active_surfaces_run_linked_task(client, seed_user, db_session, monkeypatch):
+    _enable_bearer(monkeypatch)
+    from app.models.runtime import AgentRun
+    from app.models.workspace import Task
+
+    run = AgentRun(status="executing", kind="executor")
+    db_session.add(run)
+    db_session.flush()
+    live = Task(user_id=seed_user.id, title="run linked", status="doing", source="run", run_id=run.id)
+    idle = Task(user_id=seed_user.id, title="plain", status="doing", source="manual")
+    db_session.add_all([live, idle])
+    db_session.commit()
+
+    by_title = {t["title"]: t for t in client.get("/tasks", headers=BEARER).json()}
+    assert by_title["run linked"]["agent_active"] is True
+    assert by_title["plain"]["agent_active"] is False
 
 
 def test_detach_versus_unchanged_project(client, seed_user, db_session, monkeypatch):

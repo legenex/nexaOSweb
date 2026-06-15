@@ -84,7 +84,7 @@ def _gather_context(db: Session, user_id: int) -> dict[str, Any]:
     )
     open_tasks = (
         db.query(Task)
-        .filter(Task.user_id == user_id, Task.status == "open", Task.deleted_at.is_(None))
+        .filter(Task.user_id == user_id, Task.status == "todo", Task.deleted_at.is_(None))
         .count()
     )
     integrations = (
