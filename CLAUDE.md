@@ -50,5 +50,13 @@ The Brain selects a model by semantic key from services/brain/config/models.yaml
 - Desktop: pnpm --filter desktop tauri dev.
 - Client regen: pnpm gen:client after the Brain OpenAPI changes.
 
+## Deploying to production (nexa.legenex.com, Plesk VPS)
+After every committed update, restate these deploy steps in detail so the user can take it live. Pushing alone does not deploy; the server still has to build.
+1. Code to GitHub: commit by explicit path, then push main (pushing is automatic now, do not wait to be asked).
+2. Build and publish on the server. Plesk Git auto deploys main to app_src but only copies source; it does not build the web or restart the Brain unless the build script is saved as the Plesk Additional deployment action. The reliable path is to run that same build as the site user over SSH:
+   `sudo -u legenex.com_vvdx4ff41il bash -lc 'set -e; APP=/var/www/vhosts/legenex.com/nexa.legenex.com/app_src; cd "$APP"; pnpm install --frozen-lockfile=false; pnpm --filter web build; rsync -a --delete apps/web/dist/ ../httpdocs/; cd services/brain; [ -d .venv ] || python3 -m venv .venv; .venv/bin/pip install -q --upgrade pip; .venv/bin/pip install -q .; sudo systemctl restart nexa-brain; echo DEPLOY_OK'`
+3. Verify: curl http://127.0.0.1:8847/healthz returns ok, then hard refresh https://nexa.legenex.com.
+Server facts: base /var/www/vhosts/legenex.com/nexa.legenex.com with app_src (git checkout), httpdocs (web docroot, the subdomain's real document root), data (storage roots), brain.env (secrets, root 600, not in git). The Brain runs as root via the nexa-brain systemd unit (ExecStartPre runs alembic upgrade head). Postgres listens on port 5433. Site user is legenex.com_vvdx4ff41il:psaserv. docs/DEPLOY_PLESK.md is the longer runbook (but it lists port 5432 and a different systemd build route than the verified setup above).
+
 ## Working style
 Prompts come from docs/BUILD_PLAYBOOK.md. Always look for prompts that can be combined and run together, and say so before starting: group prompts that are independent (no shared files, no migration or model ordering conflict) into one batch, and call out which prompt IDs can run together versus which must run alone. Keep migration prompts and model or config prompts serial, since each persists what the next reads. When a prompt assumes backend or data that does not exist yet, surface the gap and propose the smallest cross lane path rather than shipping a half wired surface. Close each prompt's acceptance criteria before advancing. Prefer a stated recommendation over a menu of options. Keep this file updated when a decision or a model name changes.
