@@ -1,8 +1,8 @@
 """Workspace models present from the data layer so later tabs can grow."""
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, TimestampMixin, utcnow
@@ -17,8 +17,20 @@ class Task(Base, TimestampMixin):
         ForeignKey("projects.id"), index=True, nullable=True
     )
     title: Mapped[str] = mapped_column(String(300), nullable=False)
-    # Optional longer description; the title stays the one line summary.
+    # Optional longer description, shown as Notes in the task dialog; the title stays the one line
+    # summary. There is no separate notes column: detail is the notes field.
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # What the user wants an agent to achieve with this task, free text, optional. Distinct from
+    # detail: detail describes the task, goal_for_agent is the instruction handed to a run.
+    goal_for_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # A loose human timeline, free text (for example "this week"), not a hard schedule.
+    timeline: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # low, med, or high. Validated in the router; defaults to med.
+    priority: Mapped[str] = mapped_column(String(10), default="med", nullable=False)
+    # Optional hard due date (calendar date, no time).
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Ordering within a board column. A drag sets status plus position; lists order by position.
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     # Hermes board: todo, doing, agent_working, review, done (plus archived). Validated in the
     # router. agent_working is also surfaced for a task whose run is live.
     status: Mapped[str] = mapped_column(String(40), default="todo", nullable=False)

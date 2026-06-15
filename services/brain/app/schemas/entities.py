@@ -1,6 +1,6 @@
 """Read schemas for the core entities. All read from ORM attributes."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -84,7 +84,12 @@ class TaskRead(ORMModel):
     project_id: int | None
     title: str
     detail: str | None
+    goal_for_agent: str | None
+    timeline: str | None
     status: str
+    priority: str
+    due_date: date | None
+    position: int
     source: str
     run_id: int | None
     # True when run_id points to a live agent run; the board surfaces these in Agent working.
