@@ -7,7 +7,26 @@ import { useFlow } from '../FlowProvider';
 
 type ProjectMode = Schemas['ProjectModeRead'];
 
-const SOURCES = ['note', 'voice', 'md', 'pdf', 'url', 'youtube', 'image', 'telegram', 'slack'];
+const SOURCES = ['note', 'voice', 'md', 'pdf', 'url', 'youtube', 'image', 'zip', 'telegram', 'slack'];
+
+interface ZipExtraction {
+  extracted?: { file: string; kind: string }[];
+  folded_text?: boolean;
+}
+
+// Pull the zip extraction note out of the captured item's stage history, if present.
+function zipNote(stageHistory: unknown): string | null {
+  if (!Array.isArray(stageHistory)) return null;
+  const entry = stageHistory.find(
+    (step): step is ZipExtraction & { source?: string } =>
+      typeof step === 'object' && step !== null && (step as { source?: string }).source === 'zip',
+  );
+  if (!entry) return null;
+  const assets = entry.extracted?.length ?? 0;
+  const parts = [`extracted ${assets} asset${assets === 1 ? '' : 's'}`];
+  if (entry.folded_text) parts.push('text folded into the capture');
+  return parts.join(', ');
+}
 
 // The interactive capture box: a drop target, name and description fields, source chips, a
 // project mode selector that drives the questions and destination, a Generate with AI button,
@@ -24,6 +43,7 @@ export function CaptureCard() {
   const [expanding, setExpanding] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -48,13 +68,15 @@ export function CaptureCard() {
     }
     setBusy(true);
     setError(null);
+    setNote(null);
     try {
-      await capture({ name, body, source, mode, file });
+      const created = await capture({ name, body, source, mode, file });
+      if (file && source === 'zip') setNote(zipNote(created.stage_history));
       setName('');
       setBody('');
       setFile(null);
     } catch {
-      setError('Capture failed.');
+      setError(source === 'zip' ? 'Zip rejected or capture failed.' : 'Capture failed.');
     } finally {
       setBusy(false);
     }
@@ -87,13 +109,14 @@ export function CaptureCard() {
           const dropped = event.dataTransfer.files?.[0];
           if (dropped) {
             setFile(dropped);
-            setSource('pdf');
+            setSource(dropped.name.toLowerCase().endsWith('.zip') ? 'zip' : 'pdf');
           }
         }}
         className="mb-3 rounded-lg border border-dashed border-line px-3 py-2 text-center"
       >
-        <MonoLabel tone="faint">{file ? file.name : 'drop a file'}</MonoLabel>
+        <MonoLabel tone="faint">{file ? file.name : 'drop a file or zip'}</MonoLabel>
       </div>
+      {note ? <p className="mb-3 text-xs text-status-green">Zip captured, {note}.</p> : null}
 
       <input
         aria-label="Project name"
