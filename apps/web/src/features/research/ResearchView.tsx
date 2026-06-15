@@ -38,6 +38,17 @@ function downloadMarkdown(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+// A small indeterminate spinner, used to show a research project is running. The brand accent on
+// a neutral line ring keeps it on theme; the optional label rides alongside.
+function Spinner({ label }: { label?: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-accent">
+      <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-line border-t-accent" />
+      {label ? <span className="mono-meta">{label}</span> : null}
+    </span>
+  );
+}
+
 function RunCard({
   run,
   onRerun,
@@ -145,6 +156,9 @@ export function ResearchView() {
   const [findings, setFindings] = useState<ResearchFinding[]>([]);
   const [running, setRunning] = useState(false);
   const [runningAll, setRunningAll] = useState<{ done: number; total: number } | null>(null);
+  // The set of research project ids whose run is in flight right now, so each library row can show
+  // a live running indicator. Both Run now and Run All Research feed it.
+  const [runningIds, setRunningIds] = useState<Set<number>>(() => new Set());
   const [runError, setRunError] = useState<string | null>(null);
   const [attachTarget, setAttachTarget] = useState<number | ''>('');
 
@@ -251,10 +265,21 @@ export function ResearchView() {
     setRenaming(null);
   }, [renaming, projects, loadProjects]);
 
+  // Add or remove a project id from the live running set, immutably so React sees the change.
+  const markRunning = useCallback((id: number, on: boolean) => {
+    setRunningIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
   const runNow = useCallback(async () => {
     if (selectedId === null) return;
     setRunning(true);
     setRunError(null);
+    markRunning(selectedId, true);
     try {
       const { error } = await api.POST('/research/{research_id}/runs', {
         params: { path: { research_id: selectedId } },
@@ -266,9 +291,10 @@ export function ResearchView() {
       }
       await loadDetail(selectedId);
     } finally {
+      markRunning(selectedId, false);
       setRunning(false);
     }
-  }, [selectedId, loadDetail]);
+  }, [selectedId, loadDetail, markRunning]);
 
   // Re-run a specific research project, then refresh the open detail.
   const rerunRun = useCallback(
@@ -281,25 +307,32 @@ export function ResearchView() {
     [selectedId, loadDetail],
   );
 
-  // Trigger a run on every research project, showing aggregate progress.
+  // Trigger a run on every research project, one after another, showing aggregate progress on the
+  // toolbar and a live spinner on each project as its own run runs.
   const runAll = useCallback(async () => {
-    if (projects.length === 0) return;
+    if (projects.length === 0 || runningAll !== null) return;
     setRunError(null);
     setRunningAll({ done: 0, total: projects.length });
     for (let index = 0; index < projects.length; index += 1) {
+      const id = projects[index]!.id;
+      markRunning(id, true);
       try {
         await api.POST('/research/{research_id}/runs', {
-          params: { path: { research_id: projects[index]!.id } },
+          params: { path: { research_id: id } },
         });
       } catch {
         // keep going; one project's failure does not stop the batch
+      } finally {
+        markRunning(id, false);
       }
       setRunningAll({ done: index + 1, total: projects.length });
+      // Refresh the open detail as its project finishes so findings appear without a manual reload.
+      if (selectedId === id) await loadDetail(id);
     }
     await loadProjects();
     if (selectedId !== null) await loadDetail(selectedId);
     setRunningAll(null);
-  }, [projects, loadProjects, loadDetail, selectedId]);
+  }, [projects, runningAll, loadProjects, loadDetail, selectedId, markRunning]);
 
   const attach = useCallback(async () => {
     if (selectedId === null || attachTarget === '') return;
@@ -399,9 +432,44 @@ export function ResearchView() {
 
   const attachOptions = buildProjects.filter((p) => p.id !== selectedId);
 
+  const runAllLabel = runningAll
+    ? `Running ${runningAll.done}/${runningAll.total}`
+    : 'Run All Research';
+  const runAllPercent = runningAll ? (runningAll.done / Math.max(runningAll.total, 1)) * 100 : 0;
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-      <aside className="space-y-4">
+    <div className="flex min-w-0 flex-col gap-5">
+      {/* Page-level toolbar: Run All Research lives here, always visible, so it runs every project
+          regardless of which one (if any) is selected. Aggregate progress shows beside it. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <MonoLabel tone="faint">all research</MonoLabel>
+          <span className="mono-meta text-faint">
+            {projects.length} {projects.length === 1 ? 'project' : 'projects'}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {runningAll ? (
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-300"
+                  style={{ width: `${runAllPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+          <Button
+            onClick={() => void runAll()}
+            disabled={runningAll !== null || projects.length === 0}
+          >
+            {runningAll ? <Spinner label={runAllLabel} /> : runAllLabel}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[300px_1fr]">
+        <aside className="space-y-4">
         <div className="flex items-center justify-between">
           <MonoLabel tone="faint">research library</MonoLabel>
           <Button
@@ -457,6 +525,11 @@ export function ResearchView() {
                         {project.name}
                       </button>
                     )}
+                    {runningIds.has(project.id) ? (
+                      <span className="mr-1 shrink-0" title="Running">
+                        <Spinner />
+                      </span>
+                    ) : null}
                     <OverflowMenu
                       label={`Actions for ${project.name}`}
                       items={[
@@ -483,7 +556,7 @@ export function ResearchView() {
         )}
       </aside>
 
-      <section className="space-y-5">
+      <section className="min-w-0 space-y-5">
         {selected === null ? (
           <GlassCard className="border-electric">
             <MonoLabel tone="faint">no research project selected</MonoLabel>
@@ -504,16 +577,7 @@ export function ResearchView() {
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Button onClick={() => void runNow()} disabled={running || runningAll !== null}>
-                    {running ? 'running' : 'Run now'}
-                  </Button>
-                  <Button
-                    variant="muted"
-                    onClick={() => void runAll()}
-                    disabled={runningAll !== null || projects.length === 0}
-                  >
-                    {runningAll
-                      ? `running ${runningAll.done}/${runningAll.total}`
-                      : 'Run All Research'}
+                    {running ? <Spinner label="running" /> : 'Run now'}
                   </Button>
                   <Button variant="outline" onClick={exportRuns} disabled={runs.length === 0}>
                     Export
@@ -621,6 +685,7 @@ export function ResearchView() {
           </>
         )}
       </section>
+      </div>
 
       <ResearchProjectDialog
         open={dialogOpen}
