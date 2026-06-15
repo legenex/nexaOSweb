@@ -18,10 +18,12 @@ from app.models.research import ProjectUpdate, ResearchFinding, ResearchRun
 from app.models.user import User
 from app.models.workspace import Task
 from app.offline import has_provider_keys
+from app.project_modes import DEFAULT_MODE, is_valid_mode
 from app.schemas.entities import ProjectRead, TaskRead
 from app.schemas.knowledge import KnowledgeEntryRead
 from app.schemas.research import (
     AttachRequest,
+    CreateProjectFromResearchRequest,
     GenerateConfigRequest,
     GenerateConfigResponse,
     ProjectUpdateRead,
@@ -249,6 +251,30 @@ def attach(
     db.commit()
     db.refresh(research)
     return research
+
+
+@router.post(
+    "/{research_id}/create-project",
+    response_model=ProjectRead,
+    status_code=http_status.HTTP_201_CREATED,
+)
+def create_project_from_research(
+    research_id: int,
+    payload: CreateProjectFromResearchRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> Project:
+    """Create a build project from a research project and attach the research to it in one step."""
+    research = _load_project(research_id, db)
+    name = (payload.name or research.name or "Research project").strip()[:300] or "Research project"
+    mode = payload.mode if is_valid_mode(payload.mode) else DEFAULT_MODE
+    project = Project(item_id=None, name=name, slug=slugify(name), stage="idea", mode=mode)
+    db.add(project)
+    db.flush()
+    research.research_target_id = project.id
+    db.commit()
+    db.refresh(project)
+    return project
 
 
 @router.post("/{research_id}/detach", response_model=ProjectRead)

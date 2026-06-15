@@ -4,6 +4,21 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.entities import ProjectRead
+
+
+class ProjectEditRequest(BaseModel):
+    # The builder style editable fields. Any subset may be provided; at least one is required.
+    build_destination: str | None = None
+    selected_integrations: list[str] | None = None
+    scope_note: str | None = None
+
+
+class ProjectEditResponse(BaseModel):
+    project: ProjectRead
+    run_id: int
+    build_log_entry_id: int
+
 
 class ProjectModeRead(BaseModel):
     key: str

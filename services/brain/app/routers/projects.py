@@ -17,13 +17,17 @@ from pathlib import Path
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.agents.process import ProcessError, read_plan_markdown, render_plan_markdown
 from app.agents.project_editor import (
     EditorError,
+    RenderedEdit,
     apply_edit,
     propose_edit,
+    proposed_entry,
     rollback_edit,
 )
 from app.db import get_db
+from app.gates import SAFE_TAGS
 from app.models.inbox import InboxItem
 from app.models.project import BuildLogEntry, Integration, Project
 from app.models.research import ProjectUpdate
@@ -34,6 +38,7 @@ from app.project_modes import (
     is_valid_mode,
     required_files_for,
 )
+from app.runtime import create_run, propose_step, record_execution
 from app.safety import PathSafetyError, ensure_within_root
 from app.schemas.entities import ProjectRead
 from app.schemas.projects import (
@@ -47,6 +52,8 @@ from app.schemas.projects import (
     FileContent,
     FileNode,
     FilesResponse,
+    ProjectEditRequest,
+    ProjectEditResponse,
     ProjectModeRead,
     ProjectOverview,
     ProjectRenameRequest,
@@ -510,6 +517,106 @@ def editor_rollback(
         build_log_id=rollback_entry.id,
         file_path=rollback_entry.file_path or "",
         status=rollback_entry.status,
+    )
+
+
+@router.post("/{project_id}/edit", response_model=ProjectEditResponse)
+def edit_project(
+    project_id: int,
+    payload: ProjectEditRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectEditResponse:
+    """Edit a project's builder fields and record the edit as an agent run.
+
+    The plan is rewritten through the path safety gate via the project editor, so the change is a
+    recoverable BuildLogEntry, and the whole edit is captured as an AgentRun with one verified
+    edit step. Soft and recoverable: nothing is destroyed.
+    """
+    project = _load_owned_project(project_id, user, db)
+
+    plan = dict(project.plan_json or {})
+    before = {
+        "build_destination": project.build_destination,
+        "selected_integrations": list(project.selected_integrations or []),
+    }
+    changes: list[str] = []
+    if payload.build_destination is not None:
+        project.build_destination = payload.build_destination
+        plan["proposed_build_destination"] = payload.build_destination
+        changes.append("build destination")
+    if payload.selected_integrations is not None:
+        project.selected_integrations = payload.selected_integrations
+        plan["likely_integrations"] = payload.selected_integrations
+        changes.append("integrations")
+    if payload.scope_note:
+        notes = list(plan.get("scope_notes") or [])
+        notes.append(payload.scope_note)
+        plan["scope_notes"] = notes
+        changes.append("scope")
+    if not changes:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "no changes provided")
+    project.plan_json = plan
+
+    # Rewrite project_plan.md through the editor (path safe, recoverable BuildLogEntry).
+    try:
+        before_content = read_plan_markdown(project)
+    except (ProcessError, PathSafetyError):
+        before_content = None
+    summary = f"Edit project: {', '.join(changes)}"
+    rendered = RenderedEdit(
+        file_path="project_plan.md",
+        before=before_content,
+        after=render_plan_markdown(project.name, plan),
+        summary=summary,
+        diff_summary=f"Updated {', '.join(changes)}",
+    )
+    entry = proposed_entry(db, project, rendered)
+    try:
+        apply_edit(db, project, entry)
+    except PathSafetyError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "path escapes the project folder") from exc
+
+    # Record the edit as an agent run with a single verified edit step.
+    run = create_run(
+        db,
+        project_id=project.id,
+        kind="project_edit",
+        autonomy_level=1,
+        goal_summary=summary,
+        proposed_by="user",
+    )
+    step = propose_step(
+        db,
+        run,
+        kind="edit",
+        title=summary,
+        intent=f"Apply project edit: {', '.join(changes)}",
+        payload={
+            "edit": {"file_path": "project_plan.md", "build_log_id": entry.id},
+            "risk": {tag: True for tag in SAFE_TAGS},
+            "changes": changes,
+            "before": before,
+        },
+        proposed_by="user",
+    )
+    record_execution(
+        db,
+        step,
+        outcome="completed",
+        evidence=[
+            {
+                "source": "tool",
+                "kind": "file_write",
+                "path": entry.file_path,
+                "build_log_id": entry.id,
+            }
+        ],
+    )
+    db.commit()
+    db.refresh(project)
+    return ProjectEditResponse(
+        project=ProjectRead.model_validate(project), run_id=run.id, build_log_entry_id=entry.id
     )
 
 

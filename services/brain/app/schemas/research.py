@@ -9,6 +9,12 @@ DepthLevel = Literal["quick", "standard", "deep"]
 ScheduleMode = Literal["off", "daily", "weekly"]
 
 
+class CreateProjectFromResearchRequest(BaseModel):
+    # Optional overrides; name defaults to the research project's name, mode to the app default.
+    name: str | None = Field(default=None, max_length=300)
+    mode: str | None = None
+
+
 class AttachRequest(BaseModel):
     target_project_id: int
 

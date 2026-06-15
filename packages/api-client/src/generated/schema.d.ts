@@ -743,6 +743,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{project_id}/edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit Project
+         * @description Edit a project's builder fields and record the edit as an agent run.
+         *
+         *     The plan is rewritten through the path safety gate via the project editor, so the change is a
+         *     recoverable BuildLogEntry, and the whole edit is captured as an AgentRun with one verified
+         *     edit step. Soft and recoverable: nothing is destroyed.
+         */
+        post: operations["edit_project_projects__project_id__edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{project_id}/approve": {
         parameters: {
             query?: never;
@@ -858,6 +882,26 @@ export interface paths {
         put?: never;
         /** Attach */
         post: operations["attach_research__research_id__attach_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/research/{research_id}/create-project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Project From Research
+         * @description Create a build project from a research project and attach the research to it in one step.
+         */
+        post: operations["create_project_from_research_research__research_id__create_project_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2176,6 +2220,13 @@ export interface components {
             /** Blended Per Mtok */
             blended_per_mtok?: number | null;
         };
+        /** CreateProjectFromResearchRequest */
+        CreateProjectFromResearchRequest: {
+            /** Name */
+            name?: string | null;
+            /** Mode */
+            mode?: string | null;
+        };
         /** CreateProjectResponse */
         CreateProjectResponse: {
             /** Insight Id */
@@ -3029,6 +3080,23 @@ export interface components {
             stage: string;
             /** Build Destination */
             build_destination?: string | null;
+        };
+        /** ProjectEditRequest */
+        ProjectEditRequest: {
+            /** Build Destination */
+            build_destination?: string | null;
+            /** Selected Integrations */
+            selected_integrations?: string[] | null;
+            /** Scope Note */
+            scope_note?: string | null;
+        };
+        /** ProjectEditResponse */
+        ProjectEditResponse: {
+            project: components["schemas"]["ProjectRead"];
+            /** Run Id */
+            run_id: number;
+            /** Build Log Entry Id */
+            build_log_entry_id: number;
         };
         /** ProjectModeRead */
         ProjectModeRead: {
@@ -5526,6 +5594,41 @@ export interface operations {
             };
         };
     };
+    edit_project_projects__project_id__edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectEditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectEditResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     approve_projects__project_id__approve_post: {
         parameters: {
             query?: never;
@@ -5790,6 +5893,41 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_project_from_research_research__research_id__create_project_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                research_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectFromResearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

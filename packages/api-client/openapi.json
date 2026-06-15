@@ -2183,6 +2183,59 @@
         }
       }
     },
+    "/projects/{project_id}/edit": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Edit Project",
+        "description": "Edit a project's builder fields and record the edit as an agent run.\n\nThe plan is rewritten through the path safety gate via the project editor, so the change is a\nrecoverable BuildLogEntry, and the whole edit is captured as an AgentRun with one verified\nedit step. Soft and recoverable: nothing is destroyed.",
+        "operationId": "edit_project_projects__project_id__edit_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectEditResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/projects/{project_id}/approve": {
       "post": {
         "tags": [
@@ -2538,6 +2591,59 @@
         },
         "responses": {
           "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/research/{research_id}/create-project": {
+      "post": {
+        "tags": [
+          "research"
+        ],
+        "summary": "Create Project From Research",
+        "description": "Create a build project from a research project and attach the research to it in one step.",
+        "operationId": "create_project_from_research_research__research_id__create_project_post",
+        "parameters": [
+          {
+            "name": "research_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Research Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectFromResearchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -6029,6 +6135,35 @@
         ],
         "title": "CostHint"
       },
+      "CreateProjectFromResearchRequest": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          }
+        },
+        "type": "object",
+        "title": "CreateProjectFromResearchRequest"
+      },
       "CreateProjectResponse": {
         "properties": {
           "insight_id": {
@@ -8401,6 +8536,70 @@
           "stage"
         ],
         "title": "ProjectBrief"
+      },
+      "ProjectEditRequest": {
+        "properties": {
+          "build_destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Build Destination"
+          },
+          "selected_integrations": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Integrations"
+          },
+          "scope_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope Note"
+          }
+        },
+        "type": "object",
+        "title": "ProjectEditRequest"
+      },
+      "ProjectEditResponse": {
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/ProjectRead"
+          },
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "build_log_entry_id": {
+            "type": "integer",
+            "title": "Build Log Entry Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project",
+          "run_id",
+          "build_log_entry_id"
+        ],
+        "title": "ProjectEditResponse"
       },
       "ProjectModeRead": {
         "properties": {
