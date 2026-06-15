@@ -56,12 +56,12 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
     <div className="flex h-full items-center justify-center">
       <form
         onSubmit={mode === 'signin' ? onSubmit : onRequestReset}
-        className="w-[320px] rounded-glass border border-line bg-surface/80 p-6 backdrop-blur"
+        className="border-electric border-electric-on w-[340px] rounded-glass border border-line bg-surface/80 p-7 text-center backdrop-blur"
       >
         <div className="mono-label">{mode === 'signin' ? 'sign in' : 'reset password'}</div>
-        <h1 className="mb-4 mt-1 text-xl font-semibold text-cream">nexaOSweb</h1>
+        <h1 className="mb-5 mt-1 text-2xl font-bold text-cream">NexaOS</h1>
 
-        <label className="mono-label" htmlFor="email">
+        <label className="mono-label block text-left" htmlFor="email">
           email
         </label>
         <input
@@ -75,7 +75,7 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
 
         {mode === 'signin' ? (
           <>
-            <label className="mono-label" htmlFor="password">
+            <label className="mono-label block text-left" htmlFor="password">
               password
             </label>
             <input

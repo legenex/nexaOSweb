@@ -53,9 +53,9 @@ export function ResetPassword({
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="w-[320px] rounded-glass border border-line bg-surface/80 p-6 backdrop-blur">
+      <div className="border-electric border-electric-on w-[340px] rounded-glass border border-line bg-surface/80 p-7 text-center backdrop-blur">
         <div className="mono-label">reset password</div>
-        <h1 className="mb-4 mt-1 text-xl font-semibold text-cream">nexaOSweb</h1>
+        <h1 className="mb-5 mt-1 text-2xl font-bold text-cream">NexaOS</h1>
 
         {done ? (
           <>
@@ -72,7 +72,7 @@ export function ResetPassword({
           </>
         ) : (
           <form onSubmit={onSubmit}>
-            <label className="mono-label" htmlFor="new-password">
+            <label className="mono-label block text-left" htmlFor="new-password">
               new password
             </label>
             <input
@@ -84,7 +84,7 @@ export function ResetPassword({
               className="mb-3 mt-1 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-cream outline-none focus:border-accent"
             />
 
-            <label className="mono-label" htmlFor="confirm-password">
+            <label className="mono-label block text-left" htmlFor="confirm-password">
               confirm password
             </label>
             <input
