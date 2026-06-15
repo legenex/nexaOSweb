@@ -28,6 +28,7 @@ from app.schemas.intake import ExpandRequest, ExpandResponse, ItemsPage
 from app.security.auth import current_user
 from app.settings import get_settings
 from app.util import safe_filename
+from app.zipcapture import ZipCaptureError, extract_zip
 
 router = APIRouter(prefix="/intake", tags=["intake"])
 
@@ -61,15 +62,33 @@ def capture(
     db.flush()  # assign id before placing the upload
 
     if file is not None and file.filename:
-        relative = Path("inbox") / str(item.id) / safe_filename(file.filename)
-        target = ensure_within_root(settings.nexa_uploads_root, relative)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("wb") as handle:
-            handle.write(file.file.read())
-        item.stage_history = [
-            *item.stage_history,
-            {"stage": "capture", "file": str(relative), "source": source},
-        ]
+        data = file.file.read()
+        if file.filename.lower().endswith(".zip"):
+            # Unpack the archive safely, fold text into the body, list assets as attachments.
+            try:
+                folded, attachments = extract_zip(settings.nexa_uploads_root, item.id, data)
+            except ZipCaptureError as exc:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"zip rejected: {exc}") from exc
+            if folded:
+                item.body = f"{item.body}\n\n{folded}".strip() if item.body else folded
+            item.stage_history = [
+                *item.stage_history,
+                {
+                    "stage": "capture",
+                    "source": "zip",
+                    "extracted": attachments,
+                    "folded_text": bool(folded),
+                },
+            ]
+        else:
+            relative = Path("inbox") / str(item.id) / safe_filename(file.filename)
+            target = ensure_within_root(settings.nexa_uploads_root, relative)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            item.stage_history = [
+                *item.stage_history,
+                {"stage": "capture", "file": str(relative), "source": source},
+            ]
 
     db.commit()
     db.refresh(item)
