@@ -17,9 +17,12 @@ export async function fetchReadiness(
   const { data, error, response } = await api.GET('/flow/items/{item_id}/readiness', {
     params: { path: { item_id: itemId } },
   });
+  // The Brain returns run_id 0 for a never assessed project (and 404 on older builds).
   if (response.status === 404) return 'unassessed';
   if (error || !data) throw new Error('readiness read failed');
-  return data as ReadinessAssessment;
+  const assessment = data as ReadinessAssessment;
+  if (assessment.run_id === 0) return 'unassessed';
+  return assessment;
 }
 
 // Run the assessment at the Human Gate. Returns the fresh result.
