@@ -118,16 +118,18 @@ function Shell() {
           </div>
           <div className="relative z-10 flex flex-1 overflow-hidden">
             <Sidebar active={active} onSelect={setActive} />
-            <main className="relative flex-1 overflow-auto p-8">
+            <main className="relative flex flex-1 flex-col overflow-hidden p-8">
               <HolographicBackdrop />
-              <div className="relative z-10 mb-4">
+              <div className="relative z-10 mb-4 shrink-0">
                 <PageHeader
                   title={pageTitleFor(baseKey, current.label)}
                   label={`${current.key} ${current.description}`}
                   uplink={UPLINK_SURFACES.has(baseKey)}
                 />
               </div>
-              <div className="relative z-10">
+              {/* The surface region owns the scroll so the header stays put. Full-height surfaces
+                  (the Tasks board) fill this flex child; normal pages scroll inside it. */}
+              <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
                 <Surface active={active} label={current.label} />
               </div>
             </main>

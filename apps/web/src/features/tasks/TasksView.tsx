@@ -621,15 +621,15 @@ function Column({
         const id = Number(event.dataTransfer.getData('text/task-id'));
         if (id) onDropTask(id, columnKey);
       }}
-      className={`flex w-72 shrink-0 flex-col rounded-glass border bg-canvas/40 transition ${
+      className={`flex h-full w-72 shrink-0 flex-col rounded-glass border bg-canvas/40 transition ${
         over ? 'border-accent/50 bg-accent/5' : 'border-line'
       }`}
     >
-      <div className="flex items-center justify-between border-b border-line px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b border-line px-3 py-2">
         <MonoLabel tone="cream">{label}</MonoLabel>
         <span className="mono-meta text-faint">{tasks.length}</span>
       </div>
-      <div className="flex flex-col gap-2 p-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2">
         {tasks.length === 0 ? (
           <p className="mono-meta px-1 py-3 text-center text-faint">no tasks</p>
         ) : (
@@ -860,9 +860,9 @@ export function TasksView() {
   const total = tasks?.length ?? 0;
 
   return (
-    <div className="space-y-5">
+    <div className="flex h-full flex-col gap-5">
       {/* Toolbar: project filter, view toggle, and the primary task actions. */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-line pb-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line pb-3">
         <label className="flex items-center gap-2">
           <MonoLabel tone="faint">project</MonoLabel>
           <select
@@ -916,8 +916,13 @@ export function TasksView() {
       ) : tasks === null ? (
         <p className="text-sm text-muted">Loading tasks…</p>
       ) : view === 'board' ? (
-        // The board: every column is always visible with its own Add a card, like Trello.
-        <div className={`flex gap-4 overflow-x-auto pb-2 ${dragging ? 'select-none' : ''}`}>
+        // The board: every column is always visible with its own Add a card, like Trello. It
+        // fills the surface height so columns run to the foot of the page and scroll internally.
+        <div
+          className={`flex min-h-0 flex-1 gap-4 overflow-x-auto pb-2 ${
+            dragging ? 'select-none' : ''
+          }`}
+        >
           {COLUMNS.map((column) => (
             <Column
               key={column.key}
@@ -937,7 +942,13 @@ export function TasksView() {
           ))}
         </div>
       ) : (
-        <ListView tasks={tasks} projectNameFor={projectNameFor} onOpen={(task) => setEditing(task)} />
+        <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+          <ListView
+            tasks={tasks}
+            projectNameFor={projectNameFor}
+            onOpen={(task) => setEditing(task)}
+          />
+        </div>
       )}
 
       {/* New Task dialog (full fields plus Generate with AI). */}

@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     nexa_uploads_root: str = "./.data/uploads"
     # Where the runtime stores large tool output referenced from step evidence by content_ref.
     nexa_runtime_root: str = "./.data/runtime"
+    # The build worker's sandbox root. Every Agent Build Engine workspace is an isolated working
+    # directory under this root, kept separate from the served project files in nexa_projects_root
+    # so agent execution never touches the live folders directly. Engine runs clone or init their
+    # target repo here, edit only here, and every path is validated through the path safety gate.
+    nexa_builds_root: str = "./.data/builds"
     # The Brain secret store root. Provider secrets live here, server side only, and are never
     # returned to a client. The runtime ledger holds only a reference into this store.
     nexa_secrets_root: str = "./.data/secrets"
