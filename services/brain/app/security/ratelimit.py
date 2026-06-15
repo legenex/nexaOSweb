@@ -27,3 +27,7 @@ class RateLimiter:
 
 
 login_limiter = RateLimiter(max_hits=5, window_seconds=60.0)
+# Password reset request and confirm share a throttle, kept modest to blunt both reset email
+# spamming and token guessing while leaving room for an honest retry. Callers namespace the key
+# (for example "pwreset:<host>") so it does not share a bucket with the login limiter.
+password_reset_limiter = RateLimiter(max_hits=5, window_seconds=300.0)

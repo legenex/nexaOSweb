@@ -1,11 +1,21 @@
 """Auth schemas."""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    # Same minimum as the user management password rules so a reset cannot set a weaker password.
+    new_password: str = Field(min_length=8, max_length=200)
 
 
 class LoginResponse(BaseModel):

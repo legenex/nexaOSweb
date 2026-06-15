@@ -89,6 +89,23 @@ class Settings(BaseSettings):
     # recovery run has a known good login. Leave off in steady state.
     nexa_seed_force_password: bool = False
 
+    # Public base URL of the web companion, used to build the link in a password reset email (for
+    # example https://nexa.legenex.com). Empty falls back to the first CORS origin, then localhost.
+    nexa_app_base_url: str = ""
+    # How long a password reset link stays valid, in minutes.
+    nexa_password_reset_ttl_minutes: int = 60
+
+    # Outbound email (SMTP), server side only. Used today for password reset links. When the host
+    # is empty the mailer is disabled and the reset link is written to the Brain log instead of
+    # sent, so the flow still works in local dev without a mail server. On Plesk point these at the
+    # server's mail service. The password lives only in the server .env, never in the apps.
+    nexa_smtp_host: str = ""
+    nexa_smtp_port: int = 587
+    nexa_smtp_user: str = ""
+    nexa_smtp_password: str = ""
+    nexa_smtp_from: str = ""
+    nexa_smtp_starttls: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
