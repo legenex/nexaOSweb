@@ -5,6 +5,7 @@ import { api } from '../../app/client';
 import { Button, Modal, MonoLabel, Pill } from '../../components/primitives';
 import { OverflowMenu } from '../../components/OverflowMenu';
 import { ConfirmDialog } from '../projects/workspace/ConfirmDialog';
+import { LabelPill, TaskDetail } from './TaskDetail';
 
 type Task = Schemas['TaskRead'];
 type Project = Schemas['ProjectRead'];
@@ -453,12 +454,25 @@ function TaskCard({
         </span>
       </div>
 
+      {task.labels && task.labels.length > 0 ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          {task.labels.map((label, index) => (
+            <LabelPill key={`${label.color}-${index}`} label={label} />
+          ))}
+        </div>
+      ) : null}
+
       {task.detail ? (
         <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-muted">{task.detail}</p>
       ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <PriorityPill priority={task.priority} />
+        {task.checklist && task.checklist.length > 0 ? (
+          <Pill variant="grey">
+            ✓ {task.checklist.filter((i) => i.done).length}/{task.checklist.length}
+          </Pill>
+        ) : null}
         {task.due_date ? <Pill variant="grey">due {task.due_date}</Pill> : null}
         {task.timeline ? <Pill variant="grey">{task.timeline}</Pill> : null}
         {projectName ? <Pill variant="grey">{projectName}</Pill> : null}
@@ -828,17 +842,6 @@ export function TasksView() {
     }
   };
 
-  const saveTask = async (task: Task, values: TaskFormValues) => {
-    const { error } = await api.PATCH('/tasks/{task_id}', {
-      params: { path: { task_id: task.id } },
-      body: buildBody(values),
-    });
-    if (!error) {
-      setEditing(null);
-      void loadTasks(filter);
-    }
-  };
-
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     setDeleteBusy(true);
@@ -948,24 +951,15 @@ export function TasksView() {
         />
       </Modal>
 
-      {/* Card detail: opening a card edits it in place, the board stays behind. */}
+      {/* Card detail: opening a card shows the full Trello-style detail (labels, checklist,
+          comments) and edits it in place, the board stays behind. */}
       <Modal open={editing !== null} title="Task" onClose={() => setEditing(null)}>
         {editing ? (
-          <TaskForm
-            initial={{
-              title: editing.title,
-              detail: editing.detail ?? '',
-              goal_for_agent: editing.goal_for_agent ?? '',
-              project_id: editing.project_id,
-              timeline: editing.timeline ?? '',
-              priority: (editing.priority as Priority) ?? 'med',
-              status: (columnFor(editing) ?? 'todo') as Status,
-              due_date: editing.due_date ?? null,
-            }}
+          <TaskDetail
+            task={editing}
             projects={projects}
-            submitLabel="Save"
-            onSubmit={(values) => saveTask(editing, values)}
-            onCancel={() => setEditing(null)}
+            onClose={() => setEditing(null)}
+            onChanged={() => void loadTasks(filter)}
           />
         ) : null}
       </Modal>
