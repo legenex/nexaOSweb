@@ -121,12 +121,7 @@ export function FlowPanorama() {
                 ref={(element) => {
                   cardsRef.current[index] = element;
                 }}
-                className={[
-                  'w-[280px] shrink-0 rounded-glass transition',
-                  dimmed ? 'opacity-40' : '',
-                  // The electric current animates only on the active stage.
-                  isActive ? 'border-electric border-electric-on border border-line' : '',
-                ].join(' ')}
+                className={['w-[280px] shrink-0 transition', dimmed ? 'opacity-40' : ''].join(' ')}
               >
                 <div className="mb-3 flex items-center gap-2">
                   <MonoLabel tone="accent">stage {stage.number}</MonoLabel>
@@ -136,7 +131,10 @@ export function FlowPanorama() {
                 <MonoLabel tone="faint" className="mb-3 block">
                   {stage.sublabel}
                 </MonoLabel>
-                {renderStageCard(stage.key, stage.headerLabel, selected)}
+                {/* The electric current rings only the active stage's card, not the whole column. */}
+                <div className={isActive ? 'relative rounded-glass border-electric border-electric-on' : ''}>
+                  {renderStageCard(stage.key, stage.headerLabel, selected)}
+                </div>
               </div>
             );
           })}
