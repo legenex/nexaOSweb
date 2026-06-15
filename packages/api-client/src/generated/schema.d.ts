@@ -2012,6 +2012,41 @@ export interface paths {
         patch: operations["update_task_tasks__task_id__patch"];
         trace?: never;
     };
+    "/tasks/{task_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Comments */
+        get: operations["list_comments_tasks__task_id__comments_get"];
+        put?: never;
+        /** Add Comment */
+        post: operations["add_comment_tasks__task_id__comments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/comments/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Comment */
+        delete: operations["delete_comment_tasks__task_id__comments__comment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -2240,6 +2275,18 @@ export interface components {
             text: string;
             /** Model */
             model: string;
+        };
+        /** ChecklistItem */
+        ChecklistItem: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /**
+             * Done
+             * @default false
+             */
+            done: boolean;
         };
         /** ClarifyRequest */
         ClarifyRequest: {
@@ -3958,6 +4005,29 @@ export interface components {
             /** Project Id */
             project_id?: number | null;
         };
+        /** TaskCommentCreate */
+        TaskCommentCreate: {
+            /** Body */
+            body: string;
+        };
+        /** TaskCommentRead */
+        TaskCommentRead: {
+            /** Id */
+            id: number;
+            /** Task Id */
+            task_id: number;
+            /** User Id */
+            user_id: number | null;
+            /** Author */
+            author: string;
+            /** Body */
+            body: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** TaskCreate */
         TaskCreate: {
             /** Title */
@@ -3976,6 +4046,10 @@ export interface components {
             priority?: string | null;
             /** Due Date */
             due_date?: string | null;
+            /** Checklist */
+            checklist?: components["schemas"]["ChecklistItem"][] | null;
+            /** Labels */
+            labels?: components["schemas"]["TaskLabel"][] | null;
         };
         /** TaskDraft */
         TaskDraft: {
@@ -3994,6 +4068,13 @@ export interface components {
         TaskDraftRequest: {
             /** Prompt */
             prompt: string;
+        };
+        /** TaskLabel */
+        TaskLabel: {
+            /** Name */
+            name: string;
+            /** Color */
+            color: string;
         };
         /** TaskRead */
         TaskRead: {
@@ -4019,6 +4100,16 @@ export interface components {
             due_date: string | null;
             /** Position */
             position: number;
+            /**
+             * Checklist
+             * @default []
+             */
+            checklist: components["schemas"]["ChecklistItem"][];
+            /**
+             * Labels
+             * @default []
+             */
+            labels: components["schemas"]["TaskLabel"][];
             /** Source */
             source: string;
             /** Run Id */
@@ -4056,6 +4147,10 @@ export interface components {
             due_date?: string | null;
             /** Position */
             position?: number | null;
+            /** Checklist */
+            checklist?: components["schemas"]["ChecklistItem"][] | null;
+            /** Labels */
+            labels?: components["schemas"]["TaskLabel"][] | null;
         };
         /** ToggleModelRequest */
         ToggleModelRequest: {
@@ -8198,6 +8293,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TaskRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_comments_tasks__task_id__comments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskCommentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_comment_tasks__task_id__comments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCommentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskCommentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_comment_tasks__task_id__comments__comment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
