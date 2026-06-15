@@ -38,30 +38,60 @@ function downloadMarkdown(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-function RunCard({ run }: { run: ResearchRun }) {
+function RunCard({
+  run,
+  onRerun,
+  onViewInsights,
+}: {
+  run: ResearchRun;
+  onRerun: () => void;
+  onViewInsights: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const takeaways = run.key_takeaways ?? [];
   const suggestions = run.suggestions ?? [];
+
+  const copySummary = () => {
+    const lines = [
+      `Run ${new Date(run.created_at).toLocaleString()} (${run.status})`,
+      run.summary,
+      ...(takeaways.length ? ['Key takeaways:', ...takeaways.map((t) => `- ${t}`)] : []),
+    ].filter(Boolean);
+    void navigator.clipboard?.writeText(lines.join('\n'));
+  };
+
   return (
     <div className="rounded-md border border-line bg-surface/60">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
-      >
-        <span className="mono-meta text-muted">{new Date(run.created_at).toLocaleString()}</span>
-        <span className="flex items-center gap-2">
-          <Pill
-            variant={
-              run.status === 'completed' ? 'green' : run.status === 'failed' ? 'grey' : 'accent'
-            }
-          >
-            {run.status}
-          </Pill>
-          <span className="mono-meta text-faint">{run.findings_count} findings</span>
-        </span>
-      </button>
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="flex flex-1 items-center justify-between gap-3 text-left"
+        >
+          <span className="mono-meta text-muted">
+            pulled {new Date(run.created_at).toLocaleString()}
+          </span>
+          <span className="flex items-center gap-2">
+            <Pill
+              variant={
+                run.status === 'completed' ? 'green' : run.status === 'failed' ? 'grey' : 'accent'
+              }
+            >
+              {run.status}
+            </Pill>
+            <span className="mono-meta text-faint">{run.findings_count} findings</span>
+          </span>
+        </button>
+        <OverflowMenu
+          label="Run actions"
+          items={[
+            { label: 'Re-run', onClick: onRerun },
+            { label: 'Copy', onClick: copySummary },
+            { label: 'View Insights', onClick: onViewInsights },
+          ]}
+        />
+      </div>
       {open ? (
         <div className="space-y-3 border-t border-line px-3 py-3">
           {run.summary ? (
@@ -114,6 +144,7 @@ export function ResearchView() {
   const [runs, setRuns] = useState<ResearchRun[]>([]);
   const [findings, setFindings] = useState<ResearchFinding[]>([]);
   const [running, setRunning] = useState(false);
+  const [runningAll, setRunningAll] = useState<{ done: number; total: number } | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [attachTarget, setAttachTarget] = useState<number | ''>('');
 
@@ -238,6 +269,37 @@ export function ResearchView() {
       setRunning(false);
     }
   }, [selectedId, loadDetail]);
+
+  // Re-run a specific research project, then refresh the open detail.
+  const rerunRun = useCallback(
+    async (researchId: number) => {
+      await api.POST('/research/{research_id}/runs', {
+        params: { path: { research_id: researchId } },
+      });
+      if (selectedId !== null) await loadDetail(selectedId);
+    },
+    [selectedId, loadDetail],
+  );
+
+  // Trigger a run on every research project, showing aggregate progress.
+  const runAll = useCallback(async () => {
+    if (projects.length === 0) return;
+    setRunError(null);
+    setRunningAll({ done: 0, total: projects.length });
+    for (let index = 0; index < projects.length; index += 1) {
+      try {
+        await api.POST('/research/{research_id}/runs', {
+          params: { path: { research_id: projects[index]!.id } },
+        });
+      } catch {
+        // keep going; one project's failure does not stop the batch
+      }
+      setRunningAll({ done: index + 1, total: projects.length });
+    }
+    await loadProjects();
+    if (selectedId !== null) await loadDetail(selectedId);
+    setRunningAll(null);
+  }, [projects, loadProjects, loadDetail, selectedId]);
 
   const attach = useCallback(async () => {
     if (selectedId === null || attachTarget === '') return;
@@ -441,8 +503,17 @@ export function ResearchView() {
                   ) : null}
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button onClick={() => void runNow()} disabled={running}>
+                  <Button onClick={() => void runNow()} disabled={running || runningAll !== null}>
                     {running ? 'running' : 'Run now'}
+                  </Button>
+                  <Button
+                    variant="muted"
+                    onClick={() => void runAll()}
+                    disabled={runningAll !== null || projects.length === 0}
+                  >
+                    {runningAll
+                      ? `running ${runningAll.done}/${runningAll.total}`
+                      : 'Run All Research'}
                   </Button>
                   <Button variant="outline" onClick={exportRuns} disabled={runs.length === 0}>
                     Export
@@ -521,7 +592,12 @@ export function ResearchView() {
               ) : (
                 <div className="scroll-themed max-h-80 space-y-2 overflow-y-auto pr-1">
                   {runs.map((run) => (
-                    <RunCard key={run.id} run={run} />
+                    <RunCard
+                      key={run.id}
+                      run={run}
+                      onRerun={() => void rerunRun(run.project_id)}
+                      onViewInsights={() => navigate('insights')}
+                    />
                   ))}
                 </div>
               )}
