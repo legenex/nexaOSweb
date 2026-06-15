@@ -641,7 +641,7 @@ export function ModelsAgentsPanel() {
   return (
     <div className="space-y-8">
       <section>
-        <MonoLabel tone="accent">providers</MonoLabel>
+        <MonoLabel tone="accent">API's</MonoLabel>
         <p className="mt-2 mb-3 max-w-prose text-sm text-muted">
           Connect a model provider once by handing it its API key. The key goes straight to the
           Brain and is never echoed back; only a masked last four hint is shown.
