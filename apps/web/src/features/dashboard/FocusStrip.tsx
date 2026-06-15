@@ -71,8 +71,8 @@ export function FocusStrip({ summary }: { summary: DashboardSummary }) {
   return (
     <GlassCard className="border-electric">
       <div className="mb-3 flex items-center justify-between">
-        <MonoLabel tone="accent">today's focus</MonoLabel>
-        <span className="mono-meta">top three · read only</span>
+        <MonoLabel tone="accent">ai insights</MonoLabel>
+        <span className="mono-meta">what to act on now · read only</span>
       </div>
 
       {items.length === 0 ? (

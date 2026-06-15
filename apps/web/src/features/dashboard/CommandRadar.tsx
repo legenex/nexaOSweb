@@ -1,46 +1,52 @@
 import type { ReactNode } from 'react';
 import type { Schemas } from '@nexaosweb/api-client';
 
-import { GlassCard, MonoLabel, Pill, StatusDot } from '../../components/primitives';
-import type { DotState } from '../../components/primitives';
-import { ConfidenceMeter, EmptyLine, TileCount } from './parts';
+import { MonoLabel, Pill } from '../../components/primitives';
+import { ConfidenceMeter } from './parts';
 
 type DashboardSummary = Schemas['DashboardSummary'];
 
-function Tile({
-  label,
-  count,
-  children,
-}: {
-  label: string;
-  count?: number;
-  children: ReactNode;
-}) {
+// A compact pipeline tile. Tighter than the old radar card so several read in one glance; the
+// count rides next to the label rather than as a large figure, since the headline numbers now
+// live in the pulse bar above.
+function Tile({ label, count, children }: { label: string; count: number; children: ReactNode }) {
   return (
-    <GlassCard className="border-electric">
+    <div className="rounded-glass border border-line bg-surface/60 p-4">
       <div className="mb-2 flex items-center justify-between">
         <MonoLabel tone="accent">{label}</MonoLabel>
-        {count !== undefined ? <TileCount value={count} /> : null}
+        <span className="mono-meta text-faint">{count}</span>
       </div>
       {children}
-    </GlassCard>
+    </div>
   );
 }
 
-function connectorState(status: string): DotState {
-  if (status === 'connected') return 'live';
-  if (status === 'available') return 'pending';
-  if (status === 'error' || status === 'failed') return 'error';
-  return 'warn';
-}
-
+// The pipeline: the live lists behind the pulse bar counts (projects in build, builds at the
+// gate, findings to convert, open tasks, recent captures). Health, connectors, and model usage
+// moved to the pulse bar and the AI systems rail, so this stays focused on work in flight. Only
+// tiles with content render; when the whole pipeline is clear, a single calm line shows instead.
 export function CommandRadar({ summary }: { summary: DashboardSummary }) {
+  const hasAny =
+    summary.active_projects.length > 0 ||
+    summary.builds_awaiting_approval.length > 0 ||
+    summary.research_ready.length > 0 ||
+    summary.suggested_tasks.length > 0 ||
+    summary.recent_uploads.length > 0;
+
+  if (!hasAny) {
+    return (
+      <div className="rounded-glass border border-line bg-surface/40 px-4 py-3">
+        <p className="text-sm text-muted">
+          Pipeline clear. Capture an idea or pull from research to put work in flight.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <Tile label="active projects" count={summary.active_projects_count}>
-        {summary.active_projects.length === 0 ? (
-          <EmptyLine>Nothing in build yet.</EmptyLine>
-        ) : (
+      {summary.active_projects.length > 0 ? (
+        <Tile label="active projects" count={summary.active_projects_count}>
           <ul className="space-y-1.5">
             {summary.active_projects.map((project) => (
               <li key={project.id} className="flex items-center justify-between gap-2">
@@ -49,13 +55,11 @@ export function CommandRadar({ summary }: { summary: DashboardSummary }) {
               </li>
             ))}
           </ul>
-        )}
-      </Tile>
+        </Tile>
+      ) : null}
 
-      <Tile label="awaiting approval" count={summary.builds_awaiting_approval_count}>
-        {summary.builds_awaiting_approval.length === 0 ? (
-          <EmptyLine>No builds at the gate.</EmptyLine>
-        ) : (
+      {summary.builds_awaiting_approval.length > 0 ? (
+        <Tile label="awaiting approval" count={summary.builds_awaiting_approval_count}>
           <ul className="space-y-1.5">
             {summary.builds_awaiting_approval.map((project) => (
               <li key={project.id} className="flex items-center justify-between gap-2">
@@ -64,13 +68,11 @@ export function CommandRadar({ summary }: { summary: DashboardSummary }) {
               </li>
             ))}
           </ul>
-        )}
-      </Tile>
+        </Tile>
+      ) : null}
 
-      <Tile label="research ready" count={summary.research_ready_count}>
-        {summary.research_ready.length === 0 ? (
-          <EmptyLine>No findings to convert.</EmptyLine>
-        ) : (
+      {summary.research_ready.length > 0 ? (
+        <Tile label="research ready" count={summary.research_ready_count}>
           <ul className="space-y-1.5">
             {summary.research_ready.map((finding) => (
               <li key={finding.id} className="flex items-center justify-between gap-2">
@@ -79,13 +81,11 @@ export function CommandRadar({ summary }: { summary: DashboardSummary }) {
               </li>
             ))}
           </ul>
-        )}
-      </Tile>
+        </Tile>
+      ) : null}
 
-      <Tile label="suggested tasks" count={summary.suggested_tasks_count}>
-        {summary.suggested_tasks.length === 0 ? (
-          <EmptyLine>No open tasks.</EmptyLine>
-        ) : (
+      {summary.suggested_tasks.length > 0 ? (
+        <Tile label="suggested tasks" count={summary.suggested_tasks_count}>
           <ul className="space-y-1.5">
             {summary.suggested_tasks.map((task) => (
               <li key={task.id} className="truncate text-sm text-cream">
@@ -93,13 +93,11 @@ export function CommandRadar({ summary }: { summary: DashboardSummary }) {
               </li>
             ))}
           </ul>
-        )}
-      </Tile>
+        </Tile>
+      ) : null}
 
-      <Tile label="recent uploads">
-        {summary.recent_uploads.length === 0 ? (
-          <EmptyLine>Nothing captured recently.</EmptyLine>
-        ) : (
+      {summary.recent_uploads.length > 0 ? (
+        <Tile label="recent uploads" count={summary.recent_uploads.length}>
           <ul className="space-y-1.5">
             {summary.recent_uploads.map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2">
@@ -108,57 +106,8 @@ export function CommandRadar({ summary }: { summary: DashboardSummary }) {
               </li>
             ))}
           </ul>
-        )}
-      </Tile>
-
-      <Tile label="connectors">
-        {summary.connector_health.length === 0 ? (
-          <EmptyLine>No connectors configured.</EmptyLine>
-        ) : (
-          <ul className="space-y-1.5">
-            {summary.connector_health.map((connector) => (
-              <li key={connector.provider} className="flex items-center gap-2">
-                <StatusDot state={connectorState(connector.status)} />
-                <span className="text-sm text-cream">{connector.provider}</span>
-                <span className="mono-meta ml-auto">{connector.status}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Tile>
-
-      <Tile label="model usage">
-        {summary.model_usage.length === 0 ? (
-          <EmptyLine>No model calls recorded.</EmptyLine>
-        ) : (
-          <ul className="space-y-1.5">
-            {summary.model_usage.map((usage) => (
-              <li key={usage.model_key} className="flex items-center justify-between gap-2">
-                <span className="font-mono text-xs text-cream">{usage.model_key}</span>
-                <span className="mono-meta">{usage.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Tile>
-
-      <Tile label="brain status">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <StatusDot state={summary.brain.status === 'ok' ? 'live' : 'error'} />
-            <span className="text-sm text-cream">{summary.brain.status}</span>
-            <span className="mono-meta ml-auto">v{summary.brain.version}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <StatusDot state={summary.brain.database_connected ? 'live' : 'error'} />
-            <span className="text-sm text-muted">database</span>
-          </div>
-          <div className="mono-meta">
-            dreaming {summary.brain.dreaming_enabled ? 'on' : 'off'} · sweep{' '}
-            {summary.brain.sweep_enabled ? 'on' : 'off'}
-          </div>
-        </div>
-      </Tile>
+        </Tile>
+      ) : null}
     </div>
   );
 }

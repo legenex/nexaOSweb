@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 // Small shared pieces for the cockpit. Orange is the only brand colour; the neutral track is
 // a white opacity tint, matching the existing chrome rather than a hardcoded hex.
 
@@ -13,13 +11,4 @@ export function ConfidenceMeter({ value }: { value: number }) {
       <span className="font-mono text-[0.62rem] text-muted">{pct}%</span>
     </div>
   );
-}
-
-// A big mono count, the node figure used across the radar tiles.
-export function TileCount({ value }: { value: number }) {
-  return <span className="font-mono text-3xl font-semibold text-cream">{value}</span>;
-}
-
-export function EmptyLine({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-muted">{children}</p>;
 }
