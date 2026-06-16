@@ -107,14 +107,17 @@ export function TaskDetail({
   const [sending, setSending] = useState(false);
   const [generating, setGenerating] = useState(false);
 
-  // Per task autonomy. The set level persists through the AB4.3 endpoint; the project default,
-  // read here, is the inherited baseline shown until this task is given its own level. TaskRead does
-  // not project the stored task level, so a fresh open shows the project default until overridden.
+  // Per task autonomy. TaskRead now projects the stored task level, so a reopen shows the real per
+  // task level, including an override set earlier through the AB4.3 endpoint. The project default,
+  // read here, is shown only as context for what the task inherited from.
   const projectAutonomy = useProjectAutonomy(projectId);
-  const [taskLevel, setTaskLevel] = useState<AutonomyLevel | null>(null);
+  const [taskLevel, setTaskLevel] = useState<AutonomyLevel>(normalizeLevel(task.autonomy));
   const [autonomyBusy, setAutonomyBusy] = useState(false);
-  const effectiveLevel: AutonomyLevel =
-    taskLevel ?? normalizeLevel(projectAutonomy.state?.default_level);
+  const effectiveLevel: AutonomyLevel = taskLevel;
+  // Resync when the dialog is reused for a different task: read that task's stored level.
+  useEffect(() => {
+    setTaskLevel(normalizeLevel(task.autonomy));
+  }, [task.id, task.autonomy]);
 
   const setAutonomy = async (level: AutonomyLevel) => {
     setTaskLevel(level);
@@ -520,8 +523,8 @@ export function TaskDetail({
           onChange={(level) => void setAutonomy(level)}
           busy={autonomyBusy}
           hint={
-            taskLevel === null
-              ? 'Inherits the project default. Pick a level to set it for this task.'
+            projectAutonomy.state
+              ? `Project default is ${projectAutonomy.state.default_level}. This task is set to ${effectiveLevel}.`
               : undefined
           }
         />
