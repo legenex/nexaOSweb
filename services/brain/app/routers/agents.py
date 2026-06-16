@@ -251,7 +251,7 @@ def set_project_kill_switch(
         halted = engage_kill_switch(db, project, resolved_by=user.email or "user")
         halted_ids = [run.id for run in halted]
     else:
-        release_kill_switch(db, project)
+        release_kill_switch(db, project, resolved_by=user.email or "user")
     db.refresh(project)
     return _project_autonomy_state(project, halted_ids)
 
@@ -411,7 +411,7 @@ def pause_orchestration(
 ) -> OrchestrationState:
     """Pause the orchestration loop: new dispatch is refused until it is resumed."""
     project = _load_project(project_id, user, db)
-    return OrchestrationState(**pause_loop(db, project))
+    return OrchestrationState(**pause_loop(db, project, actor=user.email or "user"))
 
 
 @router.post("/projects/{project_id}/resume", response_model=OrchestrationState)
@@ -422,4 +422,4 @@ def resume_orchestration(
 ) -> OrchestrationState:
     """Resume a paused orchestration loop so the next orchestrate call may run."""
     project = _load_project(project_id, user, db)
-    return OrchestrationState(**resume_loop(db, project))
+    return OrchestrationState(**resume_loop(db, project, actor=user.email or "user"))

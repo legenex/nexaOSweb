@@ -39,6 +39,13 @@ from app.agents.executor import (
     request_approval,
     rollback_executor_run,
 )
+from app.audit import (
+    audit_approval,
+    audit_backend_selection,
+    audit_gate_decision,
+    audit_kill_switch,
+    audit_run_start,
+)
 from app.autonomy import classify_risk, gate_decision, is_valid_level, normalize_level
 from app.engine import (
     DEFAULT_AGENT_TIMEOUT_SECONDS,
@@ -242,6 +249,23 @@ def _task_type(task: Task) -> str | None:
     return None
 
 
+def _selection_trail(choice) -> dict:
+    """Project the BackendChoice into the audit trail: the chosen backend and why each was skipped.
+
+    The considered list carries the per candidate verdict, including any candidate skipped over its
+    cost ceiling with its reason, so the whole selection is auditable from one row.
+    """
+    return {
+        "chosen": choice.backend,
+        "preferred": choice.preferred,
+        "policy_source": choice.policy_source,
+        "order": choice.order,
+        "override": choice.override,
+        "considered": choice.considered,
+        "reason": choice.reason,
+    }
+
+
 # --- the prompt ---------------------------------------------------------------------------
 
 
@@ -379,6 +403,10 @@ def start_build_run(
         tags=_task_tags(task),
         override=backend_name,
     )
+    # The backend selection trail is audited at project scope before any run exists, so a selection
+    # that ends with no usable backend (every candidate unavailable or over its cost ceiling) is
+    # recorded even though no run is created.
+    audit_backend_selection(db, project_id=project.id, trail=_selection_trail(choice))
     if choice.backend is None:
         raise BackendUnavailableError(
             f"no agent backend is available for this task: {choice.reason}"
@@ -428,6 +456,10 @@ def start_build_run(
     task.run_id = run.id
     db.commit()
 
+    audit_run_start(
+        db, run, actor=proposed_by, reason=f"build run for task {task.id} via {name}"
+    )
+
     workspace = Workspace(
         project_id=project.id, slug=project.slug, path=worktree_path, repo_url=None
     )
@@ -464,6 +496,16 @@ def start_build_run(
     _record_autonomy(run, decision)
     db.commit()
     db.refresh(run)
+
+    gate = _open_gate_step(db, run)
+    audit_gate_decision(
+        db,
+        run=run,
+        effective_level=decision.get("effective_level", ""),
+        categories=decision.get("categories", []),
+        reasons=decision.get("reasons", []),
+        step_id=gate.id if gate is not None else None,
+    )
 
     if decision["auto_advance"]:
         # Green start to finish: auto resolve the gate this run just opened and merge unattended.
@@ -532,6 +574,8 @@ def approve_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") 
     except ExecutorError as exc:
         raise BuildEngineError(str(exc)) from exc
 
+    audit_approval(db, action="approve", actor=resolved_by, run=run, step_id=gate.id)
+
     task = _run_task(db, run)
     if task is not None and task.deleted_at is None:
         task.status = "review"
@@ -557,6 +601,10 @@ def reject_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") -
         run.phase = PHASE_REJECTED
         db.commit()
 
+    audit_approval(
+        db, action="reject", actor=resolved_by, run=run, step_id=gate.id if gate else None
+    )
+
     task = _run_task(db, run)
     if task is not None and task.deleted_at is None:
         task.status = _task_prior_status(run)
@@ -580,6 +628,10 @@ def cancel_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") -
         resolve_approval(db, gate, resolution="rejected", resolved_by=resolved_by)
     run.phase = PHASE_CANCELLED
     db.commit()
+
+    audit_approval(
+        db, action="cancel", actor=resolved_by, run=run, step_id=gate.id if gate else None
+    )
 
     task = _run_task(db, run)
     if task is not None and task.deleted_at is None:
@@ -634,13 +686,22 @@ def engage_kill_switch(
         if run.status in ACTIVE_RUN_STATUSES:
             cancel_build_run(db, run, resolved_by=resolved_by)
             halted.append(run)
+    audit_kill_switch(
+        db,
+        action="engage",
+        actor=resolved_by,
+        project_id=project.id,
+        reason=f"halted {len(halted)} in flight run(s)",
+        detail={"halted_run_ids": [run.id for run in halted]},
+    )
     return halted
 
 
-def release_kill_switch(db: Session, project: Project) -> Project:
+def release_kill_switch(db: Session, project: Project, *, resolved_by: str = "user") -> Project:
     """Release the project kill switch so new runs may start again."""
     project.agent_kill_switch = False
     db.commit()
+    audit_kill_switch(db, action="release", actor=resolved_by, project_id=project.id)
     db.refresh(project)
     return project
 

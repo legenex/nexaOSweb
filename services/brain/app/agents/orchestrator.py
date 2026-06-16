@@ -33,6 +33,7 @@ from app.agents.build_engine import (
 )
 from app.agents.executor import PHASE_MERGED
 from app.agents.slicer import task_graph
+from app.audit import audit_orchestrator
 from app.models.base import utcnow
 from app.models.project import PMRun, Project
 from app.models.workspace import Task
@@ -306,23 +307,33 @@ def _final_status(db: Session, project: Project, stopped_reason: str | None) -> 
     return PM_BLOCKED
 
 
-def pause_loop(db: Session, project: Project) -> dict:
-    """Pause the loop: the orchestrator refuses to run until it is resumed. Soft state only."""
+def pause_loop(
+    db: Session, project: Project, *, reason: str = "manual", actor: str = "user"
+) -> dict:
+    """Pause the loop: the orchestrator refuses to run until it is resumed. Soft state only.
+
+    reason records why the loop paused (manual from the endpoint, budget when a project budget is
+    breached); the pause is recorded both on the loop state and as a governance audit event.
+    """
     pm = _get_or_create_pmrun(db, project)
     pm.status = PM_PAUSED
     state = dict(pm.state or {})
-    _append(state, "pauses", {"reason": "manual", "at": utcnow().isoformat()})
+    _append(state, "pauses", {"reason": reason, "at": utcnow().isoformat()})
     pm.state = state
     db.commit()
+    audit_orchestrator(
+        db, action="pause", actor=actor, project_id=project.id, reason=reason
+    )
     return orchestration_state(db, project)
 
 
-def resume_loop(db: Session, project: Project) -> dict:
+def resume_loop(db: Session, project: Project, *, actor: str = "user") -> dict:
     """Resume a paused loop so the next orchestrate call may run. Does not itself dispatch."""
     pm = _get_or_create_pmrun(db, project)
     if pm.status == PM_PAUSED:
         pm.status = PM_ACTIVE
         db.commit()
+        audit_orchestrator(db, action="resume", actor=actor, project_id=project.id)
     return orchestration_state(db, project)
 
 
