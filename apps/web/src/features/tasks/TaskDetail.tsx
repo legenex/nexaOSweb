@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Schemas } from '@nexaosweb/api-client';
 
 import { api } from '../../app/client';
+import { AutonomySelector, normalizeLevel, useProjectAutonomy } from '../../components/autonomy';
+import type { AutonomyLevel } from '../../components/autonomy';
 import { Button, MonoLabel } from '../../components/primitives';
 import { AgentRunPanel } from './AgentRunPanel';
 
@@ -104,6 +106,28 @@ export function TaskDetail({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  // Per task autonomy. The set level persists through the AB4.3 endpoint; the project default,
+  // read here, is the inherited baseline shown until this task is given its own level. TaskRead does
+  // not project the stored task level, so a fresh open shows the project default until overridden.
+  const projectAutonomy = useProjectAutonomy(projectId);
+  const [taskLevel, setTaskLevel] = useState<AutonomyLevel | null>(null);
+  const [autonomyBusy, setAutonomyBusy] = useState(false);
+  const effectiveLevel: AutonomyLevel =
+    taskLevel ?? normalizeLevel(projectAutonomy.state?.default_level);
+
+  const setAutonomy = async (level: AutonomyLevel) => {
+    setTaskLevel(level);
+    setAutonomyBusy(true);
+    try {
+      await api.PUT('/agents/tasks/{task_id}/autonomy', {
+        params: { path: { task_id: task.id } },
+        body: { level },
+      });
+    } finally {
+      setAutonomyBusy(false);
+    }
+  };
 
   const patch = useCallback(
     async (body: Record<string, unknown>) => {
@@ -486,6 +510,21 @@ export function TaskDetail({
             add
           </Button>
         </div>
+      </div>
+
+      {/* per task autonomy: green runs unattended, yellow gates, red never auto runs */}
+      <div className="border-t border-line pt-4">
+        <AutonomySelector
+          label="agent autonomy"
+          value={effectiveLevel}
+          onChange={(level) => void setAutonomy(level)}
+          busy={autonomyBusy}
+          hint={
+            taskLevel === null
+              ? 'Inherits the project default. Pick a level to set it for this task.'
+              : undefined
+          }
+        />
       </div>
 
       {/* agent build: send to agent, then the gated run review */}

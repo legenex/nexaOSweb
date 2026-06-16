@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { ReactNode } from 'react';
 
 import { HolographicSphere } from '../../components/HolographicSphere';
+import { ProjectAutonomyBar } from '../../components/autonomy';
 import { GlassCard, MonoLabel, Pill, StatusDot } from '../../components/primitives';
 import type { DotState } from '../../components/primitives';
 import { CaptureCard } from './cards/CaptureCard';
@@ -84,6 +85,16 @@ export function FlowPanorama() {
 
   return (
     <div className="space-y-5">
+      {selected?.project_id != null ? (
+        <div className="rounded-glass border border-line bg-surface/50 p-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <MonoLabel tone="accent">project builder</MonoLabel>
+            <MonoLabel tone="faint">{selected.name}</MonoLabel>
+          </div>
+          <ProjectAutonomyBar projectId={selected.project_id} variant="header" />
+        </div>
+      ) : null}
+
       <div className="rounded-glass border border-line bg-surface/50 p-3">
         <MonoLabel tone="faint" className="mb-2 block">
           runs

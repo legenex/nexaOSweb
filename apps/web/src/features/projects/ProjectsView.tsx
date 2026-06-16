@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { OverflowMenu } from '../../components/OverflowMenu';
+import { ProjectAutonomyBar } from '../../components/autonomy';
 import { Button, GlassCard, Modal, MonoLabel, Pill, StageTrack } from '../../components/primitives';
 import type { TrackNode } from '../../components/primitives';
 import { useFlow } from '../flow/FlowProvider';
@@ -191,6 +192,7 @@ export function ProjectsView() {
               </p>
             </button>
             <ProjectRunsBadge projectId={project.id} />
+            <ProjectAutonomyBar projectId={project.id} />
           </GlassCard>
         ))}
       </div>

@@ -2,11 +2,29 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Schemas } from '@nexaosweb/api-client';
 
 import { api } from '../../app/client';
+import { LEVEL_META, normalizeLevel, useProjectAutonomy } from '../../components/autonomy';
 import { Button, MonoLabel, Pill, StatusDot } from '../../components/primitives';
 import type { DotState } from '../../components/primitives';
 
 type Task = Schemas['TaskRead'];
 type AgentRun = Schemas['AgentRunDetail'];
+
+// The autonomy gate decision recorded on a run (see services/brain/app/autonomy.py): the effective
+// level, whether it auto advanced past the gate, and the categories and reasons behind any
+// escalation. Read defensively from the run's loosely typed autonomy dict.
+interface AutonomyDecision {
+  effective_level?: string;
+  auto_advance?: boolean;
+  is_red?: boolean;
+  categories?: string[];
+  reasons?: string[];
+}
+
+function readAutonomy(run: AgentRun): AutonomyDecision | null {
+  const raw = run.autonomy;
+  if (!raw || typeof raw !== 'object') return null;
+  return raw as AutonomyDecision;
+}
 
 // The build run lifecycle, as the panel reads it. status is the runtime roll up; phase is the
 // build marker the engine sets. running covers planned and executing, gate is awaiting review.
@@ -37,6 +55,47 @@ function phaseLabel(run: AgentRun): { text: string; dot: DotState } {
 const preClass =
   'mt-2 max-h-72 overflow-auto rounded-md border border-line bg-canvas p-3 font-mono text-[0.72rem] leading-relaxed text-cream whitespace-pre-wrap';
 
+// Surface the autonomy gate decision so a gated or auto merged run is explainable: the effective
+// level with its color, whether it auto advanced, and the categories and reasons behind any gate.
+function AutonomyDecisionPanel({ decision }: { decision: AutonomyDecision }) {
+  const level = normalizeLevel(decision.effective_level);
+  const meta = LEVEL_META[level];
+  const autoAdvanced = decision.auto_advance === true;
+  return (
+    <div className="mt-3">
+      <MonoLabel tone="faint">autonomy decision</MonoLabel>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5">
+          <StatusDot state={meta.dot} label={`${meta.label} autonomy`} />
+          <span className="mono-meta text-muted">{meta.label}</span>
+        </span>
+        <Pill variant={autoAdvanced ? 'green' : 'grey'}>
+          {autoAdvanced ? 'auto advanced' : 'gated for review'}
+        </Pill>
+      </div>
+      {decision.categories && decision.categories.length > 0 ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <MonoLabel tone="faint">categories</MonoLabel>
+          {decision.categories.map((category) => (
+            <Pill key={category} variant="grey">
+              {category}
+            </Pill>
+          ))}
+        </div>
+      ) : null}
+      {decision.reasons && decision.reasons.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {decision.reasons.map((reason) => (
+            <li key={reason} className="mono-meta text-faint">
+              {reason}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 // The Send to agent control plus the run review panel for one task. It owns the full loop: start a
 // run, poll its live status while it works, and once it parks at the human gate show the reasoning,
 // the diff, and the transcript with Approve, Reject, and Cancel. The provider key never appears
@@ -49,6 +108,9 @@ export function AgentRunPanel({ task, onChanged }: { task: Task; onChanged: () =
   const pollRef = useRef<number | null>(null);
 
   const hasProject = task.project_id != null;
+  // The project kill switch gates new runs: while engaged, Send to agent is disabled with a reason.
+  const projectAutonomy = useProjectAutonomy(task.project_id);
+  const killEngaged = projectAutonomy.state?.kill_switch_engaged ?? false;
 
   const loadRun = useCallback(async (runId: number): Promise<AgentRun | null> => {
     const { data, error: err } = await api.GET('/agents/runs/{run_id}', {
@@ -144,11 +206,19 @@ export function AgentRunPanel({ task, onChanged }: { task: Task; onChanged: () =
       <div className="border-t border-line pt-4">
         <MonoLabel tone="faint">agent build</MonoLabel>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Button variant="primary" onClick={() => void start()} disabled={busy || !hasProject}>
+          <Button
+            variant="primary"
+            onClick={() => void start()}
+            disabled={busy || !hasProject || killEngaged}
+          >
             {busy ? 'starting' : 'Send to agent'}
           </Button>
           {!hasProject ? (
             <span className="mono-meta text-faint">link a project first</span>
+          ) : killEngaged ? (
+            <span className="mono-meta text-danger">
+              kill switch engaged, release it to send new runs
+            </span>
           ) : (
             <span className="mono-meta text-faint">build this task in an isolated worktree</span>
           )}
@@ -160,6 +230,7 @@ export function AgentRunPanel({ task, onChanged }: { task: Task; onChanged: () =
 
   const { text, dot } = phaseLabel(run);
   const active = ACTIVE_STATUSES.has(run.status);
+  const decision = readAutonomy(run);
 
   return (
     <div className="border-t border-line pt-4">
@@ -175,6 +246,8 @@ export function AgentRunPanel({ task, onChanged }: { task: Task; onChanged: () =
       {RUNNING_STATUSES.has(run.status) ? (
         <p className="mt-2 mono-meta text-faint">The agent is working in the isolated worktree…</p>
       ) : null}
+
+      {decision ? <AutonomyDecisionPanel decision={decision} /> : null}
 
       {run.reasoning_summary ? (
         <div className="mt-3">
