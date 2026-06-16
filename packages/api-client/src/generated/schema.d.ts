@@ -2216,6 +2216,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/projects/{project_id}/cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Cost
+         * @description The project's agent spend: total, run count, token totals, and a per backend break down.
+         */
+        get: operations["get_project_cost_agents_projects__project_id__cost_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Budget
+         * @description The project's daily and monthly budget, its current spend, and whether dispatch is paused.
+         */
+        get: operations["get_project_budget_agents_projects__project_id__budget_get"];
+        /**
+         * Set Project Budget Limits
+         * @description Set the project's daily and monthly budget. Null for a field leaves that window unlimited.
+         */
+        put: operations["set_project_budget_limits_agents_projects__project_id__budget_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agents/projects/{project_id}/slice": {
         parameters: {
             query?: never;
@@ -2273,11 +2317,52 @@ export interface paths {
          * Orchestrate Project Loop
          * @description Run the orchestration loop for a project and return its state.
          *
-         *     Refused when the orchestrator flag is off (403), when the kill switch is engaged, when the project
-         *     is not approved, or when the loop is paused (409). Green tasks auto advance and unlock dependents;
-         *     yellow and red tasks park at the gate. The loop is bounded by a run cap and a wall-clock budget.
+         *     Refused when the orchestrator flag is off (403), when the kill switch is engaged, when the
+         *     project is not approved, or when the loop is paused (409). Green tasks auto advance and unlock
+         *     dependents; yellow and red tasks park at the gate. The loop is bounded by a run cap and a
+         *     wall-clock budget.
          */
         post: operations["orchestrate_project_loop_agents_projects__project_id__orchestrate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Audit
+         * @description The cross run governance feed, newest first, filterable by project, run, category, actor.
+         */
+        get: operations["list_audit_agents_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Project Audit
+         * @description Every governance event recorded for one project, newest first.
+         */
+        get: operations["list_project_audit_agents_projects__project_id__audit_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2419,6 +2504,10 @@ export interface components {
             reasoning_summary: string | null;
             /** Cost Usd */
             cost_usd: number | null;
+            /** Input Tokens */
+            input_tokens?: number | null;
+            /** Output Tokens */
+            output_tokens?: number | null;
             /** Goal Summary */
             goal_summary: string;
             /** Diff */
@@ -2536,6 +2625,52 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** AuditRead */
+        AuditRead: {
+            /** Id */
+            id: number;
+            /** Category */
+            category: string;
+            /** Action */
+            action: string;
+            /** Actor Type */
+            actor_type: string;
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Project Id */
+            project_id: number | null;
+            /** Run Id */
+            run_id: number | null;
+            /** Step Id */
+            step_id: number | null;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * BackendCost
+         * @description One backend's slice of a project's agent spend: its run count, cost, and token totals.
+         */
+        BackendCost: {
+            /** Backend */
+            backend: string;
+            /** Run Count */
+            run_count: number;
+            /** Cost Usd */
+            cost_usd: number;
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
         };
         /** Body_attach_to_entry_journal_entries__entry_id__attachments_post */
         Body_attach_to_entry_journal_entries__entry_id__attachments_post: {
@@ -3734,6 +3869,48 @@ export interface components {
             /** Build Destination */
             build_destination?: string | null;
         };
+        /**
+         * ProjectBudget
+         * @description A project's daily and monthly budget and its current spend in each window.
+         *
+         *     A null limit means unlimited for that window. exceeded and scope report whether dispatch would
+         *     be paused right now and which window is breached.
+         */
+        ProjectBudget: {
+            /** Project Id */
+            project_id: number;
+            /** Daily Usd */
+            daily_usd: number | null;
+            /** Monthly Usd */
+            monthly_usd: number | null;
+            /** Daily Spend */
+            daily_spend: number;
+            /** Monthly Spend */
+            monthly_spend: number;
+            /** Exceeded */
+            exceeded: boolean;
+            /** Scope */
+            scope: string | null;
+        };
+        /**
+         * ProjectCostRollup
+         * @description A project's agent spend: the total, the run count, the token totals, and a per backend break
+         *     down. Backed by the real per run usage the build engine records, never an estimate.
+         */
+        ProjectCostRollup: {
+            /** Project Id */
+            project_id: number;
+            /** Total Usd */
+            total_usd: number;
+            /** Run Count */
+            run_count: number;
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** By Backend */
+            by_backend: components["schemas"]["BackendCost"][];
+        };
         /** ProjectEditRequest */
         ProjectEditRequest: {
             /** Build Destination */
@@ -4374,6 +4551,16 @@ export interface components {
         SetProjectAutonomyRequest: {
             /** Default Level */
             default_level: string;
+        };
+        /**
+         * SetProjectBudgetRequest
+         * @description Set a project's daily and monthly budget. Null for a field leaves that window unlimited.
+         */
+        SetProjectBudgetRequest: {
+            /** Daily Usd */
+            daily_usd?: number | null;
+            /** Monthly Usd */
+            monthly_usd?: number | null;
         };
         /**
          * SetTaskAutonomyRequest
@@ -9271,6 +9458,103 @@ export interface operations {
             };
         };
     };
+    get_project_cost_agents_projects__project_id__cost_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCostRollup"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_budget_agents_projects__project_id__budget_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectBudget"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_project_budget_limits_agents_projects__project_id__budget_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetProjectBudgetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectBudget"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     slice_project_plan_agents_projects__project_id__slice_post: {
         parameters: {
             query?: never;
@@ -9355,6 +9639,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestrationState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_audit_agents_audit_get: {
+        parameters: {
+            query?: {
+                project_id?: number | null;
+                run_id?: number | null;
+                category?: string | null;
+                actor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_project_audit_agents_projects__project_id__audit_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                actor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRead"][];
                 };
             };
             /** @description Validation Error */
