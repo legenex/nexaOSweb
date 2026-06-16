@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .agents.scheduler import register_scheduler
 from .routers import (
+    agents,
     auth,
     dashboard,
     dreaming,
@@ -52,6 +53,7 @@ app.include_router(flow.router)
 app.include_router(projects.router)
 app.include_router(research.router)
 app.include_router(runtime.router)
+app.include_router(agents.router)
 app.include_router(insights.router)
 app.include_router(focus.router)
 app.include_router(knowledge.router)

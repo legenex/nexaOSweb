@@ -4,6 +4,7 @@ Importing this package registers every model on the shared metadata so Alembic a
 create_all can see them. New model modules are imported here as they are added.
 """
 
+from .audit import AgentAudit
 from .base import Base
 from .dreaming import DreamRun, MemoryCandidate
 from .inbox import ClassificationRecord, InboxItem, PipelineRun
@@ -49,4 +50,5 @@ __all__ = [
     "InsightRun",
     "AgentRun",
     "AgentStep",
+    "AgentAudit",
 ]

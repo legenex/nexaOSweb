@@ -10,10 +10,9 @@ active runs, and per status counts.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.access import user_owns_project as _user_owns_project
 from app.db import get_db
 from app.gates import recommend_gate
-from app.models.inbox import InboxItem
-from app.models.project import Project
 from app.models.runtime import AgentRun, AgentStep
 from app.models.user import User
 from app.runtime import (
@@ -35,19 +34,6 @@ from app.schemas.runtime import (
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/runtime", tags=["runtime"])
-
-
-def _user_owns_project(project_id: int | None, user: User, db: Session) -> bool:
-    # A run with no project is a system or container run, visible to the authenticated user.
-    if project_id is None:
-        return True
-    project = db.get(Project, project_id)
-    if project is None:
-        return False
-    if project.item_id is None:
-        return True
-    item = db.get(InboxItem, project.item_id)
-    return item is not None and item.user_id == user.id
 
 
 def _load_run(run_id: int, user: User, db: Session) -> AgentRun:
