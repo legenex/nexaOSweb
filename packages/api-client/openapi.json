@@ -5704,6 +5704,220 @@
         }
       }
     },
+    "/agents/runs": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Start Run",
+        "description": "Start a gated build run for one task, returned parked at the human gate (awaiting review).\n\nThe task must be the user's and belong to a project. The backend must be available in this\nenvironment (the CLI installed and the key set, server side); when it is not, this returns 503\nso the dev environment is told plainly rather than starting a run that cannot work.",
+        "operationId": "start_run_agents_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartBuildRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Run",
+        "description": "Return a build run with its diff, transcript, reasoning summary, backend, and cost.",
+        "operationId": "get_run_agents_runs__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/runs/{run_id}/approve": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Approve Run",
+        "description": "Approve the run: promote the diff into the project repo through the executor merge path.",
+        "operationId": "approve_run_agents_runs__run_id__approve_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/runs/{run_id}/reject": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Reject Run",
+        "description": "Reject the run: discard the diff through the rollback path and restore the task status.",
+        "operationId": "reject_run_agents_runs__run_id__reject_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Cancel Run",
+        "description": "Cancel an active run and return the task to its prior status.",
+        "operationId": "cancel_run_agents_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -5814,6 +6028,172 @@
           "model_key"
         ],
         "title": "AgentBinding"
+      },
+      "AgentRunDetail": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          },
+          "reasoning_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "goal_summary": {
+            "type": "string",
+            "title": "Goal Summary"
+          },
+          "diff": {
+            "type": "string",
+            "title": "Diff"
+          },
+          "diff_shortstat": {
+            "type": "string",
+            "title": "Diff Shortstat"
+          },
+          "diff_capped": {
+            "type": "boolean",
+            "title": "Diff Capped"
+          },
+          "transcript": {
+            "type": "string",
+            "title": "Transcript"
+          },
+          "files_changed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files Changed"
+          },
+          "gate_step_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate Step Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "task_id",
+          "status",
+          "kind",
+          "phase",
+          "backend",
+          "reasoning_summary",
+          "cost_usd",
+          "goal_summary",
+          "diff",
+          "diff_shortstat",
+          "diff_capped",
+          "transcript",
+          "files_changed",
+          "gate_step_id",
+          "created_at",
+          "updated_at",
+          "finished_at"
+        ],
+        "title": "AgentRunDetail",
+        "description": "One build run with everything the review panel shows.\n\nstatus is the runtime roll up; phase is the build lifecycle marker (build, gate, merged,\nrolled_back, rejected, cancelled, failed). gate_step_id is the open human gate when the run is\nawaiting review, else null. diff and transcript are the full spilled text, capped server side."
       },
       "ApprovalRequest": {
         "properties": {
@@ -10416,6 +10796,61 @@
             ],
             "title": "Pm Run Id"
           },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          },
+          "reasoning_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -10554,6 +10989,61 @@
               }
             ],
             "title": "Pm Run Id"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          },
+          "reasoning_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning Summary"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
           },
           "created_at": {
             "type": "string",
@@ -10730,6 +11220,31 @@
           "type"
         ],
         "title": "SourceRef"
+      },
+      "StartBuildRunRequest": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id"
+        ],
+        "title": "StartBuildRunRequest",
+        "description": "Start a build run for one task, optionally naming the backend (defaults to claude-code)."
       },
       "StepRead": {
         "properties": {

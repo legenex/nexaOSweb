@@ -2047,6 +2047,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Run
+         * @description Start a gated build run for one task, returned parked at the human gate (awaiting review).
+         *
+         *     The task must be the user's and belong to a project. The backend must be available in this
+         *     environment (the CLI installed and the key set, server side); when it is not, this returns 503
+         *     so the dev environment is told plainly rather than starting a run that cannot work.
+         */
+        post: operations["start_run_agents_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run
+         * @description Return a build run with its diff, transcript, reasoning summary, backend, and cost.
+         */
+        get: operations["get_run_agents_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/runs/{run_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Run
+         * @description Approve the run: promote the diff into the project repo through the executor merge path.
+         */
+        post: operations["approve_run_agents_runs__run_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/runs/{run_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject Run
+         * @description Reject the run: discard the diff through the rollback path and restore the task status.
+         */
+        post: operations["reject_run_agents_runs__run_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description Cancel an active run and return the task to its prior status.
+         */
+        post: operations["cancel_run_agents_runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -2094,6 +2198,60 @@ export interface components {
             model_key: string;
             /** Resolved Model */
             resolved_model?: string | null;
+        };
+        /**
+         * AgentRunDetail
+         * @description One build run with everything the review panel shows.
+         *
+         *     status is the runtime roll up; phase is the build lifecycle marker (build, gate, merged,
+         *     rolled_back, rejected, cancelled, failed). gate_step_id is the open human gate when the run is
+         *     awaiting review, else null. diff and transcript are the full spilled text, capped server side.
+         */
+        AgentRunDetail: {
+            /** Id */
+            id: number;
+            /** Project Id */
+            project_id: number | null;
+            /** Task Id */
+            task_id: number | null;
+            /** Status */
+            status: string;
+            /** Kind */
+            kind: string;
+            /** Phase */
+            phase: string | null;
+            /** Backend */
+            backend: string | null;
+            /** Reasoning Summary */
+            reasoning_summary: string | null;
+            /** Cost Usd */
+            cost_usd: number | null;
+            /** Goal Summary */
+            goal_summary: string;
+            /** Diff */
+            diff: string;
+            /** Diff Shortstat */
+            diff_shortstat: string;
+            /** Diff Capped */
+            diff_capped: boolean;
+            /** Transcript */
+            transcript: string;
+            /** Files Changed */
+            files_changed: string[];
+            /** Gate Step Id */
+            gate_step_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Finished At */
+            finished_at: string | null;
         };
         /**
          * ApprovalRequest
@@ -3819,6 +3977,16 @@ export interface components {
             parent_run_id: number | null;
             /** Pm Run Id */
             pm_run_id: number | null;
+            /** Phase */
+            phase?: string | null;
+            /** Backend */
+            backend?: string | null;
+            /** Reasoning Summary */
+            reasoning_summary?: string | null;
+            /** Cost Usd */
+            cost_usd?: number | null;
+            /** Task Id */
+            task_id?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -3864,6 +4032,16 @@ export interface components {
             parent_run_id: number | null;
             /** Pm Run Id */
             pm_run_id: number | null;
+            /** Phase */
+            phase?: string | null;
+            /** Backend */
+            backend?: string | null;
+            /** Reasoning Summary */
+            reasoning_summary?: string | null;
+            /** Cost Usd */
+            cost_usd?: number | null;
+            /** Task Id */
+            task_id?: number | null;
             /**
              * Created At
              * Format: date-time
@@ -3919,6 +4097,16 @@ export interface components {
             type: string;
             /** Id */
             id?: number | null;
+        };
+        /**
+         * StartBuildRunRequest
+         * @description Start a build run for one task, optionally naming the backend (defaults to claude-code).
+         */
+        StartBuildRunRequest: {
+            /** Task Id */
+            task_id: number;
+            /** Backend */
+            backend?: string | null;
         };
         /** StepRead */
         StepRead: {
@@ -8389,6 +8577,163 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_agents_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartBuildRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_agents_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_run_agents_runs__run_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_run_agents_runs__run_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_agents_runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
             };
             /** @description Validation Error */
             422: {
