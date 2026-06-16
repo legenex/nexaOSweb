@@ -7,7 +7,7 @@ settings only and never enters a prompt or a response. Ownership is gated throug
 the same rule the runtime reads use.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.agents.build_engine import (
@@ -36,7 +36,9 @@ from app.agents.orchestrator import (
     resume_loop,
 )
 from app.agents.slicer import SlicerError, slice_plan, task_graph
+from app.audit import CATEGORY_ACTIONS
 from app.db import get_db
+from app.models.audit import AgentAudit
 from app.models.inbox import InboxItem
 from app.models.project import Project
 from app.models.runtime import AgentRun
@@ -54,6 +56,7 @@ from app.schemas.agents import (
     TaskAutonomyState,
     TaskGraph,
 )
+from app.schemas.audit import AuditRead
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -299,9 +302,10 @@ def orchestrate_project_loop(
 ) -> OrchestrationState:
     """Run the orchestration loop for a project and return its state.
 
-    Refused when the orchestrator flag is off (403), when the kill switch is engaged, when the project
-    is not approved, or when the loop is paused (409). Green tasks auto advance and unlock dependents;
-    yellow and red tasks park at the gate. The loop is bounded by a run cap and a wall-clock budget.
+    Refused when the orchestrator flag is off (403), when the kill switch is engaged, when the
+    project is not approved, or when the loop is paused (409). Green tasks auto advance and unlock
+    dependents; yellow and red tasks park at the gate. The loop is bounded by a run cap and a
+    wall-clock budget.
     """
     project = _load_project(project_id, user, db)
     payload = payload or OrchestrateRequest()
@@ -322,6 +326,70 @@ def orchestrate_project_loop(
     ) as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return OrchestrationState(**state)
+
+
+# --- the governance audit log (read only) -------------------------------------------------
+
+# A read cap so a single call can never stream the whole log. The reads are newest first, so the
+# default window is the most recent activity; a caller paginates with a tighter filter.
+_AUDIT_DEFAULT_LIMIT = 200
+_AUDIT_MAX_LIMIT = 1000
+
+
+def _visible_audit(rows: list[AgentAudit], user: User, db: Session) -> list[AgentAudit]:
+    return [row for row in rows if _user_owns_project(row.project_id, user, db)]
+
+
+@router.get("/audit", response_model=list[AuditRead])
+def list_audit(
+    project_id: int | None = Query(None),
+    run_id: int | None = Query(None),
+    category: str | None = Query(None),
+    actor: str | None = Query(None),
+    limit: int = Query(_AUDIT_DEFAULT_LIMIT, ge=1, le=_AUDIT_MAX_LIMIT),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[AgentAudit]:
+    """The cross run governance feed, newest first, filterable by project, run, category, actor."""
+    if category is not None and category not in CATEGORY_ACTIONS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"unknown category {category!r}")
+    if project_id is not None and not _user_owns_project(project_id, user, db):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "project not found")
+
+    query = db.query(AgentAudit)
+    if project_id is not None:
+        query = query.filter(AgentAudit.project_id == project_id)
+    if run_id is not None:
+        query = query.filter(AgentAudit.run_id == run_id)
+    if category is not None:
+        query = query.filter(AgentAudit.category == category)
+    if actor is not None:
+        query = query.filter(AgentAudit.actor == actor)
+    rows = query.order_by(AgentAudit.created_at.desc(), AgentAudit.id.desc()).all()
+    return _visible_audit(rows, user, db)[:limit]
+
+
+@router.get("/projects/{project_id}/audit", response_model=list[AuditRead])
+def list_project_audit(
+    project_id: int,
+    category: str | None = Query(None),
+    actor: str | None = Query(None),
+    limit: int = Query(_AUDIT_DEFAULT_LIMIT, ge=1, le=_AUDIT_MAX_LIMIT),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> list[AgentAudit]:
+    """Every governance event recorded for one project, newest first."""
+    _load_project(project_id, user, db)
+    if category is not None and category not in CATEGORY_ACTIONS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"unknown category {category!r}")
+
+    query = db.query(AgentAudit).filter(AgentAudit.project_id == project_id)
+    if category is not None:
+        query = query.filter(AgentAudit.category == category)
+    if actor is not None:
+        query = query.filter(AgentAudit.actor == actor)
+    rows = query.order_by(AgentAudit.created_at.desc(), AgentAudit.id.desc()).all()
+    return rows[:limit]
 
 
 @router.get("/projects/{project_id}/orchestration", response_model=OrchestrationState)
