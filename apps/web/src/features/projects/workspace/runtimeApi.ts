@@ -4,11 +4,26 @@
 
 import type { Schemas } from '@nexaosweb/api-client';
 
+import type { DotState } from '../../../components/primitives';
 import { api } from '../../../app/client';
 
 export type Run = Schemas['RunRead'];
 export type RunWithSteps = Schemas['RunWithSteps'];
 export type Step = Schemas['StepRead'];
+
+// Each runtime step status mapped to the shared status dot. Status colours are status only: the
+// brand orange never stands in for a status it does not own. Lives here so the timeline and the
+// orchestration walk share one source of truth.
+export const STEP_DOT: Record<string, DotState> = {
+  planned: 'pending',
+  waiting_approval: 'gate',
+  blocked: 'warn',
+  executing: 'current',
+  completed_verified: 'live',
+  completed_unverified: 'done',
+  failed: 'error',
+  skipped: 'pending',
+};
 
 // The four states that mean a step has come to rest. Anything else is still in flight and worth
 // re-reading on the next poll.

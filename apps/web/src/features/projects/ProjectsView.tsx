@@ -5,8 +5,11 @@ import { Button, GlassCard, Modal, MonoLabel, Pill, StageTrack } from '../../com
 import type { TrackNode } from '../../components/primitives';
 import { useFlow } from '../flow/FlowProvider';
 import type { Project } from '../flow/FlowProvider';
+import { AgentActivityView } from './agents/AgentActivityView';
 import { ProjectWorkspace } from './workspace/ProjectWorkspace';
 import { ConfirmDialog } from './workspace/ConfirmDialog';
+
+type View = 'projects' | 'activity';
 
 // The project lifecycle stages shown on the tail track.
 const LIFECYCLE = ['idea', 'process', 'clarify', 'approved', 'build', 'live'];
@@ -26,8 +29,38 @@ function trackFor(stage: string): TrackNode[] {
   }));
 }
 
+// The segmented switch between the project grid and the agent activity surface. Keyboard
+// reachable, with the active view announced for assistive tech.
+function ViewToggle({ view, onChange }: { view: View; onChange: (next: View) => void }) {
+  const options: { key: View; label: string }[] = [
+    { key: 'projects', label: 'Projects' },
+    { key: 'activity', label: 'Agent activity' },
+  ];
+  return (
+    <div role="tablist" aria-label="Projects view" className="mb-4 flex flex-wrap gap-1">
+      {options.map((option) => (
+        <button
+          key={option.key}
+          type="button"
+          role="tab"
+          aria-selected={view === option.key}
+          onClick={() => onChange(option.key)}
+          className={`rounded-md border px-3 py-1 text-sm transition outline-none focus-visible:ring-1 focus-visible:ring-accent ${
+            view === option.key
+              ? 'border-accent text-accent'
+              : 'border-line text-muted hover:text-cream'
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ProjectsView() {
   const { projects, renameProject, duplicateProject, deleteProject } = useFlow();
+  const [view, setView] = useState<View>('projects');
   const [openId, setOpenId] = useState<number | null>(null);
   // The project pending a rename (modal) or a delete (confirm), plus the rename draft.
   const [renameTarget, setRenameTarget] = useState<Project | null>(null);
@@ -89,19 +122,32 @@ export function ProjectsView() {
     }
   };
 
+  if (view === 'activity') {
+    return (
+      <>
+        <ViewToggle view={view} onChange={setView} />
+        <AgentActivityView />
+      </>
+    );
+  }
+
   if (projects.length === 0) {
     return (
-      <section className="border-electric rounded-glass border border-line bg-surface/60 p-6">
-        <MonoLabel tone="faint">no projects yet</MonoLabel>
-        <p className="mt-2 text-sm text-muted">
-          Run a project shaped item through Flow and approve it to see it here.
-        </p>
-      </section>
+      <>
+        <ViewToggle view={view} onChange={setView} />
+        <section className="border-electric rounded-glass border border-line bg-surface/60 p-6">
+          <MonoLabel tone="faint">no projects yet</MonoLabel>
+          <p className="mt-2 text-sm text-muted">
+            Run a project shaped item through Flow and approve it to see it here.
+          </p>
+        </section>
+      </>
     );
   }
 
   return (
     <>
+      <ViewToggle view={view} onChange={setView} />
       {error ? <p className="mb-3 text-sm text-danger">{error}</p> : null}
       <div className="grid gap-4 md:grid-cols-2">
         {projects.map((project: Project) => (
