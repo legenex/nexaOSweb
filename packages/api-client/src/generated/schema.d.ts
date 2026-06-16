@@ -1109,6 +1109,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Audit
+         * @description The cross run governance feed, newest first, filterable by project, run, category, actor.
+         */
+        get: operations["list_audit_agents_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Project Audit
+         * @description Every governance event recorded for one project, newest first.
+         */
+        get: operations["list_project_audit_agents_projects__project_id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/insights": {
         parameters: {
             query?: never;
@@ -1976,6 +2016,36 @@ export interface components {
             kind: string;
             /** Original Name */
             original_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** AuditRead */
+        AuditRead: {
+            /** Id */
+            id: number;
+            /** Category */
+            category: string;
+            /** Action */
+            action: string;
+            /** Actor Type */
+            actor_type: string;
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Project Id */
+            project_id: number | null;
+            /** Run Id */
+            run_id: number | null;
+            /** Step Id */
+            step_id: number | null;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            };
             /**
              * Created At
              * Format: date-time
@@ -6265,6 +6335,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProofOfWork"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_audit_agents_audit_get: {
+        parameters: {
+            query?: {
+                project_id?: number | null;
+                run_id?: number | null;
+                category?: string | null;
+                actor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_project_audit_agents_projects__project_id__audit_get: {
+        parameters: {
+            query?: {
+                category?: string | null;
+                actor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditRead"][];
                 };
             };
             /** @description Validation Error */
