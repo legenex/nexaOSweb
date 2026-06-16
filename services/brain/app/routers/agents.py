@@ -25,6 +25,16 @@ from app.agents.build_engine import (
     set_task_autonomy,
     start_build_run,
 )
+from app.agents.orchestrator import (
+    OrchestratorDisabledError,
+    OrchestratorHaltedError,
+    OrchestratorNotApprovedError,
+    OrchestratorPausedError,
+    orchestrate_project,
+    orchestration_state,
+    pause_loop,
+    resume_loop,
+)
 from app.agents.slicer import SlicerError, slice_plan, task_graph
 from app.db import get_db
 from app.models.inbox import InboxItem
@@ -35,6 +45,8 @@ from app.models.workspace import Task
 from app.schemas.agents import (
     AgentRunDetail,
     KillSwitchRequest,
+    OrchestrateRequest,
+    OrchestrationState,
     ProjectAutonomyState,
     SetProjectAutonomyRequest,
     SetTaskAutonomyRequest,
@@ -273,3 +285,73 @@ def get_project_task_graph(
     and current status."""
     project = _load_project(project_id, user, db)
     return TaskGraph(**task_graph(db, project))
+
+
+# --- the orchestrator loop ----------------------------------------------------------------
+
+
+@router.post("/projects/{project_id}/orchestrate", response_model=OrchestrationState)
+def orchestrate_project_loop(
+    project_id: int,
+    payload: OrchestrateRequest | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> OrchestrationState:
+    """Run the orchestration loop for a project and return its state.
+
+    Refused when the orchestrator flag is off (403), when the kill switch is engaged, when the project
+    is not approved, or when the loop is paused (409). Green tasks auto advance and unlock dependents;
+    yellow and red tasks park at the gate. The loop is bounded by a run cap and a wall-clock budget.
+    """
+    project = _load_project(project_id, user, db)
+    payload = payload or OrchestrateRequest()
+    try:
+        state = orchestrate_project(
+            db,
+            project,
+            run_cap=payload.run_cap,
+            budget_seconds=payload.budget_seconds,
+            proposed_by=user.email or "user",
+        )
+    except OrchestratorDisabledError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, str(exc)) from exc
+    except (
+        OrchestratorNotApprovedError,
+        OrchestratorHaltedError,
+        OrchestratorPausedError,
+    ) as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
+    return OrchestrationState(**state)
+
+
+@router.get("/projects/{project_id}/orchestration", response_model=OrchestrationState)
+def get_orchestration_state(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> OrchestrationState:
+    """Return the orchestration loop state and per task progress for a project."""
+    project = _load_project(project_id, user, db)
+    return OrchestrationState(**orchestration_state(db, project))
+
+
+@router.post("/projects/{project_id}/pause", response_model=OrchestrationState)
+def pause_orchestration(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> OrchestrationState:
+    """Pause the orchestration loop: new dispatch is refused until it is resumed."""
+    project = _load_project(project_id, user, db)
+    return OrchestrationState(**pause_loop(db, project))
+
+
+@router.post("/projects/{project_id}/resume", response_model=OrchestrationState)
+def resume_orchestration(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> OrchestrationState:
+    """Resume a paused orchestration loop so the next orchestrate call may run."""
+    project = _load_project(project_id, user, db)
+    return OrchestrationState(**resume_loop(db, project))

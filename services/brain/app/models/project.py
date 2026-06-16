@@ -68,6 +68,11 @@ class PMRun(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="active", nullable=False)
+    # The orchestrator loop's audit and progress record for the project: every dispatch, gate
+    # decision, and pause, plus the run cap and wall-clock budget it ran under and why it stopped.
+    # A JSON blob so the loop record grows without a migration per field. Empty for the PMRun stub
+    # the builder stage writes before any orchestration.
+    state: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
 
 class BuildLogEntry(Base, TimestampMixin):

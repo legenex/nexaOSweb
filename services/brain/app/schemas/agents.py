@@ -88,6 +88,39 @@ class TaskGraph(BaseModel):
     tasks: list[TaskGraphNode] = []
 
 
+class OrchestrateRequest(BaseModel):
+    """Optional bounds for one orchestration run. Omitted fields fall back to the server defaults."""
+
+    run_cap: int | None = None
+    budget_seconds: int | None = None
+
+
+class OrchestrationState(BaseModel):
+    """The orchestrator loop's state and per task progress for a project.
+
+    status is the loop record (idle, active, paused, completed, blocked, halted). enabled reflects the
+    NEXA_ENABLE_ORCHESTRATOR flag; approved whether the project may run; kill_switch_engaged whether the
+    stop is pulled. run_cap and budget_seconds are the bounds the last run used; stopped_reason why it
+    stopped. dispatches, gate_decisions, and pauses are the audit trail. tasks is the graph with each
+    task's current status, so the UI can show per task progress.
+    """
+
+    project_id: int
+    enabled: bool
+    approved: bool
+    kill_switch_engaged: bool
+    status: str
+    run_cap: int | None = None
+    budget_seconds: int | None = None
+    runs_dispatched: int = 0
+    stopped_reason: str | None = None
+    dispatches: list[dict] = []
+    gate_decisions: list[dict] = []
+    pauses: list[dict] = []
+    count: int = 0
+    tasks: list[TaskGraphNode] = []
+
+
 class AgentRunDetail(BaseModel):
     """One build run with everything the review panel shows.
 

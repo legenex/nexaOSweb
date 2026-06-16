@@ -77,6 +77,15 @@ class Settings(BaseSettings):
     # Claude Code and Codex need no flag.
     nexa_enable_grok: bool = False
 
+    # The orchestrator loop. While NEXA_ENABLE_ORCHESTRATOR is false the unattended green auto-advance
+    # loop cannot dispatch a real agent: the orchestrate endpoint is refused. It stays off until the
+    # AB2.1 live single-run acceptance has passed against the real Claude Code CLI and the per-task
+    # autonomy projection is in place (see docs/ARCHITECTURE.md). Two bounds keep a loop from running
+    # unbounded: a run cap (the most dispatches one loop may make) and a wall-clock budget in seconds.
+    nexa_enable_orchestrator: bool = False
+    nexa_orchestrator_run_cap: int = 50
+    nexa_orchestrator_budget_seconds: int = 900
+
     # Intake knobs (defaults, overridable through AppSetting at runtime)
     classify_confidence_threshold: float = 0.55
     classify_sweep_enabled: bool = False
