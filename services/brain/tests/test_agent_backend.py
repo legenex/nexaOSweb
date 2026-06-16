@@ -72,7 +72,7 @@ def _write_stub_claude(bin_dir, *, marker_path):
 @pytest.fixture()
 def builds(tmp_path, monkeypatch):
     """Point the builds root at a throwaway directory and configure the Anthropic key."""
-    monkeypatch.setattr(get_settings(), "nexa_builds_root", str(tmp_path / "builds"))
+    monkeypatch.setattr(get_settings(), "nexa_runtime_root", str(tmp_path / "builds"))
     monkeypatch.setattr(get_settings(), "anthropic_api_key", _API_KEY)
     return tmp_path
 
@@ -119,7 +119,7 @@ def test_health_reports_unavailable_when_cli_missing(builds):
 
 
 def test_health_reports_unauthed_when_key_absent(stub_on_path, tmp_path, monkeypatch):
-    monkeypatch.setattr(get_settings(), "nexa_builds_root", str(tmp_path / "builds"))
+    monkeypatch.setattr(get_settings(), "nexa_runtime_root", str(tmp_path / "builds"))
     monkeypatch.setattr(get_settings(), "anthropic_api_key", "")
     health = ClaudeCodeBackend().health()
     assert health.installed

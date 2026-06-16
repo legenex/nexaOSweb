@@ -42,13 +42,13 @@ class Settings(BaseSettings):
     # On disk roots for project files and uploads
     nexa_projects_root: str = "./.data/projects"
     nexa_uploads_root: str = "./.data/uploads"
-    # Where the runtime stores large tool output referenced from step evidence by content_ref.
+    # Where the runtime stores large tool output referenced from step evidence by content_ref, and
+    # the single agent execution root. Every executor worktree and every Agent Build Engine
+    # workspace is an isolated working directory under this one root, kept separate from the served
+    # project files in nexa_projects_root so agent execution never touches the live folders
+    # directly, and every path is validated through the path safety gate. The former separate
+    # NEXA_BUILDS_ROOT was collapsed into this so there is a single ensure_within_root boundary.
     nexa_runtime_root: str = "./.data/runtime"
-    # The build worker's sandbox root. Every Agent Build Engine workspace is an isolated working
-    # directory under this root, kept separate from the served project files in nexa_projects_root
-    # so agent execution never touches the live folders directly. Engine runs clone or init their
-    # target repo here, edit only here, and every path is validated through the path safety gate.
-    nexa_builds_root: str = "./.data/builds"
     # The Brain secret store root. Provider secrets live here, server side only, and are never
     # returned to a client. The runtime ledger holds only a reference into this store.
     nexa_secrets_root: str = "./.data/secrets"

@@ -3,8 +3,9 @@
 This package is the isolated execution layer described in docs/ARCHITECTURE.md under "Agent
 Build Engine". It holds no agent calls yet, only the sandbox the engine will later drive:
 
-  - workspace: prepare an isolated working directory per project under NEXA_BUILDS_ROOT, through
-    the path safety gate, with the target git repo cloned or initialised inside it.
+  - workspace: prepare an isolated working directory per project under NEXA_RUNTIME_ROOT (the single
+    agent execution root, shared with the executor's worktrees), through the path safety gate, with
+    the target git repo cloned or initialised inside it.
   - runner: run a bounded shell command inside a workspace, capturing stdout, stderr, and an exit
     code, and refusing anything that would leave the workspace, force push, or push a protected
     branch.

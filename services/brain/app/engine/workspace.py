@@ -1,10 +1,15 @@
-"""The project workspace sandbox: an isolated working directory per project under the builds root.
+"""The project workspace sandbox: an isolated working directory per project under the runtime root.
 
 A workspace is where the Agent Build Engine does its work, never the served project folder under
-NEXA_PROJECTS_ROOT. Given a project, prepare_workspace resolves a directory under NEXA_BUILDS_ROOT
-through the path safety gate (so a crafted slug can never escape the builds root), then clones the
+NEXA_PROJECTS_ROOT. Given a project, prepare_workspace resolves a directory under NEXA_RUNTIME_ROOT
+through the path safety gate (so a crafted slug can never escape the runtime root), then clones the
 target git repo into it or initialises a fresh one with a baseline commit to branch from. Nothing
 outside that directory is ever touched.
+
+There is one agent execution root. The engine sandbox and the executor's worktrees share the single
+NEXA_RUNTIME_ROOT boundary (the former separate NEXA_BUILDS_ROOT is collapsed into it), so an
+external coding agent run is confined by the same ensure_within_root gate the executor already
+proved, and a build run can edit directly inside the executor's worktree.
 
 The git work here is limited to opening the workspace: clone, init, and the baseline commit. It runs
 no build commands and never pushes; arbitrary build commands go through app/engine/runner.py, which
@@ -43,8 +48,11 @@ class Workspace:
 
 
 def builds_root() -> Path:
-    """The sandbox root, resolved absolute. Every workspace lives under this directory."""
-    return Path(get_settings().nexa_builds_root).expanduser().resolve()
+    """The single agent execution root, resolved absolute. Every workspace and every executor
+    worktree lives under this one directory. It is NEXA_RUNTIME_ROOT: the engine sandbox was
+    collapsed onto the runtime root so the engine and the executor share one ensure_within_root
+    boundary rather than two parallel sandbox systems."""
+    return Path(get_settings().nexa_runtime_root).expanduser().resolve()
 
 
 def _run_git(cwd: Path, *args: str) -> str:
@@ -104,7 +112,7 @@ def prepare_workspace(
     """Prepare an isolated working directory for a project under the builds root.
 
     The directory is project.slug (or an explicit subdir) resolved through ensure_within_root so it
-    can never escape NEXA_BUILDS_ROOT. Preparation is idempotent: an existing git checkout is reused
+    can never escape NEXA_RUNTIME_ROOT. Preparation is idempotent: an existing git checkout is reused
     as is. Otherwise, with a repo_url the target repo is cloned into the directory, and without one a
     fresh repo is initialised with a baseline commit. No file outside the directory is touched.
     """

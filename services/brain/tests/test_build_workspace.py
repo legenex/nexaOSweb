@@ -40,8 +40,8 @@ def _make_source_repo(path):
 
 @pytest.fixture()
 def builds(tmp_path, monkeypatch):
-    """Point the builds root at a throwaway directory for the test."""
-    monkeypatch.setattr(get_settings(), "nexa_builds_root", str(tmp_path / "builds"))
+    """Point the single agent execution root at a throwaway directory for the test."""
+    monkeypatch.setattr(get_settings(), "nexa_runtime_root", str(tmp_path / "builds"))
     return tmp_path
 
 
