@@ -5918,6 +5918,292 @@
         }
       }
     },
+    "/agents/tasks/{task_id}/autonomy": {
+      "put": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Set Task Autonomy Level",
+        "description": "Set a task's autonomy level: green runs unattended, yellow gates, red never auto runs.",
+        "operationId": "set_task_autonomy_level_agents_tasks__task_id__autonomy_put",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTaskAutonomyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAutonomyState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/autonomy": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Project Autonomy",
+        "description": "Read a project's autonomy default and kill switch state, for the prominent UI control.",
+        "operationId": "get_project_autonomy_agents_projects__project_id__autonomy_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAutonomyState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Set Project Autonomy",
+        "description": "Set a project's default autonomy level that new tasks inherit.",
+        "operationId": "set_project_autonomy_agents_projects__project_id__autonomy_put",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProjectAutonomyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAutonomyState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/kill-switch": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Set Project Kill Switch",
+        "description": "Engage or release the project kill switch. Engaging halts every in flight run for the project\nand refuses new ones until released; the halted run ids are returned.",
+        "operationId": "set_project_kill_switch_agents_projects__project_id__kill_switch_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KillSwitchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAutonomyState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/slice": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Slice Project Plan",
+        "description": "Slice the project's current plan into ordered buildable tasks and return the task graph.\n\nIdempotent: re-slicing the same plan reconciles in place rather than duplicating. A plan with no\nbuildable units, or a malformed plan_json, is rejected with 400.",
+        "operationId": "slice_project_plan_agents_projects__project_id__slice_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskGraph"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/tasks": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Project Task Graph",
+        "description": "Return the project's build task graph: the generated tasks, ordered, with their dependencies\nand current status.",
+        "operationId": "get_project_task_graph_agents_projects__project_id__tasks_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskGraph"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -6135,6 +6421,18 @@
             },
             "type": "array",
             "title": "Files Changed"
+          },
+          "autonomy": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autonomy"
           },
           "gate_step_id": {
             "anyOf": [
@@ -8442,6 +8740,20 @@
         "type": "object",
         "title": "JournalEntryUpdate"
       },
+      "KillSwitchRequest": {
+        "properties": {
+          "engaged": {
+            "type": "boolean",
+            "title": "Engaged"
+          }
+        },
+        "type": "object",
+        "required": [
+          "engaged"
+        ],
+        "title": "KillSwitchRequest",
+        "description": "Engage or release a project's agent kill switch."
+      },
       "KnowledgeEntryCreate": {
         "properties": {
           "kind": {
@@ -9316,6 +9628,38 @@
         "type": "object",
         "title": "ProfileUpdate",
         "description": "Self profile edit from Settings, General."
+      },
+      "ProjectAutonomyState": {
+        "properties": {
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "default_level": {
+            "type": "string",
+            "title": "Default Level"
+          },
+          "kill_switch_engaged": {
+            "type": "boolean",
+            "title": "Kill Switch Engaged"
+          },
+          "halted_run_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Halted Run Ids",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "default_level",
+          "kill_switch_engaged"
+        ],
+        "title": "ProjectAutonomyState",
+        "description": "A project's autonomy default and kill switch, with any runs a kill switch action halted."
       },
       "ProjectBrief": {
         "properties": {
@@ -11134,6 +11478,34 @@
         ],
         "title": "SetModeRequest"
       },
+      "SetProjectAutonomyRequest": {
+        "properties": {
+          "default_level": {
+            "type": "string",
+            "title": "Default Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "default_level"
+        ],
+        "title": "SetProjectAutonomyRequest",
+        "description": "Set a project's default autonomy level that new tasks inherit: green, yellow, or red."
+      },
+      "SetTaskAutonomyRequest": {
+        "properties": {
+          "level": {
+            "type": "string",
+            "title": "Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level"
+        ],
+        "title": "SetTaskAutonomyRequest",
+        "description": "Set a task's autonomy level: green, yellow, or red."
+      },
       "SkillEntry": {
         "properties": {
           "id": {
@@ -11457,6 +11829,25 @@
         ],
         "title": "SystemHealth"
       },
+      "TaskAutonomyState": {
+        "properties": {
+          "task_id": {
+            "type": "integer",
+            "title": "Task Id"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "level"
+        ],
+        "title": "TaskAutonomyState",
+        "description": "A task's current autonomy level."
+      },
       "TaskBrief": {
         "properties": {
           "id": {
@@ -11723,6 +12114,153 @@
           "prompt"
         ],
         "title": "TaskDraftRequest"
+      },
+      "TaskGraph": {
+        "properties": {
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "plan_present": {
+            "type": "boolean",
+            "title": "Plan Present"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskGraphNode"
+            },
+            "type": "array",
+            "title": "Tasks",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "plan_present",
+          "count"
+        ],
+        "title": "TaskGraph",
+        "description": "A project's build task graph: the ordered generated tasks with their dependencies.\n\nplan_present reports whether the project carries a plan_json to slice. tasks are ordered by\nsequence so the orchestrator can walk them; depends_on on each node carries the relation."
+      },
+      "TaskGraphNode": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "goal_for_agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal For Agent"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "autonomy": {
+            "type": "string",
+            "title": "Autonomy"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          },
+          "depends_on": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Depends On",
+            "default": []
+          },
+          "plan_unit_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan Unit Key"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "status",
+          "autonomy",
+          "priority",
+          "created_at"
+        ],
+        "title": "TaskGraphNode",
+        "description": "One buildable task in a project's plan graph, with its order and dependency relation.\n\ndepends_on is the list of prerequisite task ids in the same project; sequence is the task's order\nin the walk; plan_unit_key links it to the plan unit it was sliced from. autonomy is the dial the\nslicer set (the project default, escalated when the unit is higher risk)."
       },
       "TaskLabel": {
         "properties": {

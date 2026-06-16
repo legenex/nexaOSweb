@@ -2151,6 +2151,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/tasks/{task_id}/autonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Task Autonomy Level
+         * @description Set a task's autonomy level: green runs unattended, yellow gates, red never auto runs.
+         */
+        put: operations["set_task_autonomy_level_agents_tasks__task_id__autonomy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/autonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Autonomy
+         * @description Read a project's autonomy default and kill switch state, for the prominent UI control.
+         */
+        get: operations["get_project_autonomy_agents_projects__project_id__autonomy_get"];
+        /**
+         * Set Project Autonomy
+         * @description Set a project's default autonomy level that new tasks inherit.
+         */
+        put: operations["set_project_autonomy_agents_projects__project_id__autonomy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/kill-switch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Project Kill Switch
+         * @description Engage or release the project kill switch. Engaging halts every in flight run for the project
+         *     and refuses new ones until released; the halted run ids are returned.
+         */
+        post: operations["set_project_kill_switch_agents_projects__project_id__kill_switch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/slice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Slice Project Plan
+         * @description Slice the project's current plan into ordered buildable tasks and return the task graph.
+         *
+         *     Idempotent: re-slicing the same plan reconciles in place rather than duplicating. A plan with no
+         *     buildable units, or a malformed plan_json, is rejected with 400.
+         */
+        post: operations["slice_project_plan_agents_projects__project_id__slice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Project Task Graph
+         * @description Return the project's build task graph: the generated tasks, ordered, with their dependencies
+         *     and current status.
+         */
+        get: operations["get_project_task_graph_agents_projects__project_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -2238,6 +2347,10 @@ export interface components {
             transcript: string;
             /** Files Changed */
             files_changed: string[];
+            /** Autonomy */
+            autonomy?: {
+                [key: string]: unknown;
+            } | null;
             /** Gate Step Id */
             gate_step_id: number | null;
             /**
@@ -3118,6 +3231,14 @@ export interface components {
             /** Topic Id */
             topic_id?: number | null;
         };
+        /**
+         * KillSwitchRequest
+         * @description Engage or release a project's agent kill switch.
+         */
+        KillSwitchRequest: {
+            /** Engaged */
+            engaged: boolean;
+        };
         /** KnowledgeEntryCreate */
         KnowledgeEntryCreate: {
             /**
@@ -3426,6 +3547,23 @@ export interface components {
         ProfileUpdate: {
             /** Name */
             name?: string | null;
+        };
+        /**
+         * ProjectAutonomyState
+         * @description A project's autonomy default and kill switch, with any runs a kill switch action halted.
+         */
+        ProjectAutonomyState: {
+            /** Project Id */
+            project_id: number;
+            /** Default Level */
+            default_level: string;
+            /** Kill Switch Engaged */
+            kill_switch_engaged: boolean;
+            /**
+             * Halted Run Ids
+             * @default []
+             */
+            halted_run_ids: number[];
         };
         /** ProjectBrief */
         ProjectBrief: {
@@ -4071,6 +4209,22 @@ export interface components {
             /** Mode */
             mode: string;
         };
+        /**
+         * SetProjectAutonomyRequest
+         * @description Set a project's default autonomy level that new tasks inherit: green, yellow, or red.
+         */
+        SetProjectAutonomyRequest: {
+            /** Default Level */
+            default_level: string;
+        };
+        /**
+         * SetTaskAutonomyRequest
+         * @description Set a task's autonomy level: green, yellow, or red.
+         */
+        SetTaskAutonomyRequest: {
+            /** Level */
+            level: string;
+        };
         /** SkillEntry */
         SkillEntry: {
             /** Id */
@@ -4182,6 +4336,16 @@ export interface components {
             database: components["schemas"]["DatabaseHealth"];
             migration: components["schemas"]["MigrationHealth"];
         };
+        /**
+         * TaskAutonomyState
+         * @description A task's current autonomy level.
+         */
+        TaskAutonomyState: {
+            /** Task Id */
+            task_id: number;
+            /** Level */
+            level: string;
+        };
         /** TaskBrief */
         TaskBrief: {
             /** Id */
@@ -4256,6 +4420,68 @@ export interface components {
         TaskDraftRequest: {
             /** Prompt */
             prompt: string;
+        };
+        /**
+         * TaskGraph
+         * @description A project's build task graph: the ordered generated tasks with their dependencies.
+         *
+         *     plan_present reports whether the project carries a plan_json to slice. tasks are ordered by
+         *     sequence so the orchestrator can walk them; depends_on on each node carries the relation.
+         */
+        TaskGraph: {
+            /** Project Id */
+            project_id: number;
+            /** Plan Present */
+            plan_present: boolean;
+            /** Count */
+            count: number;
+            /**
+             * Tasks
+             * @default []
+             */
+            tasks: components["schemas"]["TaskGraphNode"][];
+        };
+        /**
+         * TaskGraphNode
+         * @description One buildable task in a project's plan graph, with its order and dependency relation.
+         *
+         *     depends_on is the list of prerequisite task ids in the same project; sequence is the task's order
+         *     in the walk; plan_unit_key links it to the plan unit it was sliced from. autonomy is the dial the
+         *     slicer set (the project default, escalated when the unit is higher risk).
+         */
+        TaskGraphNode: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Detail */
+            detail?: string | null;
+            /** Goal For Agent */
+            goal_for_agent?: string | null;
+            /** Status */
+            status: string;
+            /** Autonomy */
+            autonomy: string;
+            /** Priority */
+            priority: string;
+            /** Sequence */
+            sequence?: number | null;
+            /**
+             * Depends On
+             * @default []
+             */
+            depends_on: number[];
+            /** Plan Unit Key */
+            plan_unit_key?: string | null;
+            /** Run Id */
+            run_id?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /** TaskLabel */
         TaskLabel: {
@@ -8733,6 +8959,204 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_task_autonomy_level_agents_tasks__task_id__autonomy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetTaskAutonomyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskAutonomyState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_autonomy_agents_projects__project_id__autonomy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectAutonomyState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_project_autonomy_agents_projects__project_id__autonomy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetProjectAutonomyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectAutonomyState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_project_kill_switch_agents_projects__project_id__kill_switch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KillSwitchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectAutonomyState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    slice_project_plan_agents_projects__project_id__slice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskGraph"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_task_graph_agents_projects__project_id__tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskGraph"];
                 };
             };
             /** @description Validation Error */
