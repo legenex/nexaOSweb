@@ -105,6 +105,10 @@ class TaskRead(ORMModel):
     checklist: list[ChecklistItem] = []
     labels: list[TaskLabel] = []
     source: str
+    # The task's stored autonomy level (green, yellow, red). A response projection of the existing
+    # column, so the web AutonomySelector reads the real per task level on reopen instead of falling
+    # back to the project default. Defaults to yellow on a task that predates the dial.
+    autonomy: str = "yellow"
     run_id: int | None
     # True when run_id points to a live agent run; the board surfaces these in Agent working.
     agent_active: bool = False
