@@ -24,11 +24,14 @@ from app.engine.backends import (
     AgentResult,
     BackendError,
     BackendHealth,
+    BackendChoice,
     ClaudeCodeBackend,
     CodexCliBackend,
     GrokBuildBackend,
     available_backends,
     get_backend,
+    load_policy,
+    select_backend,
 )
 from app.engine.runner import (
     DEFAULT_TIMEOUT_SECONDS,
@@ -68,6 +71,7 @@ __all__ = [
     "AgentResult",
     "BackendError",
     "BackendHealth",
+    "BackendChoice",
     "ClaudeCodeBackend",
     "CodexCliBackend",
     "GrokBuildBackend",
@@ -75,4 +79,6 @@ __all__ = [
     "DEFAULT_BACKEND",
     "available_backends",
     "get_backend",
+    "load_policy",
+    "select_backend",
 ]

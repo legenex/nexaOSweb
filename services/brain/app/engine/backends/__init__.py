@@ -77,11 +77,19 @@ def get_backend(name: str | None = None) -> AgentBackend:
     return backend_cls()
 
 
+# Imported last so the selector's lazy imports of available_backends/get_backend resolve cleanly.
+from app.engine.backends.selector import (  # noqa: E402
+    BackendChoice,
+    load_policy,
+    select_backend,
+)
+
 __all__ = [
     "AgentBackend",
     "AgentResult",
     "BackendError",
     "BackendHealth",
+    "BackendChoice",
     "ClaudeCodeBackend",
     "CodexCliBackend",
     "GrokBuildBackend",
@@ -89,4 +97,6 @@ __all__ = [
     "DEFAULT_BACKEND",
     "available_backends",
     "get_backend",
+    "load_policy",
+    "select_backend",
 ]

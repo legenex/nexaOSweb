@@ -1,0 +1,53 @@
+# Declarative agent backend selection policy.
+#
+# Business logic references a task type or a task's tags only, never a hardcoded backend id, the same
+# discipline as models.yaml for models. The selector resolves a preferred backend and an ordered
+# fallback list, consults each candidate's health probe, and falls through the order when the
+# preferred backend is unavailable (CLI missing, not authed, or feature flagged off) or its estimated
+# run cost is over its per backend ceiling. A manual override on a run is tried first and wins when it
+# is available. Selection is declarative, never learned: swapping a preference is a one line change
+# here, not a code change.
+#
+# Backend keys must be ones the engine knows: claude-code (default), codex-cli, grok-build. grok-build
+# is only selectable while its NEXA_ENABLE_GROK feature flag is on; when off it is skipped here and
+# the next backend in the order is used, so nothing depends on Grok.
+
+# The policy used when a task has no matching tag and no matching task type. Claude Code preferred,
+# Codex the first fallback, Grok last (and only when enabled).
+default:
+  preferred: claude-code
+  fallbacks: [codex-cli, grok-build]
+
+# Task type to policy. A build run for one of these types resolves its own preferred and fallbacks;
+# a type with no entry uses default.
+task_types:
+  feature:
+    preferred: claude-code
+    fallbacks: [codex-cli, grok-build]
+  bugfix:
+    preferred: codex-cli
+    fallbacks: [claude-code, grok-build]
+  refactor:
+    preferred: claude-code
+    fallbacks: [codex-cli]
+  docs:
+    preferred: codex-cli
+    fallbacks: [claude-code]
+  research:
+    preferred: claude-code
+    fallbacks: [codex-cli]
+
+# Tag to policy. A task tag (a label name) overrides the task type policy: the first of the task's
+# tags that appears here wins. Empty entries are allowed; the map is consulted before task_types.
+tags:
+  urgent:
+    preferred: codex-cli
+    fallbacks: [claude-code]
+
+# Per backend cost ceiling in USD for one run. A candidate whose estimated run cost is known and
+# exceeds its ceiling is skipped in favour of the next in the order. A backend with no ceiling here,
+# or a run with no cost estimate, is never blocked on cost. Tune per provider pricing.
+cost_ceilings:
+  claude-code: 5.0
+  codex-cli: 3.0
+  grok-build: 2.0

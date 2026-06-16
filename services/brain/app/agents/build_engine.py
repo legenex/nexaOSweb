@@ -48,6 +48,7 @@ from app.engine import (
     Workspace,
     get_backend,
     get_worker,
+    select_backend,
 )
 from app.gates import SAFE_TAGS
 from app.models.project import Project
@@ -186,6 +187,32 @@ def _task_prior_status(run: AgentRun) -> str:
     return prior if isinstance(prior, str) and prior else "todo"
 
 
+# --- backend selection inputs -------------------------------------------------------------
+
+
+def _task_tags(task: Task) -> list[str]:
+    """The task's label names, used as tags the backend policy can key on.
+
+    A task carries labels as a JSON array of {name, color}; the selector matches a tag against the
+    policy's tags block. Missing or malformed labels yield no tags, so selection falls to the type or
+    default policy.
+    """
+    labels = task.labels if isinstance(task.labels, list) else []
+    tags: list[str] = []
+    for label in labels:
+        if isinstance(label, dict):
+            name = str(label.get("name") or "").strip()
+            if name:
+                tags.append(name)
+    return tags
+
+
+def _task_type(task: Task) -> str | None:
+    """The task type the backend policy can key on. There is no task type column yet, so this is None
+    today and selection resolves by tag or the default policy; the seam is here for when one lands."""
+    return None
+
+
 # --- the prompt ---------------------------------------------------------------------------
 
 
@@ -291,11 +318,14 @@ def start_build_run(
 ) -> AgentRun:
     """Start a gated build run for one task and park it at the human gate.
 
-    The task must belong to a project (the worktree and the merge target). The backend must be
-    available in this environment (the CLI installed and the key set, server side). The run opens
-    the executor's worktree, the agent edits inside it through the in-process worker, the diff is
-    captured and the run parks at awaiting review. The task flips to agent_working for the run. On a
-    backend failure the task returns to its prior status and the run is recorded failed.
+    The task must belong to a project (the worktree and the merge target). The backend is resolved by
+    the declarative selector (config/agents.yaml): backend_name, when given, is a manual override
+    tried first; otherwise the policy resolves a preferred backend by the task's tags or type and
+    falls through its fallback order when a candidate is unavailable or over its cost ceiling. The run
+    records which backend ran and why. The run opens the executor's worktree, the agent edits inside
+    it through the in-process worker, the diff is captured and the run parks at awaiting review. The
+    task flips to agent_working for the run. On a backend failure the task returns to its prior status
+    and the run is recorded failed.
     """
     if task.project_id is None:
         raise BuildEngineError("a build run requires the task to belong to a project")
@@ -303,16 +333,20 @@ def start_build_run(
     if project is None:
         raise BuildEngineError("project not found for the task")
 
-    name = (backend_name or DEFAULT_BACKEND).strip()
+    choice = select_backend(
+        task_type=_task_type(task),
+        tags=_task_tags(task),
+        override=backend_name,
+    )
+    if choice.backend is None:
+        raise BackendUnavailableError(
+            f"no agent backend is available for this task: {choice.reason}"
+        )
+    name = choice.backend
     try:
         backend = get_backend(name)
     except BackendError as exc:
         raise BuildEngineError(str(exc)) from exc
-    health = backend.health()
-    if not health.available:
-        raise BackendUnavailableError(
-            f"backend '{name}' is not available in this environment: {health.detail}"
-        )
 
     prior_status = task.status
     run = create_run(
@@ -325,6 +359,14 @@ def start_build_run(
                 "task_id": task.id,
                 "task_prior_status": prior_status,
                 "backend": name,
+                "backend_override": choice.override,
+                "selection": {
+                    "policy_source": choice.policy_source,
+                    "preferred": choice.preferred,
+                    "order": choice.order,
+                    "considered": choice.considered,
+                    "reason": choice.reason,
+                },
             }
         },
         goal_summary=(task.goal_for_agent or task.title or "Agent build run")[:2000],
