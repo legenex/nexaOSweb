@@ -53,6 +53,8 @@ Secrets and the frozen core. Provider keys are server side only and never enter 
 
 This milestone proves a single gated run end to end on one backend. The full multi specialist project manager (the developer, researcher, QA, and other specialist sub agents described under the deferred milestone above) remains a later expansion and is intentionally not built here.
 
+Reconciled in AB2.1 (single gated build run on the executor spine, proven in dev). One agent execution root: the AB1.1 sandbox (formerly NEXA_BUILDS_ROOT) is collapsed onto NEXA_RUNTIME_ROOT, so the engine workspace and the executor worktrees share one ensure_within_root boundary rather than two parallel sandbox systems, and a build run edits directly inside the executor's worktree. A build run is an AgentRun of the executor kind discriminated by a non-null backend column (with reasoning_summary, cost_usd, and a task_id link), so compute_diff_step, request_approval, merge_on_approval, and rollback_executor_run are reused unchanged. The run is dispatched through the in-process worker, which is correct for proving the loop in dev; the production build-worker host (a dedicated worker or container off the Plesk Brain, dispatched through a queue) is a deferred follow-up and is intentionally not solved here. The claude-code backend reports available only where the Claude Code CLI is installed and ANTHROPIC_API_KEY is set, which in dev is the Codespace; agent execution is never installed or assumed on the Plesk Brain.
+
 ## Repo layout
 nexaOSweb/
   CLAUDE.md
