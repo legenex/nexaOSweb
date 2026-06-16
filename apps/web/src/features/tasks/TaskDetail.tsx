@@ -3,6 +3,7 @@ import type { Schemas } from '@nexaosweb/api-client';
 
 import { api } from '../../app/client';
 import { Button, MonoLabel } from '../../components/primitives';
+import { AgentRunPanel } from './AgentRunPanel';
 
 type Task = Schemas['TaskRead'];
 type Project = Schemas['ProjectRead'];
@@ -486,6 +487,9 @@ export function TaskDetail({
           </Button>
         </div>
       </div>
+
+      {/* agent build: send to agent, then the gated run review */}
+      <AgentRunPanel task={task} onChanged={onChanged} />
 
       {/* comments / activity */}
       <div className="border-t border-line pt-4">

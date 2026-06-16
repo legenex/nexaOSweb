@@ -6,6 +6,7 @@ import type { TrackNode } from '../../components/primitives';
 import { useFlow } from '../flow/FlowProvider';
 import type { Project } from '../flow/FlowProvider';
 import { ProjectWorkspace } from './workspace/ProjectWorkspace';
+import { ProjectRunsBadge } from './ProjectRunsBadge';
 import { ConfirmDialog } from './workspace/ConfirmDialog';
 
 // The project lifecycle stages shown on the tail track.
@@ -189,6 +190,7 @@ export function ProjectsView() {
                 <MonoLabel tone="accent">open workspace →</MonoLabel>
               </p>
             </button>
+            <ProjectRunsBadge projectId={project.id} />
           </GlassCard>
         ))}
       </div>
