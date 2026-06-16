@@ -239,6 +239,17 @@ def _create_workspace(project: Project, run_id: int) -> tuple[str, Path]:
     return branch_ref, worktree_path
 
 
+def open_run_workspace(project: Project, run_id: int) -> tuple[str, Path]:
+    """Open the isolated worktree for a run, the one workspace mechanism for every agent run.
+
+    A thin public entry onto the executor's own worktree creation, so the Agent Build Engine opens
+    its worktree through the same branch and path rules the executor proved (a fresh non protected
+    branch, a path gated under the runtime root) rather than a second sandbox. Returns the branch
+    ref and the worktree path.
+    """
+    return _create_workspace(project, run_id)
+
+
 # --- starting a run -----------------------------------------------------------------------
 
 

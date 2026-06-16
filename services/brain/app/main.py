@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .agents.scheduler import register_scheduler
 from .db import SessionLocal
 from .routers import (
+    agents,
     auth,
     dashboard,
     dreaming,
@@ -83,6 +84,7 @@ app.include_router(users.router)
 app.include_router(integrations.router)
 app.include_router(skills.router)
 app.include_router(tasks.router)
+app.include_router(agents.router)
 
 register_scheduler(app)
 

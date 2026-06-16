@@ -62,6 +62,13 @@ class RunRead(BaseModel):
     proposed_by: str
     parent_run_id: int | None
     pm_run_id: int | None
+    # Agent Build Engine fields, null on every non build run. phase is the executor or build
+    # lifecycle marker; a non-null backend marks a run an external coding agent drove.
+    phase: str | None = None
+    backend: str | None = None
+    reasoning_summary: str | None = None
+    cost_usd: float | None = None
+    task_id: int | None = None
     created_at: datetime
     updated_at: datetime
     finished_at: datetime | None

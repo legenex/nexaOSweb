@@ -18,6 +18,7 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -79,6 +80,17 @@ class AgentRun(Base, TimestampMixin):
     pm_run_id: Mapped[int | None] = mapped_column(
         ForeignKey("pm_runs.id"), index=True, nullable=True
     )
+    # Agent Build Engine columns. An engine run is an executor-kind run that an external coding
+    # agent drove, discriminated by a non-null backend (for example "claude-code"); every internal
+    # executor run and every other run leaves all four null. reasoning_summary and cost_usd are the
+    # backend's short summary and cost estimate, denormalised here from the run's build step for an
+    # easy read. task_id links the run to the task it builds; it has no database level foreign key
+    # (the SQLite dev target cannot add one to the existing table), so the relationship is enforced
+    # in the router, the mirror of tasks.run_id pointing back here.
+    backend: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    reasoning_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    task_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )

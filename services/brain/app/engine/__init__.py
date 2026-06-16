@@ -17,25 +17,6 @@ Build Engine". It holds no agent calls yet, only the sandbox the engine will lat
     default and first adapter; it runs headless inside a workspace and returns the proposed diff.
 """
 
-from app.engine.runner import (
-    DEFAULT_TIMEOUT_SECONDS,
-    CommandRefused,
-    CommandResult,
-    run_in_workspace,
-)
-from app.engine.workspace import (
-    Workspace,
-    WorkspaceError,
-    builds_root,
-    prepare_workspace,
-)
-from app.engine.worker import (
-    BuildWorker,
-    InProcessWorker,
-    Job,
-    JobResult,
-    get_worker,
-)
 from app.engine.backends import (
     DEFAULT_AGENT_TIMEOUT_SECONDS,
     DEFAULT_BACKEND,
@@ -46,6 +27,25 @@ from app.engine.backends import (
     ClaudeCodeBackend,
     available_backends,
     get_backend,
+)
+from app.engine.runner import (
+    DEFAULT_TIMEOUT_SECONDS,
+    CommandRefused,
+    CommandResult,
+    run_in_workspace,
+)
+from app.engine.worker import (
+    BuildWorker,
+    InProcessWorker,
+    Job,
+    JobResult,
+    get_worker,
+)
+from app.engine.workspace import (
+    Workspace,
+    WorkspaceError,
+    builds_root,
+    prepare_workspace,
 )
 
 __all__ = [

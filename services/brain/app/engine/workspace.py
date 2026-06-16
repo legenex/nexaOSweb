@@ -112,9 +112,9 @@ def prepare_workspace(
     """Prepare an isolated working directory for a project under the builds root.
 
     The directory is project.slug (or an explicit subdir) resolved through ensure_within_root so it
-    can never escape NEXA_RUNTIME_ROOT. Preparation is idempotent: an existing git checkout is reused
-    as is. Otherwise, with a repo_url the target repo is cloned into the directory, and without one a
-    fresh repo is initialised with a baseline commit. No file outside the directory is touched.
+    can never escape NEXA_RUNTIME_ROOT. Preparation is idempotent: an existing git checkout is
+    reused as is. Otherwise, with a repo_url the target repo is cloned into the directory, and
+    without one a fresh repo is initialised with a baseline commit. No file outside it is touched.
     """
     if project is None:
         raise WorkspaceError("a workspace requires a project")
