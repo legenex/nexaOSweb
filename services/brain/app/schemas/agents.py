@@ -137,7 +137,12 @@ class AgentRunDetail(BaseModel):
     phase: str | None
     backend: str | None
     reasoning_summary: str | None
+    # Usage the backend reported for the run: the cost estimate (denormalised on the run) and the
+    # token counts (recorded on the build step's tool evidence). Null when the backend did not
+    # report a figure, so the cost surface shows a real number rather than "not recorded".
     cost_usd: float | None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
     goal_summary: str
     diff: str
     diff_shortstat: str

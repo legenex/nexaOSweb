@@ -180,6 +180,30 @@ def _has_completed_merge(db: Session, run: AgentRun) -> bool:
     return merge is not None and merge.status in _COMPLETED_STATES
 
 
+def run_usage(db: Session, run: AgentRun) -> dict:
+    """The usage recorded for a run: cost in USD and the input and output token counts.
+
+    cost_usd is denormalised on the run by start_build_run; the token counts live on the build
+    step's tool evidence, where the backend recorded them, so nothing is duplicated into a second
+    column. Returns None for a figure the backend did not report, which is how the cost surface
+    knows to show a real number rather than degrading to "not recorded". The single source the read
+    detail and the project cost rollup both read, so both report the same figures.
+    """
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    build_step = _latest_step_of_kind(db, run, BUILD_STEP_KIND)
+    if build_step is not None and isinstance(build_step.evidence, list) and build_step.evidence:
+        evidence = build_step.evidence[0]
+        if isinstance(evidence, dict):
+            input_tokens = evidence.get("input_tokens")
+            output_tokens = evidence.get("output_tokens")
+    return {
+        "cost_usd": run.cost_usd,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+    }
+
+
 def _run_task(db: Session, run: AgentRun) -> Task | None:
     if run.task_id is None:
         return None
@@ -654,6 +678,7 @@ def build_run_detail(db: Session, run: AgentRun) -> dict:
     autonomy = build.get("autonomy") if isinstance(build.get("autonomy"), dict) else None
 
     gate = _open_gate_step(db, run)
+    usage = run_usage(db, run)
     return {
         "id": run.id,
         "project_id": run.project_id,
@@ -663,7 +688,9 @@ def build_run_detail(db: Session, run: AgentRun) -> dict:
         "phase": run.phase,
         "backend": run.backend,
         "reasoning_summary": run.reasoning_summary,
-        "cost_usd": run.cost_usd,
+        "cost_usd": usage["cost_usd"],
+        "input_tokens": usage["input_tokens"],
+        "output_tokens": usage["output_tokens"],
         "goal_summary": run.goal_summary,
         "diff": diff_text,
         "diff_shortstat": diff_shortstat,
