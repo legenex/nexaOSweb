@@ -42,6 +42,11 @@ class Task(Base, TimestampMixin):
     # How the task was created: manual (the user), research (a research finding), or run (an
     # agent run). Validated in the router; defaults to manual for hand created tasks.
     source: Mapped[str] = mapped_column(String(40), default="manual", nullable=False)
+    # Autonomy dial for an agent build run on this task: green runs unattended start to finish,
+    # yellow pauses at the Human Gate for approval, red never auto runs. The deterministic risk
+    # classifier can only escalate this (raise the risk), never lower it. Defaults to yellow, the
+    # safe deny-by-default level; a new task inherits its project's configured default.
+    autonomy: Mapped[str] = mapped_column(String(10), default="yellow", nullable=False)
     # A seam to the agent run that produced this task, when one did. A plain nullable column with
     # no database level foreign key (added to the existing table on the SQLite dev target); the
     # relationship to agent_runs is enforced in the router, like JournalNote.topic_id.

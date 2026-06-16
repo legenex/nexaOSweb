@@ -18,6 +18,40 @@ class StartBuildRunRequest(BaseModel):
     backend: str | None = None
 
 
+class SetTaskAutonomyRequest(BaseModel):
+    """Set a task's autonomy level: green, yellow, or red."""
+
+    level: str
+
+
+class TaskAutonomyState(BaseModel):
+    """A task's current autonomy level."""
+
+    task_id: int
+    level: str
+
+
+class SetProjectAutonomyRequest(BaseModel):
+    """Set a project's default autonomy level that new tasks inherit: green, yellow, or red."""
+
+    default_level: str
+
+
+class KillSwitchRequest(BaseModel):
+    """Engage or release a project's agent kill switch."""
+
+    engaged: bool
+
+
+class ProjectAutonomyState(BaseModel):
+    """A project's autonomy default and kill switch, with any runs a kill switch action halted."""
+
+    project_id: int
+    default_level: str
+    kill_switch_engaged: bool
+    halted_run_ids: list[int] = []
+
+
 class AgentRunDetail(BaseModel):
     """One build run with everything the review panel shows.
 
@@ -41,6 +75,9 @@ class AgentRunDetail(BaseModel):
     diff_capped: bool
     transcript: str
     files_changed: list[str]
+    # The autonomy gate decision recorded on the run: effective level, whether it auto advanced, and
+    # the categories and reasons behind any escalation. Null on runs that predate the autonomy dial.
+    autonomy: dict | None = None
     gate_step_id: int | None
     created_at: datetime
     updated_at: datetime

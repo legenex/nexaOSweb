@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, TimestampMixin, utcnow
@@ -38,6 +38,14 @@ class Project(Base, TimestampMixin):
     # kind ("research"), topic, purpose, goals, depth, lookback, schedule, and category, so the
     # research config can grow without a migration per field. Empty for build projects.
     research_config: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    # The project level autonomy default new tasks inherit (green, yellow, or red). The starting
+    # position of the dial for work in this project; shown prominently in the UI. See app/autonomy.py.
+    agent_autonomy_default: Mapped[str] = mapped_column(
+        String(10), default="yellow", nullable=False
+    )
+    # The kill switch. When engaged, in flight agent runs for this project are halted and new runs are
+    # refused, until it is released. Shown prominently in the UI as an always reachable stop.
+    agent_kill_switch: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )

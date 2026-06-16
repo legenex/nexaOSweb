@@ -13,11 +13,16 @@ from sqlalchemy.orm import Session
 from app.agents.build_engine import (
     BackendUnavailableError,
     BuildEngineError,
+    KillSwitchEngagedError,
     approve_build_run,
     build_run_detail,
     cancel_build_run,
+    engage_kill_switch,
     is_build_run,
     reject_build_run,
+    release_kill_switch,
+    set_project_autonomy_default,
+    set_task_autonomy,
     start_build_run,
 )
 from app.db import get_db
@@ -26,7 +31,15 @@ from app.models.project import Project
 from app.models.runtime import AgentRun
 from app.models.user import User
 from app.models.workspace import Task
-from app.schemas.agents import AgentRunDetail, StartBuildRunRequest
+from app.schemas.agents import (
+    AgentRunDetail,
+    KillSwitchRequest,
+    ProjectAutonomyState,
+    SetProjectAutonomyRequest,
+    SetTaskAutonomyRequest,
+    StartBuildRunRequest,
+    TaskAutonomyState,
+)
 from app.security.auth import current_user
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -62,6 +75,22 @@ def _load_build_run(run_id: int, user: User, db: Session) -> AgentRun:
     return run
 
 
+def _load_project(project_id: int, user: User, db: Session) -> Project:
+    project = db.get(Project, project_id)
+    if project is None or not _user_owns_project(project_id, user, db):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "project not found")
+    return project
+
+
+def _project_autonomy_state(project: Project, halted_run_ids: list[int] | None = None):
+    return ProjectAutonomyState(
+        project_id=project.id,
+        default_level=project.agent_autonomy_default,
+        kill_switch_engaged=project.agent_kill_switch,
+        halted_run_ids=halted_run_ids or [],
+    )
+
+
 @router.post("/runs", response_model=AgentRunDetail, status_code=status.HTTP_201_CREATED)
 def start_run(
     payload: StartBuildRunRequest,
@@ -79,6 +108,8 @@ def start_run(
         run = start_build_run(
             db, task=task, backend_name=payload.backend, proposed_by=user.email or "user"
         )
+    except KillSwitchEngagedError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     except BackendUnavailableError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc)) from exc
     except BuildEngineError as exc:
@@ -140,3 +171,69 @@ def cancel_run(
     except BuildEngineError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     return AgentRunDetail(**build_run_detail(db, run))
+
+
+# --- the autonomy dial and the kill switch ------------------------------------------------
+
+
+@router.put("/tasks/{task_id}/autonomy", response_model=TaskAutonomyState)
+def set_task_autonomy_level(
+    task_id: int,
+    payload: SetTaskAutonomyRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> TaskAutonomyState:
+    """Set a task's autonomy level: green runs unattended, yellow gates, red never auto runs."""
+    task = _load_task(task_id, user, db)
+    try:
+        task = set_task_autonomy(db, task, payload.level)
+    except BuildEngineError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return TaskAutonomyState(task_id=task.id, level=task.autonomy)
+
+
+@router.get("/projects/{project_id}/autonomy", response_model=ProjectAutonomyState)
+def get_project_autonomy(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectAutonomyState:
+    """Read a project's autonomy default and kill switch state, for the prominent UI control."""
+    project = _load_project(project_id, user, db)
+    return _project_autonomy_state(project)
+
+
+@router.put("/projects/{project_id}/autonomy", response_model=ProjectAutonomyState)
+def set_project_autonomy(
+    project_id: int,
+    payload: SetProjectAutonomyRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectAutonomyState:
+    """Set a project's default autonomy level that new tasks inherit."""
+    project = _load_project(project_id, user, db)
+    try:
+        project = set_project_autonomy_default(db, project, payload.default_level)
+    except BuildEngineError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return _project_autonomy_state(project)
+
+
+@router.post("/projects/{project_id}/kill-switch", response_model=ProjectAutonomyState)
+def set_project_kill_switch(
+    project_id: int,
+    payload: KillSwitchRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectAutonomyState:
+    """Engage or release the project kill switch. Engaging halts every in flight run for the project
+    and refuses new ones until released; the halted run ids are returned."""
+    project = _load_project(project_id, user, db)
+    halted_ids: list[int] = []
+    if payload.engaged:
+        halted = engage_kill_switch(db, project, resolved_by=user.email or "user")
+        halted_ids = [run.id for run in halted]
+    else:
+        release_kill_switch(db, project)
+    db.refresh(project)
+    return _project_autonomy_state(project, halted_ids)

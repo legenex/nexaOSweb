@@ -39,6 +39,7 @@ from app.agents.executor import (
     request_approval,
     rollback_executor_run,
 )
+from app.autonomy import classify_risk, gate_decision, is_valid_level, normalize_level
 from app.engine import (
     DEFAULT_AGENT_TIMEOUT_SECONDS,
     DEFAULT_BACKEND,
@@ -102,6 +103,10 @@ class BuildEngineError(Exception):
 
 class BackendUnavailableError(BuildEngineError):
     """Raised when the requested backend's CLI is not installed or not authed in the environment."""
+
+
+class KillSwitchEngagedError(BuildEngineError):
+    """Raised when a build run is requested while the project's kill switch is engaged."""
 
 
 # --- spill and read helpers (the runtime root, the single agent execution root) -----------
@@ -318,20 +323,32 @@ def start_build_run(
 ) -> AgentRun:
     """Start a gated build run for one task and park it at the human gate.
 
-    The task must belong to a project (the worktree and the merge target). The backend is resolved by
-    the declarative selector (config/agents.yaml): backend_name, when given, is a manual override
-    tried first; otherwise the policy resolves a preferred backend by the task's tags or type and
-    falls through its fallback order when a candidate is unavailable or over its cost ceiling. The run
-    records which backend ran and why. The run opens the executor's worktree, the agent edits inside
-    it through the in-process worker, the diff is captured and the run parks at awaiting review. The
-    task flips to agent_working for the run. On a backend failure the task returns to its prior status
-    and the run is recorded failed.
+    The task must belong to a project (the worktree and the merge target). A run is refused outright
+    while the project's kill switch is engaged. The backend is resolved by the declarative selector
+    (config/agents.yaml): backend_name, when given, is a manual override tried first; otherwise the
+    policy resolves a preferred backend by the task's tags or type and falls through its fallback
+    order when a candidate is unavailable or over its cost ceiling. The run records which backend ran
+    and why. The run opens the executor's worktree, the agent edits inside it through the in-process
+    worker, and the diff is captured.
+
+    The autonomy dial then disposes of the proposed change. The deterministic classifier folds the
+    task's level with the risk of the diff: a green outcome auto resolves the Human Gate and merges
+    unattended; a yellow or red outcome parks at the gate for a person. The classifier can only
+    escalate, so a green task that touched an auth file or attempted a destructive action is still
+    gated. The task flips to agent_working for the run. On a backend failure the task returns to its
+    prior status and the run is recorded failed.
     """
     if task.project_id is None:
         raise BuildEngineError("a build run requires the task to belong to a project")
     project = db.get(Project, task.project_id)
     if project is None:
         raise BuildEngineError("project not found for the task")
+
+    if project.agent_kill_switch:
+        raise KillSwitchEngagedError(
+            f"the kill switch is engaged for project '{project.slug}'; new runs are refused "
+            "until it is released"
+        )
 
     choice = select_backend(
         task_type=_task_type(task),
@@ -417,9 +434,42 @@ def start_build_run(
         db, run, checks_summary={"passed": [], "failed": [], "cannot_run": []}
     )
     run.phase = PHASE_GATE
+
+    # The autonomy dial disposes: classify the proposed change and fold it with the task's level.
+    decision = _autonomy_decision(task, project, agent_result)
+    _record_autonomy(run, decision)
     db.commit()
     db.refresh(run)
+
+    if decision["auto_advance"]:
+        # Green start to finish: auto resolve the gate this run just opened and merge unattended.
+        return approve_build_run(db, run, resolved_by="system:autonomy-green")
     return run
+
+
+def _autonomy_decision(task: Task, project: Project, agent_result: AgentResult) -> dict:
+    """Classify the proposed change and fold it with the task's autonomy level into a gate decision.
+
+    The classifier reads the task's words, the files the run touched, and the proposed diff. The
+    task's set level seeds the dial (falling back to the project default); the classifier can only
+    escalate it, never relax it. Returns the gate_decision dict recorded on the run.
+    """
+    assessment = classify_risk(
+        text=" ".join(p for p in (task.title, task.detail, task.goal_for_agent) if p),
+        files=list(agent_result.files_changed),
+        diff=agent_result.diff or "",
+    )
+    task_level = normalize_level(task.autonomy, default=project.agent_autonomy_default)
+    return gate_decision(task_level, assessment)
+
+
+def _record_autonomy(run: AgentRun, decision: dict) -> None:
+    """Record the autonomy decision on the run's plan so the gate is fully explainable in the UI."""
+    plan = dict(run.plan) if isinstance(run.plan, dict) else {}
+    build = dict(plan.get("build", {})) if isinstance(plan.get("build"), dict) else {}
+    build["autonomy"] = decision
+    plan["build"] = build
+    run.plan = plan
 
 
 def _fail_run(db: Session, run: AgentRun, task: Task, prior_status: str) -> AgentRun:
@@ -515,6 +565,62 @@ def cancel_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") -
     return run
 
 
+# --- the autonomy dial and the kill switch ------------------------------------------------
+
+
+def set_task_autonomy(db: Session, task: Task, level: str) -> Task:
+    """Set a task's autonomy level (green, yellow, or red). Rejects an unknown level."""
+    if not is_valid_level(level):
+        raise BuildEngineError(f"unknown autonomy level: {level!r}")
+    task.autonomy = normalize_level(level)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def set_project_autonomy_default(db: Session, project: Project, level: str) -> Project:
+    """Set a project's default autonomy level new tasks inherit. Rejects an unknown level."""
+    if not is_valid_level(level):
+        raise BuildEngineError(f"unknown autonomy level: {level!r}")
+    project.agent_autonomy_default = normalize_level(level)
+    db.commit()
+    db.refresh(project)
+    return project
+
+
+def engage_kill_switch(
+    db: Session, project: Project, *, resolved_by: str = "user"
+) -> list[AgentRun]:
+    """Engage the project kill switch: halt every in flight build run and refuse new ones.
+
+    Sets the switch, then cancels each of the project's active build runs (running or awaiting
+    review) so nothing in flight proceeds. Returns the runs that were halted. New runs are refused by
+    start_build_run while the switch stays engaged. Idempotent: engaging an engaged switch with no
+    active runs simply returns an empty list.
+    """
+    project.agent_kill_switch = True
+    db.commit()
+    halted: list[AgentRun] = []
+    runs = (
+        db.query(AgentRun)
+        .filter(AgentRun.project_id == project.id, AgentRun.backend.isnot(None))
+        .all()
+    )
+    for run in runs:
+        if run.status in ACTIVE_RUN_STATUSES:
+            cancel_build_run(db, run, resolved_by=resolved_by)
+            halted.append(run)
+    return halted
+
+
+def release_kill_switch(db: Session, project: Project) -> Project:
+    """Release the project kill switch so new runs may start again."""
+    project.agent_kill_switch = False
+    db.commit()
+    db.refresh(project)
+    return project
+
+
 # --- the read projection ------------------------------------------------------------------
 
 
@@ -544,6 +650,9 @@ def build_run_detail(db: Session, run: AgentRun) -> dict:
         transcript = _read_spilled(evidence.get("transcript_ref"), _DETAIL_TRANSCRIPT_CAP)
         files_changed = list(evidence.get("files_changed", []) or [])
 
+    build = run.plan.get("build", {}) if isinstance(run.plan, dict) else {}
+    autonomy = build.get("autonomy") if isinstance(build.get("autonomy"), dict) else None
+
     gate = _open_gate_step(db, run)
     return {
         "id": run.id,
@@ -561,6 +670,7 @@ def build_run_detail(db: Session, run: AgentRun) -> dict:
         "diff_capped": diff_capped,
         "transcript": transcript,
         "files_changed": files_changed,
+        "autonomy": autonomy,
         "gate_step_id": gate.id if gate is not None else None,
         "created_at": run.created_at,
         "updated_at": run.updated_at,
