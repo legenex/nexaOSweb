@@ -31,6 +31,7 @@ from app.agents.build_engine import (
     KillSwitchEngagedError,
     start_build_run,
 )
+from app.agents.cost import budget_status
 from app.agents.executor import PHASE_MERGED
 from app.agents.slicer import task_graph
 from app.audit import audit_orchestrator
@@ -188,6 +189,20 @@ def orchestrate_project(
         raise OrchestratorPausedError(
             f"orchestration for project '{project.slug}' is paused; resume it before running"
         )
+
+    # Budget gate: a project over its daily or monthly budget pauses dispatch before any run starts,
+    # reusing the orchestrator pause path so the pause is recorded on the loop state and audited.
+    # The loop stays paused until a person resumes it (and, in practice, the budget is raised or the
+    # window rolls over).
+    budget = budget_status(db, project.id)
+    if budget["exceeded"]:
+        pause_loop(
+            db,
+            project,
+            reason=f"budget_{budget['scope']}",
+            actor="system",
+        )
+        return orchestration_state(db, project)
 
     cap = run_cap if run_cap is not None else settings.nexa_orchestrator_run_cap
     budget = (

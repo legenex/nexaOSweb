@@ -10,6 +10,7 @@ from .dreaming import DreamRun, MemoryCandidate
 from .inbox import ClassificationRecord, InboxItem, PipelineRun
 from .insight import Insight, InsightRun
 from .knowledge import KnowledgeEntry
+from .outcome import OutcomeLog
 from .password_reset import PasswordResetToken
 from .project import BuildLogEntry, Integration, PMRun, Project
 from .provider import DiscoveredModel, ProviderCredential
@@ -55,4 +56,5 @@ __all__ = [
     "AgentRun",
     "AgentStep",
     "AgentAudit",
+    "OutcomeLog",
 ]

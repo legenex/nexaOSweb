@@ -25,6 +25,7 @@ from app.agents.build_engine import (
     set_task_autonomy,
     start_build_run,
 )
+from app.agents.cost import budget_status, project_cost_rollup, set_project_budget
 from app.agents.orchestrator import (
     OrchestratorDisabledError,
     OrchestratorHaltedError,
@@ -50,7 +51,10 @@ from app.schemas.agents import (
     OrchestrateRequest,
     OrchestrationState,
     ProjectAutonomyState,
+    ProjectBudget,
+    ProjectCostRollup,
     SetProjectAutonomyRequest,
+    SetProjectBudgetRequest,
     SetTaskAutonomyRequest,
     StartBuildRunRequest,
     TaskAutonomyState,
@@ -254,6 +258,50 @@ def set_project_kill_switch(
         release_kill_switch(db, project, resolved_by=user.email or "user")
     db.refresh(project)
     return _project_autonomy_state(project, halted_ids)
+
+
+# --- cost rollup and budget ---------------------------------------------------------------
+
+
+@router.get("/projects/{project_id}/cost", response_model=ProjectCostRollup)
+def get_project_cost(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectCostRollup:
+    """The project's agent spend: total, run count, token totals, and a per backend break down."""
+    _load_project(project_id, user, db)
+    return ProjectCostRollup(**project_cost_rollup(db, project_id))
+
+
+def _budget_payload(db: Session, project_id: int) -> ProjectBudget:
+    return ProjectBudget(**budget_status(db, project_id))
+
+
+@router.get("/projects/{project_id}/budget", response_model=ProjectBudget)
+def get_project_budget(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectBudget:
+    """The project's daily and monthly budget, its current spend, and whether dispatch is paused."""
+    _load_project(project_id, user, db)
+    return _budget_payload(db, project_id)
+
+
+@router.put("/projects/{project_id}/budget", response_model=ProjectBudget)
+def set_project_budget_limits(
+    project_id: int,
+    payload: SetProjectBudgetRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> ProjectBudget:
+    """Set the project's daily and monthly budget. Null for a field leaves that window unlimited."""
+    _load_project(project_id, user, db)
+    set_project_budget(
+        db, project_id, daily_usd=payload.daily_usd, monthly_usd=payload.monthly_usd
+    )
+    return _budget_payload(db, project_id)
 
 
 # --- plan to tasks slicer -----------------------------------------------------------------

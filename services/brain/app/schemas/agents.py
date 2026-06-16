@@ -156,3 +156,48 @@ class AgentRunDetail(BaseModel):
     created_at: datetime
     updated_at: datetime
     finished_at: datetime | None
+
+
+class BackendCost(BaseModel):
+    """One backend's slice of a project's agent spend: its run count, cost, and token totals."""
+
+    backend: str
+    run_count: int
+    cost_usd: float
+    input_tokens: int
+    output_tokens: int
+
+
+class ProjectCostRollup(BaseModel):
+    """A project's agent spend: the total, the run count, the token totals, and a per backend break
+    down. Backed by the real per run usage the build engine records, never an estimate."""
+
+    project_id: int
+    total_usd: float
+    run_count: int
+    input_tokens: int
+    output_tokens: int
+    by_backend: list[BackendCost]
+
+
+class ProjectBudget(BaseModel):
+    """A project's daily and monthly budget and its current spend in each window.
+
+    A null limit means unlimited for that window. exceeded and scope report whether dispatch would
+    be paused right now and which window is breached.
+    """
+
+    project_id: int
+    daily_usd: float | None
+    monthly_usd: float | None
+    daily_spend: float
+    monthly_spend: float
+    exceeded: bool
+    scope: str | None
+
+
+class SetProjectBudgetRequest(BaseModel):
+    """Set a project's daily and monthly budget. Null for a field leaves that window unlimited."""
+
+    daily_usd: float | None = None
+    monthly_usd: float | None = None

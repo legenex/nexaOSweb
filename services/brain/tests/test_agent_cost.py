@@ -11,7 +11,8 @@ import stat
 
 import pytest
 
-from app.agents.build_engine import run_usage, start_build_run
+from app.agents.build_engine import BackendUnavailableError, run_usage, start_build_run
+from app.agents.cost import project_cost_rollup
 from app.models.project import Project
 from app.models.user import User
 from app.models.workspace import Task
@@ -108,3 +109,106 @@ def test_run_records_non_null_usage(db_session, roots, stub_backend):
     assert usage["cost_usd"] == pytest.approx(0.0012)
     assert usage["input_tokens"] == 11
     assert usage["output_tokens"] == 7
+
+
+# --- Part C: the cost rollup --------------------------------------------------------------
+
+
+def test_cost_rollup_sums_real_usage_by_backend(db_session, roots, stub_backend):
+    user = _user(db_session)
+    project = _project(db_session)
+    start_build_run(db_session, task=_task(db_session, user, project), proposed_by=user.email)
+    start_build_run(db_session, task=_task(db_session, user, project), proposed_by=user.email)
+
+    rollup = project_cost_rollup(db_session, project.id)
+    assert rollup["run_count"] == 2
+    assert rollup["total_usd"] == pytest.approx(0.0024)
+    assert rollup["input_tokens"] == 22
+    assert rollup["output_tokens"] == 14
+    assert len(rollup["by_backend"]) == 1
+    claude = rollup["by_backend"][0]
+    assert claude["backend"] == "claude-code"
+    assert claude["run_count"] == 2
+    assert claude["cost_usd"] == pytest.approx(0.0024)
+
+
+def test_cost_rollup_endpoint(client, db_session, roots, stub_backend, monkeypatch):
+    monkeypatch.setattr(get_settings(), "nexa_desktop_bearer", "t")
+    bearer = {"Authorization": "Bearer t"}
+    user = _user(db_session)  # bearer acts as the earliest user
+    project = _project(db_session)
+    start_build_run(db_session, task=_task(db_session, user, project), proposed_by=user.email)
+
+    res = client.get(f"/agents/projects/{project.id}/cost", headers=bearer)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["run_count"] == 1 and body["total_usd"] == pytest.approx(0.0012)
+
+
+# --- Part C: the per backend cost ceiling -------------------------------------------------
+
+
+def test_over_ceiling_backend_is_skipped_with_a_reason_and_an_audit_row(
+    db_session, roots, stub_backend
+):
+    from app.models.audit import AgentAudit
+    from app.models.runtime import AgentRun
+
+    user = _user(db_session)
+    project = _project(db_session)
+    # Seed history that puts claude-code's projected cost above its $5 ceiling. The stub makes
+    # claude-code available, so the only reason to skip it is the ceiling, not availability. No
+    # other backend has a stub on PATH, so the order is exhausted and the run cannot start.
+    db_session.add(
+        AgentRun(project_id=project.id, backend="claude-code", cost_usd=10.0, kind="executor")
+    )
+    db_session.commit()
+
+    with pytest.raises(BackendUnavailableError):
+        start_build_run(db_session, task=_task(db_session, user, project), proposed_by=user.email)
+
+    select = (
+        db_session.query(AgentAudit)
+        .filter(AgentAudit.category == "backend", AgentAudit.action == "select")
+        .order_by(AgentAudit.id.desc())
+        .first()
+    )
+    assert select is not None
+    considered = select.detail["trail"]["considered"]
+    claude = next(c for c in considered if c["backend"] == "claude-code")
+    assert claude["over_ceiling"] is True
+    assert "ceiling" in claude["reason"]
+
+
+# --- Part C: the project budget pauses dispatch -------------------------------------------
+
+
+def test_budget_breach_pauses_dispatch_with_an_audit_row(db_session, roots, monkeypatch):
+    from app.agents.cost import set_project_budget
+    from app.agents.orchestrator import orchestrate_project
+    from app.models.audit import AgentAudit
+    from app.models.runtime import AgentRun
+
+    monkeypatch.setattr(get_settings(), "nexa_enable_orchestrator", True)
+    project = _project(db_session)
+    project.stage = "approved"
+    db_session.commit()
+
+    # A tiny daily budget, already breached by a recorded run today.
+    set_project_budget(db_session, project.id, daily_usd=0.001)
+    db_session.add(
+        AgentRun(project_id=project.id, backend="claude-code", cost_usd=1.0, kind="executor")
+    )
+    db_session.commit()
+
+    state = orchestrate_project(db_session, project)
+    assert state["status"] == "paused"
+    assert state["runs_dispatched"] == 0
+
+    pause = (
+        db_session.query(AgentAudit)
+        .filter(AgentAudit.category == "orchestrator", AgentAudit.action == "pause")
+        .one()
+    )
+    assert pause.reason == "budget_daily"
+    assert pause.actor_type == "system"

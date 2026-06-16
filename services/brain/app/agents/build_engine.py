@@ -25,6 +25,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from app.agents.cost import estimate_backend_costs
 from app.agents.executor import (
     APPROVAL_STEP_KIND,
     DIFF_STEP_KIND,
@@ -62,6 +63,7 @@ from app.gates import SAFE_TAGS
 from app.models.project import Project
 from app.models.runtime import AgentRun, AgentStep
 from app.models.workspace import Task
+from app.outcomes import record_outcome
 from app.runtime import (
     ACTIVE_RUN_STATUSES,
     COMPLETED_UNVERIFIED,
@@ -398,10 +400,14 @@ def start_build_run(
             "until it is released"
         )
 
+    # Project a per backend cost from this project's history so the selector can skip a backend that
+    # would run over its configured ceiling. A backend with no history yields no estimate and is
+    # never blocked on cost.
     choice = select_backend(
         task_type=_task_type(task),
         tags=_task_tags(task),
         override=backend_name,
+        cost_estimates=estimate_backend_costs(db, project.id),
     )
     # The backend selection trail is audited at project scope before any run exists, so a selection
     # that ends with no usable backend (every candidate unavailable or over its cost ceiling) is
@@ -575,6 +581,8 @@ def approve_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") 
         raise BuildEngineError(str(exc)) from exc
 
     audit_approval(db, action="approve", actor=resolved_by, run=run, step_id=gate.id)
+    # Record the outcome seam: an approved run whose change merged. A later reject reverts it.
+    record_outcome(db, run, verdict="approved", note=f"approved by {resolved_by}")
 
     task = _run_task(db, run)
     if task is not None and task.deleted_at is None:
@@ -595,7 +603,8 @@ def reject_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") -
     gate = _open_gate_step(db, run)
     if gate is not None:
         resolve_approval(db, gate, resolution="rejected", resolved_by=resolved_by)
-    if _has_completed_merge(db, run):
+    reverted = _has_completed_merge(db, run)
+    if reverted:
         rollback_executor_run(db, run, proposed_by="system")
     else:
         run.phase = PHASE_REJECTED
@@ -604,6 +613,15 @@ def reject_build_run(db: Session, run: AgentRun, *, resolved_by: str = "user") -
     audit_approval(
         db, action="reject", actor=resolved_by, run=run, step_id=gate.id if gate else None
     )
+    # Record the outcome seam. A reject of a run whose change had already merged is a revert of an
+    # approved change, kept as the approved verdict with reverted set; a reject before any merge is
+    # a plain rejected verdict.
+    if reverted:
+        record_outcome(
+            db, run, verdict="approved", reverted=True, note=f"reverted by {resolved_by}"
+        )
+    else:
+        record_outcome(db, run, verdict="rejected", note=f"rejected by {resolved_by}")
 
     task = _run_task(db, run)
     if task is not None and task.deleted_at is None:
