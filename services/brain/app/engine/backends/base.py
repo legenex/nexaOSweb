@@ -32,20 +32,24 @@ class BackendError(Exception):
 class BackendHealth:
     """Whether a backend can run right now, reported without executing a task.
 
-    installed is whether the CLI binary is present and starts. authed is whether the server side
-    credential the CLI needs is configured. available is the conjunction: a backend the engine may
-    actually dispatch to. detail carries a short human readable note (a version string, or why it is
-    unavailable) and never contains a secret value.
+    enabled is whether the backend is turned on at all: a feature flagged backend (for example Grok
+    Build behind NEXA_ENABLE_GROK) reports enabled false while its flag is off, so it is never
+    dispatched to and its health says disabled without probing a CLI. installed is whether the CLI
+    binary is present and starts. authed is whether the server side credential the CLI needs is
+    configured. available is the conjunction: a backend the engine may actually dispatch to. detail
+    carries a short human readable note (a version string, or why it is unavailable or disabled) and
+    never contains a secret value.
     """
 
     backend: str
     installed: bool
     authed: bool
     detail: str = ""
+    enabled: bool = True
 
     @property
     def available(self) -> bool:
-        return self.installed and self.authed
+        return self.enabled and self.installed and self.authed
 
 
 @dataclass

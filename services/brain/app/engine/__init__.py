@@ -26,6 +26,7 @@ from app.engine.backends import (
     BackendHealth,
     ClaudeCodeBackend,
     CodexCliBackend,
+    GrokBuildBackend,
     available_backends,
     get_backend,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "BackendHealth",
     "ClaudeCodeBackend",
     "CodexCliBackend",
+    "GrokBuildBackend",
     "DEFAULT_AGENT_TIMEOUT_SECONDS",
     "DEFAULT_BACKEND",
     "available_backends",

@@ -67,6 +67,15 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     gemini_api_key: str = ""
     tavily_api_key: str = ""
+    # xAI key for the Grok Build agent backend, server side only. Read by the Grok adapter and
+    # injected straight into its CLI process, never into a prompt or a response. Empty until set.
+    xai_api_key: str = ""
+
+    # Agent build backends. Grok Build is gated off by default: while NEXA_ENABLE_GROK is false the
+    # backend is not selectable and its health probe reports disabled, so nothing depends on Grok in
+    # a fresh checkout or the tests. Set this true (and supply XAI_API_KEY) to make it selectable.
+    # Claude Code and Codex need no flag.
+    nexa_enable_grok: bool = False
 
     # Intake knobs (defaults, overridable through AppSetting at runtime)
     classify_confidence_threshold: float = 0.55
