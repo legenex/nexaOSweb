@@ -38,6 +38,54 @@ function downloadMarkdown(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+type ResearchTab = 'knowledge' | 'resources' | 'history';
+
+// The three views of a research topic. Knowledge Base is the distilled, actionable output (the
+// part that matters most); Resources are the source articles; History is the raw run log.
+function TabBar({
+  tab,
+  onChange,
+  resourceCount,
+  historyCount,
+}: {
+  tab: ResearchTab;
+  onChange: (next: ResearchTab) => void;
+  resourceCount: number;
+  historyCount: number;
+}) {
+  const tabs: { key: ResearchTab; label: string; count?: number }[] = [
+    { key: 'knowledge', label: 'Knowledge Base' },
+    { key: 'resources', label: 'Resources', count: resourceCount },
+    { key: 'history', label: 'History', count: historyCount },
+  ];
+  return (
+    <div className="flex gap-1 border-b border-line">
+      {tabs.map((t) => {
+        const active = tab === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => onChange(t.key)}
+            className={[
+              'relative px-3 py-2 text-sm font-medium transition',
+              active ? 'text-accent' : 'text-muted hover:text-cream',
+            ].join(' ')}
+          >
+            {t.label}
+            {typeof t.count === 'number' ? (
+              <span className="ml-1.5 text-faint">{t.count}</span>
+            ) : null}
+            {active ? (
+              <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-accent" />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // A small indeterminate spinner, used to show a research project is running. The brand accent on
 // a neutral line ring keeps it on theme; the optional label rides alongside.
 function Spinner({ label }: { label?: string }) {
@@ -159,6 +207,12 @@ export function ResearchView() {
   // The set of research project ids whose run is in flight right now, so each library row can show
   // a live running indicator. Both Run now and Run All Research feed it.
   const [runningIds, setRunningIds] = useState<Set<number>>(() => new Set());
+  // The open project's view tab. Knowledge Base is the distilled, actionable output and is the
+  // default; Resources is the source articles; History is the raw run log.
+  const [tab, setTab] = useState<ResearchTab>('knowledge');
+  // Suggestions already turned into a task this session, so the button reads done and does not
+  // create a duplicate on a second click.
+  const [taskedSuggestions, setTaskedSuggestions] = useState<Set<string>>(() => new Set());
   const [runError, setRunError] = useState<string | null>(null);
   const [attachTarget, setAttachTarget] = useState<number | ''>('');
 
@@ -221,6 +275,7 @@ export function ResearchView() {
       setSelectedId(id);
       setAttachTarget('');
       setRunError(null);
+      setTab('knowledge');
       await loadDetail(id);
     },
     [loadDetail],
@@ -418,6 +473,34 @@ export function ResearchView() {
     );
   }, [selected, runs]);
 
+  // The newest completed run drives the Knowledge Base view (its synthesis, takeaways, and
+  // suggestions). Fall back to the newest run of any status when none have completed yet.
+  const latestRun = useMemo<ResearchRun | null>(() => {
+    if (runs.length === 0) return null;
+    const completed = runs.filter((r) => r.status === 'completed');
+    const pool = completed.length > 0 ? completed : runs;
+    return pool.reduce<ResearchRun | null>(
+      (best, r) =>
+        best === null || new Date(r.created_at) > new Date(best.created_at) ? r : best,
+      null,
+    );
+  }, [runs]);
+
+  // Turn a run suggestion into a task in the user's board, tagging where it came from.
+  const createTaskFromSuggestion = useCallback(
+    async (text: string) => {
+      if (!selected) return;
+      const detail = selected.topic
+        ? `From research: ${selected.name} (${selected.topic})`
+        : `From research: ${selected.name}`;
+      const { error } = await api.POST('/tasks', {
+        body: { title: text.slice(0, 300), detail },
+      });
+      if (!error) setTaskedSuggestions((prev) => new Set(prev).add(text));
+    },
+    [selected],
+  );
+
   // Group by the editable category label.
   const grouped = useMemo(() => {
     const map = new Map<string, ResearchProject[]>();
@@ -579,9 +662,6 @@ export function ResearchView() {
                   <Button onClick={() => void runNow()} disabled={running || runningAll !== null}>
                     {running ? <Spinner label="running" /> : 'Run now'}
                   </Button>
-                  <Button variant="outline" onClick={exportRuns} disabled={runs.length === 0}>
-                    Export
-                  </Button>
                 </div>
               </div>
 
@@ -649,39 +729,147 @@ export function ResearchView() {
               </div>
             </GlassCard>
 
-            <div className="space-y-2">
-              <MonoLabel tone="faint">run history</MonoLabel>
-              {runs.length === 0 ? (
-                <p className="text-sm text-muted">No runs yet. Run now to generate findings.</p>
-              ) : (
-                <div className="scroll-themed max-h-80 space-y-2 overflow-y-auto pr-1">
-                  {runs.map((run) => (
-                    <RunCard
-                      key={run.id}
-                      run={run}
-                      onRerun={() => void rerunRun(run.project_id)}
-                      onViewInsights={() => navigate('insights')}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <TabBar
+              tab={tab}
+              onChange={setTab}
+              resourceCount={findings.length}
+              historyCount={runs.length}
+            />
 
-            <div className="space-y-3">
-              <MonoLabel tone="faint">findings</MonoLabel>
-              {findings.length === 0 ? (
-                <p className="text-sm text-muted">No findings yet.</p>
-              ) : (
-                findings.map((finding) => (
-                  <FindingCard
-                    key={finding.id}
-                    finding={finding}
-                    isAttached={isAttached}
-                    onAct={onAct}
-                  />
-                ))
-              )}
-            </div>
+            {tab === 'knowledge' ? (
+              <div className="space-y-4">
+                {latestRun && (latestRun.summary || latestRun.analysis) ? (
+                  <GlassCard className="border-electric">
+                    <div className="flex items-center justify-between gap-2">
+                      <MonoLabel tone="faint">latest synthesis</MonoLabel>
+                      <span className="mono-meta text-faint">
+                        {new Date(latestRun.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    {latestRun.summary ? (
+                      <p className="mt-2 break-words text-sm text-cream/90">{latestRun.summary}</p>
+                    ) : null}
+                    {latestRun.analysis ? (
+                      <p className="mt-2 break-words text-sm text-muted">{latestRun.analysis}</p>
+                    ) : null}
+                  </GlassCard>
+                ) : null}
+
+                {latestRun && latestRun.suggestions.length > 0 ? (
+                  <div className="space-y-2">
+                    <MonoLabel tone="faint">suggested actions</MonoLabel>
+                    <div className="space-y-2">
+                      {latestRun.suggestions.map((suggestion, i) => {
+                        const done = taskedSuggestions.has(suggestion);
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-start justify-between gap-3 rounded-md border border-line bg-surface/60 px-3 py-2"
+                          >
+                            <p className="break-words text-sm text-cream/90">{suggestion}</p>
+                            <Button
+                              variant="outline"
+                              className="shrink-0"
+                              disabled={done}
+                              onClick={() => void createTaskFromSuggestion(suggestion)}
+                            >
+                              {done ? 'Task created' : 'Create Task'}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+
+                {latestRun && latestRun.key_takeaways.length > 0 ? (
+                  <div className="space-y-2">
+                    <MonoLabel tone="faint">key takeaways</MonoLabel>
+                    <ul className="list-disc space-y-1 rounded-md border border-line bg-surface/60 px-6 py-3 text-sm text-muted">
+                      {latestRun.key_takeaways.map((t, i) => (
+                        <li key={i} className="break-words">
+                          {t}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <MonoLabel tone="faint">insights</MonoLabel>
+                  {findings.length === 0 ? (
+                    <p className="text-sm text-muted">
+                      No insights yet. Run this topic to build its knowledge base.
+                    </p>
+                  ) : (
+                    findings.map((finding) => (
+                      <FindingCard
+                        key={finding.id}
+                        finding={finding}
+                        isAttached={isAttached}
+                        onAct={onAct}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : tab === 'resources' ? (
+              <div className="space-y-2">
+                <MonoLabel tone="faint">source articles</MonoLabel>
+                {findings.length === 0 ? (
+                  <p className="text-sm text-muted">No resources yet.</p>
+                ) : (
+                  findings.map((finding) => (
+                    <div
+                      key={finding.id}
+                      className="rounded-md border border-line bg-surface/60 px-3 py-3"
+                    >
+                      <h4 className="break-words text-sm font-semibold text-cream">
+                        {finding.title}
+                      </h4>
+                      {finding.detail ? (
+                        <p className="mt-1 line-clamp-3 break-words text-sm text-muted">
+                          {finding.detail}
+                        </p>
+                      ) : null}
+                      {finding.url ? (
+                        <a
+                          href={finding.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mono-meta mt-2 block truncate text-accent hover:underline"
+                        >
+                          {finding.url}
+                        </a>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <MonoLabel tone="faint">run history</MonoLabel>
+                  <Button variant="outline" onClick={exportRuns} disabled={runs.length === 0}>
+                    Export
+                  </Button>
+                </div>
+                {runs.length === 0 ? (
+                  <p className="text-sm text-muted">No runs yet. Run now to generate findings.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {runs.map((run) => (
+                      <RunCard
+                        key={run.id}
+                        run={run}
+                        onRerun={() => void rerunRun(run.project_id)}
+                        onViewInsights={() => navigate('insights')}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </section>
