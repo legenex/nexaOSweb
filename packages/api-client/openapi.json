@@ -6204,6 +6204,195 @@
         }
       }
     },
+    "/agents/projects/{project_id}/orchestrate": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Orchestrate Project Loop",
+        "description": "Run the orchestration loop for a project and return its state.\n\nRefused when the orchestrator flag is off (403), when the kill switch is engaged, when the project\nis not approved, or when the loop is paused (409). Green tasks auto advance and unlock dependents;\nyellow and red tasks park at the gate. The loop is bounded by a run cap and a wall-clock budget.",
+        "operationId": "orchestrate_project_loop_agents_projects__project_id__orchestrate_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/OrchestrateRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestrationState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/orchestration": {
+      "get": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Get Orchestration State",
+        "description": "Return the orchestration loop state and per task progress for a project.",
+        "operationId": "get_orchestration_state_agents_projects__project_id__orchestration_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestrationState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/pause": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Pause Orchestration",
+        "description": "Pause the orchestration loop: new dispatch is refused until it is resumed.",
+        "operationId": "pause_orchestration_agents_projects__project_id__pause_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestrationState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/projects/{project_id}/resume": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Resume Orchestration",
+        "description": "Resume a paused orchestration loop so the next orchestrate call may run.",
+        "operationId": "resume_orchestration_agents_projects__project_id__resume_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrchestrationState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -9549,6 +9738,147 @@
         ],
         "title": "Opportunity"
       },
+      "OrchestrateRequest": {
+        "properties": {
+          "run_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Cap"
+          },
+          "budget_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Seconds"
+          }
+        },
+        "type": "object",
+        "title": "OrchestrateRequest",
+        "description": "Optional bounds for one orchestration run. Omitted fields fall back to the server defaults."
+      },
+      "OrchestrationState": {
+        "properties": {
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "approved": {
+            "type": "boolean",
+            "title": "Approved"
+          },
+          "kill_switch_engaged": {
+            "type": "boolean",
+            "title": "Kill Switch Engaged"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "run_cap": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Cap"
+          },
+          "budget_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Seconds"
+          },
+          "runs_dispatched": {
+            "type": "integer",
+            "title": "Runs Dispatched",
+            "default": 0
+          },
+          "stopped_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stopped Reason"
+          },
+          "dispatches": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Dispatches",
+            "default": []
+          },
+          "gate_decisions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Gate Decisions",
+            "default": []
+          },
+          "pauses": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Pauses",
+            "default": []
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskGraphNode"
+            },
+            "type": "array",
+            "title": "Tasks",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_id",
+          "enabled",
+          "approved",
+          "kill_switch_engaged",
+          "status"
+        ],
+        "title": "OrchestrationState",
+        "description": "The orchestrator loop's state and per task progress for a project.\n\nstatus is the loop record (idle, active, paused, completed, blocked, halted). enabled reflects the\nNEXA_ENABLE_ORCHESTRATOR flag; approved whether the project may run; kill_switch_engaged whether the\nstop is pulled. run_cap and budget_seconds are the bounds the last run used; stopped_reason why it\nstopped. dispatches, gate_decisions, and pauses are the audit trail. tasks is the graph with each\ntask's current status, so the UI can show per task progress."
+      },
       "PasswordResetConfirm": {
         "properties": {
           "token": {
@@ -12388,6 +12718,11 @@
           "source": {
             "type": "string",
             "title": "Source"
+          },
+          "autonomy": {
+            "type": "string",
+            "title": "Autonomy",
+            "default": "yellow"
           },
           "run_id": {
             "anyOf": [

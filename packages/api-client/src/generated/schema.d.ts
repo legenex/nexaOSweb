@@ -2260,6 +2260,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agents/projects/{project_id}/orchestrate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Orchestrate Project Loop
+         * @description Run the orchestration loop for a project and return its state.
+         *
+         *     Refused when the orchestrator flag is off (403), when the kill switch is engaged, when the project
+         *     is not approved, or when the loop is paused (409). Green tasks auto advance and unlock dependents;
+         *     yellow and red tasks park at the gate. The loop is bounded by a run cap and a wall-clock budget.
+         */
+        post: operations["orchestrate_project_loop_agents_projects__project_id__orchestrate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/orchestration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Orchestration State
+         * @description Return the orchestration loop state and per task progress for a project.
+         */
+        get: operations["get_orchestration_state_agents_projects__project_id__orchestration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause Orchestration
+         * @description Pause the orchestration loop: new dispatch is refused until it is resumed.
+         */
+        post: operations["pause_orchestration_agents_projects__project_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agents/projects/{project_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Orchestration
+         * @description Resume a paused orchestration loop so the next orchestrate call may run.
+         */
+        post: operations["resume_orchestration_agents_projects__project_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -3514,6 +3598,80 @@ export interface components {
             /** Score */
             score?: number | null;
         };
+        /**
+         * OrchestrateRequest
+         * @description Optional bounds for one orchestration run. Omitted fields fall back to the server defaults.
+         */
+        OrchestrateRequest: {
+            /** Run Cap */
+            run_cap?: number | null;
+            /** Budget Seconds */
+            budget_seconds?: number | null;
+        };
+        /**
+         * OrchestrationState
+         * @description The orchestrator loop's state and per task progress for a project.
+         *
+         *     status is the loop record (idle, active, paused, completed, blocked, halted). enabled reflects the
+         *     NEXA_ENABLE_ORCHESTRATOR flag; approved whether the project may run; kill_switch_engaged whether the
+         *     stop is pulled. run_cap and budget_seconds are the bounds the last run used; stopped_reason why it
+         *     stopped. dispatches, gate_decisions, and pauses are the audit trail. tasks is the graph with each
+         *     task's current status, so the UI can show per task progress.
+         */
+        OrchestrationState: {
+            /** Project Id */
+            project_id: number;
+            /** Enabled */
+            enabled: boolean;
+            /** Approved */
+            approved: boolean;
+            /** Kill Switch Engaged */
+            kill_switch_engaged: boolean;
+            /** Status */
+            status: string;
+            /** Run Cap */
+            run_cap?: number | null;
+            /** Budget Seconds */
+            budget_seconds?: number | null;
+            /**
+             * Runs Dispatched
+             * @default 0
+             */
+            runs_dispatched: number;
+            /** Stopped Reason */
+            stopped_reason?: string | null;
+            /**
+             * Dispatches
+             * @default []
+             */
+            dispatches: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Gate Decisions
+             * @default []
+             */
+            gate_decisions: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Pauses
+             * @default []
+             */
+            pauses: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /**
+             * Tasks
+             * @default []
+             */
+            tasks: components["schemas"]["TaskGraphNode"][];
+        };
         /** PasswordResetConfirm */
         PasswordResetConfirm: {
             /** Token */
@@ -4526,6 +4684,11 @@ export interface components {
             labels: components["schemas"]["TaskLabel"][];
             /** Source */
             source: string;
+            /**
+             * Autonomy
+             * @default yellow
+             */
+            autonomy: string;
             /** Run Id */
             run_id: number | null;
             /**
@@ -9157,6 +9320,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskGraph"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    orchestrate_project_loop_agents_projects__project_id__orchestrate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OrchestrateRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrchestrationState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_orchestration_state_agents_projects__project_id__orchestration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrchestrationState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pause_orchestration_agents_projects__project_id__pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrchestrationState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_orchestration_agents_projects__project_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrchestrationState"];
                 };
             };
             /** @description Validation Error */
