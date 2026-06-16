@@ -51,6 +51,14 @@ class Task(Base, TimestampMixin):
     # no database level foreign key (added to the existing table on the SQLite dev target); the
     # relationship to agent_runs is enforced in the router, like JournalNote.topic_id.
     run_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
+    # The plan to tasks slicer fills these on tasks it generates from a project's plan_json; a hand
+    # created task leaves them null. sequence is the task's order in the build graph. depends_on is a
+    # JSON list of prerequisite task ids in the same project, with no database level foreign key (the
+    # relation is held here and validated in the router). plan_unit_key links the task back to the
+    # plan unit it was sliced from and is the stable identity a re-slice reconciles against.
+    sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    depends_on: Mapped[list | None] = mapped_column(JSON, default=list, nullable=True)
+    plan_unit_key: Mapped[str | None] = mapped_column(String(200), index=True, nullable=True)
     # Soft delete marker: a deleted task keeps its row and stays recoverable, and is excluded
     # from default lists and from the open task counts on the Dashboard and Insights.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

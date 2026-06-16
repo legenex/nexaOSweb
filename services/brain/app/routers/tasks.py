@@ -42,8 +42,9 @@ BOARD_STATUSES = ("todo", "doing", "agent_working", "review", "done")
 # tasks never enter blocked, it survives only for legacy rows and the Focus blocker bucket.
 STATUSES = (*BOARD_STATUSES, "archived", "blocked")
 DEFAULT_STATUS = "todo"
-# How a task came to exist. Set by the creator, not editable after the fact.
-SOURCES = ("manual", "research", "run")
+# How a task came to exist. Set by the creator, not editable after the fact. plan marks a task the
+# plan to tasks slicer generated from a project's plan_json (see app/agents/slicer.py).
+SOURCES = ("manual", "research", "run", "plan")
 # Task priority. Defaults to med when the creator omits it.
 PRIORITIES = ("low", "med", "high")
 DEFAULT_PRIORITY = "med"

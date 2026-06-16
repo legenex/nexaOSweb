@@ -25,6 +25,7 @@ from app.agents.build_engine import (
     set_task_autonomy,
     start_build_run,
 )
+from app.agents.slicer import SlicerError, slice_plan, task_graph
 from app.db import get_db
 from app.models.inbox import InboxItem
 from app.models.project import Project
@@ -39,6 +40,7 @@ from app.schemas.agents import (
     SetTaskAutonomyRequest,
     StartBuildRunRequest,
     TaskAutonomyState,
+    TaskGraph,
 )
 from app.security.auth import current_user
 
@@ -237,3 +239,37 @@ def set_project_kill_switch(
         release_kill_switch(db, project)
     db.refresh(project)
     return _project_autonomy_state(project, halted_ids)
+
+
+# --- plan to tasks slicer -----------------------------------------------------------------
+
+
+@router.post("/projects/{project_id}/slice", response_model=TaskGraph)
+def slice_project_plan(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> TaskGraph:
+    """Slice the project's current plan into ordered buildable tasks and return the task graph.
+
+    Idempotent: re-slicing the same plan reconciles in place rather than duplicating. A plan with no
+    buildable units, or a malformed plan_json, is rejected with 400.
+    """
+    project = _load_project(project_id, user, db)
+    try:
+        graph = slice_plan(db, project, proposed_by=user.email or "user")
+    except SlicerError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    return TaskGraph(**graph)
+
+
+@router.get("/projects/{project_id}/tasks", response_model=TaskGraph)
+def get_project_task_graph(
+    project_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> TaskGraph:
+    """Return the project's build task graph: the generated tasks, ordered, with their dependencies
+    and current status."""
+    project = _load_project(project_id, user, db)
+    return TaskGraph(**task_graph(db, project))
